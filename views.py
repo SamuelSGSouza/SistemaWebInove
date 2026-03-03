@@ -530,6 +530,7 @@ def visualizar_dados(request):
                 df[col] = df[col].astype(str)
 
 
+
             tipoTelefone = request.POST.get('tipoTelefone', '')
             if tipoTelefone == "apenas_movel":
                 df = remove_fixos(df) 
