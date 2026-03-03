@@ -7,3 +7,4 @@ deploy.py
 SistemaWeb
 .env
 db.sqlite3
+ConfigInoveOS.sh
