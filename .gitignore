@@ -1,0 +1,9 @@
+comandos_ssh
+media/*
+media_giga_mais/*
+media_janeiro_2026/*
+deploy.py
+*.pyc
+SistemaWeb
+.env
+db.sqlite3

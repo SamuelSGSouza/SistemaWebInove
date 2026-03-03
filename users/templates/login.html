@@ -1,0 +1,197 @@
+{% extends 'base.html' %}
+
+{% block static %}
+<!-- Conteúdo para o block body -->
+<style>
+  /* CSS customizado para refinamentos visuais */
+  body {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  }
+  .card-login {
+    border: none;
+    border-radius: 1.5rem;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+    backdrop-filter: blur(10px);
+    background-color: rgba(255, 255, 255, 0.95);
+    transition: transform 0.3s ease;
+  }
+  .card-login:hover {
+    transform: translateY(-5px);
+  }
+  .card-header {
+    background: transparent;
+    border-bottom: none;
+    text-align: center;
+    padding-top: 2rem;
+  }
+  .card-header h2 {
+    font-weight: 700;
+    color: #4a3f6b;
+    letter-spacing: 1px;
+  }
+  .card-header p {
+    color: #6c757d;
+    font-size: 0.9rem;
+  }
+  .form-floating > label {
+    color: #6c757d;
+    font-weight: 400;
+    padding-left: 1.2rem;
+  }
+  .form-control {
+    border-radius: 2rem;
+    border: 1px solid #e0e0e0;
+    padding-left: 1.5rem;
+    transition: all 0.2s;
+  }
+  .form-control:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+  }
+  .btn-login {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    border-radius: 2rem;
+    padding: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: white;
+    transition: all 0.3s;
+    box-shadow: 0 8px 15px rgba(102, 126, 234, 0.3);
+  }
+  .btn-login:hover {
+    background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+    transform: scale(1.02);
+    box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+  }
+  .btn-login:active {
+    transform: scale(0.98);
+  }
+  .form-check-input:checked {
+    background-color: #667eea;
+    border-color: #667eea;
+  }
+  .link-custom {
+    color: #667eea;
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.2s;
+  }
+  .link-custom:hover {
+    color: #764ba2;
+    text-decoration: underline;
+  }
+  .footer-text {
+    font-size: 0.85rem;
+    color: #adb5bd;
+    text-align: center;
+    margin-top: 1.5rem;
+  }
+  .invalid-feedback {
+    font-size: 0.8rem;
+    margin-top: 0.25rem;
+    padding-left: 1rem;
+  }
+</style>
+{% endblock %}
+
+{% block body %}
+<div class="container">
+  <div class="row justify-content-center">
+    <div class="col-md-6 col-lg-5">
+      <div class="card card-login">
+        <div class="card-header">
+          <h2>Inove</h2>
+          <p class="mb-0">Acesse sua conta</p>
+          {% include 'partials/_messages.html' %}
+        </div>
+        <div class="card-body p-4 p-lg-5">
+          <form id="loginForm" action="{% url 'login' %}" method="post" novalidate >
+            {% csrf_token %}
+            <!-- Email (floating label) -->
+            <div class="form-floating mb-4">
+              <input name="username" type="text" class="form-control" id="floatingEmail" placeholder="nome@exemplo.com" required>
+              <label for="floatingEmail">Usuário</label>
+              <div class="invalid-feedback" id="emailFeedback">Por favor, insira um usuário válido.</div>
+            </div>
+            <!-- Senha (floating label) -->
+            <div class="form-floating mb-4">
+              <input type="password" class="form-control" id="floatingPassword" placeholder="Senha" name="password" required>
+              <label for="floatingPassword">Senha</label>
+              <div class="invalid-feedback" id="passwordFeedback">A senha é obrigatória.</div>
+            </div>
+            <!-- Lembrar-me e Esqueceu senha -->
+            
+            <!-- Botão de login -->
+            <button type="submit" class="btn btn-login w-100">Entrar</button>
+            <!-- Link para cadastro -->
+            <div class="text-center mt-4">
+            </div>
+          </form>
+        </div>
+      </div>
+      <div class="footer-text">
+        &copy; 2026 Inove. Todos os direitos reservados.
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+
+{% block script %}
+<!-- JavaScript para validação simples e feedback visual -->
+<script>
+  (function() {
+    'use strict';
+    const form = document.getElementById('loginForm');
+
+    form.addEventListener('submit', function(event) {
+      event.preventDefault(); // Impede envio real para demonstração
+      event.stopPropagation();
+
+      let isValid = true;
+
+      
+
+      // Validação da senha
+      const passwordInput = document.getElementById('floatingPassword');
+      const passwordFeedback = document.getElementById('passwordFeedback');
+      if (!passwordInput.value.trim()) {
+        passwordInput.classList.add('is-invalid');
+        passwordFeedback.style.display = 'block';
+        isValid = false;
+      } else {
+        passwordInput.classList.remove('is-invalid');
+        passwordInput.classList.add('is-valid');
+        passwordFeedback.style.display = 'none';
+      }
+
+      if (isValid) {
+        // Aqui você pode redirecionar ou enviar o formulário de fato
+        form.submit();
+      }
+    });
+
+    function isValidEmail(email) {
+      const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      return re.test(email);
+    }
+
+    // Remover validação ao digitar (para melhor UX)
+    document.getElementById('floatingEmail').addEventListener('input', function() {
+      this.classList.remove('is-invalid', 'is-valid');
+    });
+    document.getElementById('floatingPassword').addEventListener('input', function() {
+      this.classList.remove('is-invalid', 'is-valid');
+    });
+  })();
+</script>
+
+{% endblock %}

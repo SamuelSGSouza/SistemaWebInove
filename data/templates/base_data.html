@@ -1,0 +1,363 @@
+{% extends 'base.html' %}
+
+{% block body %}
+<!-- Fonte Awesome para ícones -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<style>
+  body {
+    background-color: #f4f7fc;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  }
+
+  /* Sidebar fixa para desktop */
+  .sidebar {
+    width: 260px;
+    background: #ffffff;
+    border-right: 1px solid rgba(0,0,0,0.05);
+    box-shadow: 0 0 20px rgba(0,0,0,0.02);
+    transition: all 0.3s;
+  }
+
+  .sidebar .nav-link {
+    color: #5f6b7a;
+    font-weight: 500;
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.5rem;
+    margin: 0.2rem 0.8rem;
+    transition: all 0.2s;
+  }
+
+  .sidebar .nav-link:hover {
+    background-color: #f0f4fe;
+    color: #0d6efd;
+  }
+
+  .sidebar .nav-link.active {
+    background: linear-gradient(90deg, #0d6efd 0%, #0b5ed7 100%);
+    color: white;
+    box-shadow: 0 4px 10px rgba(13, 110, 253, 0.2);
+  }
+
+  .sidebar .nav-link i {
+    width: 24px;
+    font-size: 1.2rem;
+  }
+
+  .sidebar-brand {
+    padding: 1.5rem 1.5rem 1rem;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #1e2b3a;
+    letter-spacing: -0.5px;
+  }
+
+  .sidebar-brand span {
+    color: #0d6efd;
+  }
+
+  /* Área de conteúdo principal */
+  .main-content {
+    flex: 1;
+    background-color: #f4f7fc;
+    min-height: 100vh;
+  }
+
+  /* Cards de estatísticas */
+  .stat-card {
+    border: none;
+    border-radius: 1rem;
+    box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.03);
+    transition: transform 0.2s;
+    background: white;
+    border: 1px solid rgba(0,0,0,0.03);
+  }
+
+  .stat-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 1rem 2rem rgba(0,0,0,0.05);
+  }
+
+  .stat-icon {
+    width: 48px;
+    height: 48px;
+    background: #e7f1ff;
+    color: #0d6efd;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+  }
+
+  /* Tabela */
+  .table-custom {
+    border-collapse: separate;
+    border-spacing: 0 8px;
+  }
+
+  .table-custom tbody tr {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+  }
+
+  .table-custom td {
+    padding: 1rem;
+    vertical-align: middle;
+    border: none;
+  }
+
+  .table-custom td:first-child {
+    border-top-left-radius: 12px;
+    border-bottom-left-radius: 12px;
+  }
+
+  .table-custom td:last-child {
+    border-top-right-radius: 12px;
+    border-bottom-right-radius: 12px;
+  }
+
+  .badge-status {
+    background: #e1f7e3;
+    color: #198754;
+    font-weight: 500;
+    padding: 0.4rem 0.8rem;
+    border-radius: 30px;
+  }
+
+  /* Gráfico placeholder (mantido para o gráfico de barras) */
+  .chart-placeholder {
+    background: white;
+    border-radius: 1rem;
+    padding: 1.5rem;
+    border: 1px solid rgba(0,0,0,0.03);
+  }
+
+  .bar {
+    height: 8px;
+    background: #0d6efd;
+    border-radius: 20px;
+    margin: 0.5rem 0;
+    opacity: 0.8;
+  }
+
+  /* Ajustes mobile */
+  @media (max-width: 768px) {
+    .mobile-top-nav {
+      display: flex !important;
+    }
+    .desktop-sidebar {
+      display: none;
+    }
+  }
+
+  @media (min-width: 769px) {
+    .mobile-top-nav {
+      display: none !important;
+    }
+    .desktop-sidebar {
+      display: flex;
+    }
+  }
+
+  /* Offcanvas personalizado */
+  .offcanvas-body .nav-link {
+    color: #5f6b7a;
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.5rem;
+    margin: 0.2rem 0.8rem;
+  }
+
+  .offcanvas-body .nav-link:hover {
+    background-color: #f0f4fe;
+    color: #0d6efd;
+  }
+
+  .offcanvas-body .nav-link.active {
+    background: #0d6efd;
+    color: white;
+  }
+</style>
+
+<!-- Topo para mobile: menu hambúrguer que abre offcanvas -->
+<div class="mobile-top-nav d-flex d-md-none bg-white p-3 border-bottom align-items-center">
+  <button class="btn btn-link text-dark p-0 me-3" type="button" data-bs-toggle="offcanvas" data-bs-target="#mobileMenu" aria-controls="mobileMenu">
+    <i class="fas fa-bars fa-2x"></i>
+  </button>
+  <h5 class="mb-0 fw-bold">Inove <span class="text-primary">Dashboard</span></h5>
+</div>
+
+<!-- Estrutura principal: flex row para desktop, coluna para mobile (mas no mobile a sidebar some) -->
+<div class="d-flex flex-row w-100">
+  <div class="desktop-sidebar sidebar flex-column d-none d-md-flex" style="min-height: 100vh;">
+    <div class="sidebar-brand">
+      Inove <span>.</span>
+    </div>
+    <nav class="nav flex-column mt-2">
+      <a class="nav-link active" href="#">
+        <i class="fas fa-database me-3"></i> Dashboard
+      </a>
+      <!-- <a class="nav-link" href="#">
+        <i class="fas fa-chart-line me-3"></i> Analytics
+      </a> -->
+      <!-- <a class="nav-link" href="#">
+        <i class="fas fa-users me-3"></i> Usuários
+      </a> -->
+      <!-- Item com submenu: Produtos -->
+      <div class="nav-item w-100">
+        <a class="nav-link d-flex justify-content-between align-items-center" data-bs-toggle="collapse" href="#collapseProducts" role="button" aria-expanded="false" aria-controls="collapseProducts">
+          <span><i class="fas fa-box me-3"></i> Geradores</span>
+          <i class="fas fa-chevron-down"></i>
+        </a>
+        <div class="collapse" id="collapseProducts">
+          <div class="ps-4">
+            <a class="nav-link" href="{% url 'status_execucao' %}?sistema=geral"><i class="fas fa-earth-africa me-3"></i> Gerador Geral</a>
+            <a class="nav-link" href="{% url 'status_execucao' %}?sistema=giga_mais"><i class="fas fa-phone me-3"></i> Gerador Oi</a>
+            <a class="nav-link" href="{% url 'status_execucao' %}?sistema=oi"><i class="fas fa-plus me-3"></i> Gerador Giga +</a>
+            <a class="nav-link" href="{% url 'status_execucao' %}?sistema=janeiro_2026"><i class="fas fa-calendar me-3"></i> Gerador Janeiro 2026</a>
+            <!-- <a class="nav-link" href="#"><i class="fas fa-tags me-3"></i> Categorias</a> -->
+          </div>
+        </div>
+      </div>
+      <!-- Item com submenu: Configurações -->
+      <!-- <div class="nav-item w-100">
+        <a class="nav-link d-flex justify-content-between align-items-center" data-bs-toggle="collapse" href="#collapseSettings" role="button" aria-expanded="false" aria-controls="collapseSettings">
+          <span><i class="fas fa-cog me-3"></i> Configurações</span>
+          <i class="fas fa-chevron-down"></i>
+        </a>
+        <div class="collapse" id="collapseSettings">
+          <div class="ps-4">
+            <a class="nav-link" href="#"><i class="fas fa-user me-3"></i> Perfil</a>
+            <a class="nav-link" href="#"><i class="fas fa-shield-alt me-3"></i> Segurança</a>
+            <a class="nav-link" href="#"><i class="fas fa-bell me-3"></i> Notificações</a>
+          </div>
+        </div>
+      </div> -->
+    </nav>
+    <div class="mt-auto p-3 text-muted small">
+      <hr>
+      <p class="mb-0"><i class="far fa-user-circle me-2"></i> admin@inove.com</p>
+    </div>
+  </div>
+
+  <!-- Offcanvas para mobile (mesmo conteúdo da sidebar) -->
+  <div class="offcanvas offcanvas-start" tabindex="-1" id="mobileMenu" aria-labelledby="mobileMenuLabel">
+    <div class="offcanvas-header">
+      <h5 class="offcanvas-title fw-bold" id="mobileMenuLabel">Inove <span class="text-primary">.</span></h5>
+      <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    </div>
+    <div class="offcanvas-body">
+      <nav class="nav flex-column">
+        <a class="nav-link active" href="{% url 'dashboard' %}">
+          <i class="fas fa-th-large me-3"></i> Dashboard
+        </a>
+        <!-- <a class="nav-link" href="#">
+          <i class="fas fa-chart-line me-3"></i> Analytics
+        </a> -->
+        <!-- <a class="nav-link" href="#">
+          <i class="fas fa-users me-3"></i> Usuários
+        </a> -->
+        <!-- Submenu Produtos -->
+        <div class="nav-item w-100">
+          <a class="nav-link d-flex justify-content-between align-items-center" data-bs-toggle="collapse" href="#collapseProductsMobile" role="button" aria-expanded="false" aria-controls="collapseProductsMobile">
+            <span><i class="fas fa-box me-3"></i> Geradores</span>
+            <i class="fas fa-chevron-down"></i>
+          </a>
+          <div class="collapse" id="collapseProductsMobile">
+            <div class="ps-4">
+              <a class="nav-link" href="#"><i class="fas fa-list me-3"></i> Gerador Geral</a>
+              <a class="nav-link" href="#"><i class="fas fa-plus me-3"></i> Gerador Oi</a>
+              <!-- <a class="nav-link" href="#"><i class="fas fa-tags me-3"></i> Categorias</a> -->
+            </div>
+          </div>
+        </div>
+        <!-- Submenu Configurações -->
+        <div class="nav-item w-100">
+          <a class="nav-link d-flex justify-content-between align-items-center" data-bs-toggle="collapse" href="#collapseSettingsMobile" role="button" aria-expanded="false" aria-controls="collapseSettingsMobile">
+            <span><i class="fas fa-cog me-3"></i> Configurações</span>
+            <i class="fas fa-chevron-down"></i>
+          </a>
+          <div class="collapse" id="collapseSettingsMobile">
+            <div class="ps-4">
+              <a class="nav-link" href="#"><i class="fas fa-user me-3"></i> Perfil</a>
+              <a class="nav-link" href="#"><i class="fas fa-shield-alt me-3"></i> Segurança</a>
+              <a class="nav-link" href="#"><i class="fas fa-bell me-3"></i> Notificações</a>
+            </div>
+          </div>
+        </div>
+      </nav>
+      <hr class="mt-4">
+      <div class="mt-3 text-muted">
+        <i class="far fa-user-circle me-2"></i> admin@inove.com
+      </div>
+    </div>
+  </div>
+
+  <!-- Conteúdo principal -->
+  <div class="main-content p-4">
+    {% block main_body %}
+    {% endblock %}
+  </div>
+</div>
+
+<!-- Script para gráficos de pizza e link ativo -->
+<script>
+  // Inicialização dos gráficos de pizza
+  document.addEventListener('DOMContentLoaded', function () {
+    // Gráfico 1: Vendas por categoria
+    const ctx1 = document.getElementById('pieChartCategories').getContext('2d');
+    new Chart(ctx1, {
+      type: 'pie',
+      data: {
+        labels: ['Eletrônicos', 'Vestuário', 'Casa e Jardim', 'Livros', 'Esportes'],
+        datasets: [{
+          data: [35, 25, 20, 10, 10],
+          backgroundColor: ['#0d6efd', '#20c997', '#ffc107', '#dc3545', '#6f42c1'],
+          borderWidth: 0
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+          legend: { position: 'bottom' }
+        }
+      }
+    });
+
+    // Gráfico 2: Origem do tráfego
+    const ctx2 = document.getElementById('pieChartTraffic').getContext('2d');
+    new Chart(ctx2, {
+      type: 'doughnut', // também poderia ser 'pie'
+      data: {
+        labels: ['Busca Orgânica', 'Redes Sociais', 'E-mail', 'Direto', 'Referências'],
+        datasets: [{
+          data: [40, 25, 15, 12, 8],
+          backgroundColor: ['#0d6efd', '#20c997', '#ffc107', '#dc3545', '#6f42c1'],
+          borderWidth: 0
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+          legend: { position: 'bottom' }
+        },
+        cutout: '60%' // para efeito de donut
+      }
+    });
+  });
+
+  // Destacar link ativo (simulação)
+  document.querySelectorAll('.nav-link').forEach(link => {
+    link.addEventListener('click', function(e) {
+      document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+      this.classList.add('active');
+    });
+  });
+</script>
+{% endblock %}
+
