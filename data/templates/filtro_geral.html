@@ -1,0 +1,307 @@
+{% extends 'base_data.html' %}
+
+{% block main_body %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="h3 mb-4">Filtrar {{ nome_dados }}</h1>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <form method="get" action="." class="needs-validation" novalidate>
+                <!-- Linha: Estados e Municípios -->
+                <div class="row g-4 mb-4">
+                    <!-- Coluna de Estados (checkboxes) -->
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold d-block">Estados</label>
+                        <div class="mb-2">
+                            <input type="text" class="form-control form-control-sm" id="filtro-estado" placeholder="Filtrar estados...">
+                        </div>
+                        <div class="border rounded p-3 bg-light" style="max-height: 250px; overflow-y: auto;">
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" id="selecionar-todos-estados">
+                                <label class="form-check-label fw-semibold" for="selecionar-todos-estados">Selecionar todos</label>
+                            </div>
+                            <div id="estados-container" class="row row-cols-2 g-2">
+                                {% for sigla in estados_municipios.keys %}
+                                <div class="col estado-item">
+                                    <div class="form-check">
+                                        <input class="form-check-input estado-checkbox" type="checkbox" name="estado" value="{{ sigla }}" id="estado-{{ sigla }}">
+                                        <label class="form-check-label" for="estado-{{ sigla }}">
+                                            {{ sigla }}
+                                        </label>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Coluna de Municípios (checkboxes com filtro) -->
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold d-block">Municípios</label>
+                        <div class="mb-2">
+                            <input type="text" class="form-control form-control-sm" id="filtro-municipio" placeholder="Filtrar municípios...">
+                        </div>
+                        <div class="border rounded p-3 bg-light" style="max-height: 300px; overflow-y: auto;" id="municipios-container">
+                            <div class="text-muted text-center py-4">Selecione um ou mais estados</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filtro CNAEs (pesquisável) -->
+                <div class="mb-4">
+                    <label class="form-label fw-semibold d-block">CNAEs</label>
+                    <input type="text" class="form-control mb-2" id="filtro-cnae" placeholder="Digite para filtrar CNAEs...">
+                    <div class="border rounded p-3 bg-light" style="max-height: 200px; overflow-y: auto;">
+                        {% for cnae in cnaes %}
+                        <div class="form-check cnae-item">
+                            <input class="form-check-input" type="checkbox" name="cnae" value="{{ cnae }}" id="cnae-{{ forloop.counter }}">
+                            <label class="form-check-label" for="cnae-{{ forloop.counter }}">
+                                {{ cnae }}
+                            </label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Filtro MEI / NMEI (radio) -->
+                <div class="mb-4">
+                    <label class="form-label fw-semibold d-block">Tipo MEI</label>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="tipo_mei" id="todos" value="" checked>
+                        <label class="form-check-label" for="todos">Todos</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="tipo_mei" id="mei" value="MEI">
+                        <label class="form-check-label" for="mei">Apenas MEI</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="tipo_mei" id="nmei" value="NMEI">
+                        <label class="form-check-label" for="nmei">Apenas Não MEI</label>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label fw-semibold d-block">Formato de Saída</label>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="formato_saida" id="ipbox" value="IPBOX">
+                        <label class="form-check-label" for="ipbox">IPBOX</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="formato_saida" id="padrao" value="PADRAO">
+                        <label class="form-check-label" for="padrao">PADRÂO</label>
+                    </div>
+                </div>
+
+                <!-- Botões -->
+                <div class="d-flex justify-content-end gap-2">
+                    <button type="reset" class="btn btn-outline-secondary" id="limpar-filtros">Limpar</button>
+                    <button type="submit" class="btn btn-primary">Aplicar filtros</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Dados dos municípios (JSON seguro) -->
+{{ estados_municipios|json_script:"estados-municipios-data" }}
+
+<script>
+(function() {
+    // Carrega o dicionário de estados e municípios
+    const dataElement = document.getElementById('estados-municipios-data');
+    if (!dataElement) return;
+    const estadosMunicipios = JSON.parse(dataElement.textContent);
+
+    // Elementos do DOM
+    const estadosContainer = document.getElementById('estados-container');
+    const municipiosContainer = document.getElementById('municipios-container');
+    const filtroEstado = document.getElementById('filtro-estado');
+    const filtroMunicipio = document.getElementById('filtro-municipio');
+    const selecionarTodosEstados = document.getElementById('selecionar-todos-estados');
+    const limparBtn = document.getElementById('limpar-filtros');
+
+    // Estado dos checkboxes de município (para persistência após filtro)
+    let municipiosCheckboxes = [];
+
+    // Função para filtrar estados
+    function filtrarEstados(termo) {
+        const items = document.querySelectorAll('.estado-item');
+        items.forEach(item => {
+            const label = item.querySelector('.form-check-label').textContent.toLowerCase();
+            if (label.includes(termo.toLowerCase())) {
+                item.style.display = '';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    }
+
+    // Função para obter estados selecionados
+    function getEstadosSelecionados() {
+        return Array.from(document.querySelectorAll('.estado-checkbox:checked')).map(cb => cb.value);
+    }
+
+    // Função para atualizar lista de municípios baseada nos estados selecionados
+    function atualizarMunicipios() {
+        const estadosSel = getEstadosSelecionados();
+        if (estadosSel.length === 0) {
+            municipiosContainer.innerHTML = '<div class="text-muted text-center py-4">Selecione um ou mais estados</div>';
+            return;
+        }
+
+        // Coletar todos os municípios dos estados selecionados
+        let municipios = [];
+        estadosSel.forEach(uf => {
+            const lista = estadosMunicipios[uf] || [];
+            lista.forEach(mun => {
+                municipios.push({ nome: mun, uf: uf });
+            });
+        });
+
+        // Renderizar checkboxes
+        let html = '';
+        municipios.forEach((m, index) => {
+            const uniqueId = `mun-${index}-${Date.now()}`; // evitar conflitos de id
+            html += `
+                <div class="form-check municipio-item" data-nome="${m.nome.toLowerCase()}" data-uf="${m.uf}">
+                    <input class="form-check-input municipio-checkbox" type="checkbox" name="municipio" value="${m.nome}|${m.uf}" id="${uniqueId}">
+                    <label class="form-check-label" for="${uniqueId}">
+                        ${m.nome} (${m.uf})
+                    </label>
+                </div>
+            `;
+        });
+        municipiosContainer.innerHTML = html;
+
+        // Reaplicar filtro de município se houver texto
+        if (filtroMunicipio.value) {
+            filtrarMunicipios(filtroMunicipio.value);
+        }
+    }
+
+    // Função para filtrar municípios
+    function filtrarMunicipios(termo) {
+        const items = document.querySelectorAll('.municipio-item');
+        items.forEach(item => {
+            const nome = item.dataset.nome;
+            if (nome.includes(termo.toLowerCase())) {
+                item.style.display = '';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    }
+
+    // Evento: mudança em checkboxes de estado
+    document.addEventListener('change', function(e) {
+        if (e.target.classList.contains('estado-checkbox')) {
+            atualizarMunicipios();
+            // Atualiza estado do checkbox "Selecionar todos"
+            const totalEstados = document.querySelectorAll('.estado-checkbox').length;
+            const checkedEstados = document.querySelectorAll('.estado-checkbox:checked').length;
+            selecionarTodosEstados.checked = (totalEstados === checkedEstados);
+            selecionarTodosEstados.indeterminate = (checkedEstados > 0 && checkedEstados < totalEstados);
+        }
+    });
+
+    // Filtro de estados
+    filtroEstado.addEventListener('input', function() {
+        filtrarEstados(this.value);
+    });
+
+    // Filtro de municípios
+    filtroMunicipio.addEventListener('input', function() {
+        filtrarMunicipios(this.value);
+    });
+
+    // Selecionar todos os estados
+    selecionarTodosEstados.addEventListener('change', function() {
+        const checkboxes = document.querySelectorAll('.estado-checkbox');
+        checkboxes.forEach(cb => {
+            cb.checked = selecionarTodosEstados.checked;
+        });
+        atualizarMunicipios();
+    });
+
+    // Filtro de CNAEs (mantido do código anterior)
+    const filtroCnae = document.getElementById('filtro-cnae');
+    const cnaeItems = document.querySelectorAll('.cnae-item');
+    if (filtroCnae) {
+        filtroCnae.addEventListener('input', function() {
+            const termo = this.value.toLowerCase();
+            cnaeItems.forEach(function(item) {
+                const label = item.querySelector('.form-check-label');
+                const texto = label ? label.textContent.toLowerCase() : '';
+                if (texto.includes(termo)) {
+                    item.style.display = '';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        });
+    }
+
+    // Botão Limpar
+    limparBtn.addEventListener('click', function(e) {
+        e.preventDefault(); // Evita o reset padrão para controlar melhor
+        // Desmarcar todos os estados
+        document.querySelectorAll('.estado-checkbox').forEach(cb => cb.checked = false);
+        selecionarTodosEstados.checked = false;
+        selecionarTodosEstados.indeterminate = false;
+        // Limpar checkboxes de município (será recriado)
+        atualizarMunicipios();
+        // Desmarcar todos os CNAEs
+        document.querySelectorAll('input[name="cnae"]').forEach(cb => cb.checked = false);
+        // Resetar radio para "Todos"
+        document.getElementById('todos').checked = true;
+        // Limpar campos de filtro
+        filtroEstado.value = '';
+        filtroMunicipio.value = '';
+        filtroCnae.value = '';
+        // Reexibir todos os itens
+        document.querySelectorAll('.estado-item').forEach(item => item.style.display = '');
+        document.querySelectorAll('.cnae-item').forEach(item => item.style.display = '');
+        // Forçar atualização dos municípios
+        atualizarMunicipios();
+    });
+
+    // Inicialização: se houver estados pré-selecionados (via query string), precisamos marcar os checkboxes correspondentes
+    // (simplificado: não tratamos valores iniciais, mas pode ser implementado se necessário)
+})();
+</script>
+
+<!-- Estilos adicionais -->
+<style>
+    .card {
+        border: none;
+        border-radius: 0.75rem;
+    }
+    .form-label {
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #495057;
+    }
+    .btn-primary {
+        background-color: #0d6efd;
+        border-color: #0d6efd;
+        padding-left: 2rem;
+        padding-right: 2rem;
+    }
+    .border {
+        border-color: #dee2e6 !important;
+    }
+    /* Ajuste para o grid de estados */
+    #estados-container .form-check {
+        margin-bottom: 0.25rem;
+    }
+    /* Checkbox "Selecionar todos" em destaque */
+    #selecionar-todos-estados + label {
+        color: #0d6efd;
+    }
+</style>
+{% endblock %}

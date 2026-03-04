@@ -255,5 +255,120 @@ def inicia_gerador_view(request):
 
     return JsonResponse({'status': 'success', 'sucessos': [], "erros":[], "links": [], "relatorio": []})
 
-    
-    
+
+def filtro_geral_view(request):
+    context = {
+        'nome_dados': 'Empresas',
+        'estados_municipios': DICT_ESTADOS_MUNICIPIOS,
+        'cnaes': get_cnaes()
+    }
+    return render(request, 'filtro_geral.html', context)
+
+    nome_padrao_arquivo = ""
+    filepath_csv = os.path.join(os.getcwd(), "media/arquivos_receita_federal_filtrados")
+    for file in os.listdir(filepath_csv):
+        os.remove(os.path.join(filepath_csv, file))
+    if request.method == 'POST':
+        try:
+            # Processar filtros
+            filtros = {}
+
+            # Estados (múltiplos valores via checkbox)
+            estados = request.POST.getlist('estado', [])
+            if estados != [""]:
+                estados = [e.strip() for e in estados if e.strip()][0].split(",")
+            else:
+                estados = [ 'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 
+                            'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 
+                            'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
+                        ]
+            if estados:
+                filtros['uf'] = estados
+                for estado in estados:
+                    nome_padrao_arquivo += f"{estado}_"
+
+            # CNAE (múltiplos valores)
+            cnaes_raw = request.POST.get('cnae', '')
+            cnaes = [c.strip() for c in cnaes_raw.split(',') if c.strip()]
+            if cnaes:
+                filtros['cnae_fiscal'] = cnaes
+
+            # Município (múltiplos valores)
+            municipios_raw = request.POST.get('municipio', '')
+            municipios = [m.strip() for m in municipios_raw.split(',') if m.strip()]
+            if municipios:
+                filtros['municipio'] = municipios
+
+            # Bairro (múltiplos valores)
+            bairros_raw = request.POST.get('bairro', '')
+            bairros = [b.strip() for b in bairros_raw.split(',') if b.strip()]
+            if bairros:
+                filtros['bairro'] = bairros
+
+            termos_chave = request.POST.get("termos_chave", "")
+            if termos_chave:
+                filtros["termos_chave"] = termos_chave
+
+            tipo_empresa = request.POST.get("tipoEmpresa", "")
+            if tipo_empresa:
+                filtros["MEINAOMEI"] = tipo_empresa
+
+            # Obter dados do CSV
+            df = get_dados_csv(filtros)
+            # Converter colunas categóricas para strings
+            for col in df.select_dtypes(include=['category']).columns:
+                df[col] = df[col].astype(str)
+
+
+
+            tipoTelefone = request.POST.get('tipoTelefone', '')
+            if tipoTelefone == "apenas_movel":
+                df = remove_fixos(df) 
+
+            # Agora pode usar replace e fillna tranquilamente
+            df["cnpj"] = df["cnpj"].apply(lambda x: re.sub(r'[^0-9]', '', x))
+            df = padronizacao(df.replace(",0", "").replace(".0", "").fillna("")).reset_index(drop=True)
+
+            meses = {
+                "1": "Janeiro",
+                "2": "Fevereiro",
+                "3": "Março",
+                "4": "Abril",
+                "5": "Maio",
+                "6": "Junho",
+                "7": "Julho",
+                "8": "Agosto",
+                "9": "Setembro",
+                "10": "Outubro",
+                "11": "Novembro",
+                "12": "Dezembro"
+            }
+            dia = datetime.datetime.now().day 
+            dia = str(dia) if dia > 9 else "0"+ str(dia)
+            data_atual = f'{dia}-{meses[str(datetime.datetime.now().month)]}'
+            nome_padrao_arquivo += data_atual
+            # Preparar dados para exibição
+            
+            if len(df.index) > 0:
+                print("df vazio não será salvo")
+                max_linhas = 200_000
+
+                if len(df.index) > max_linhas:
+                    # Divide em pedaços de 200k
+                    f = 0
+                    for i in range(0, len(df), max_linhas):
+                        nome_arquivo = nome_padrao_arquivo + f"_parte_{f}" + ".csv"
+                        df.iloc[i:i + max_linhas].to_csv(os.path.join(filepath_csv, nome_arquivo),sep=";", index=False)
+                        f+=1
+                else:
+                    df.to_csv(os.path.join(filepath_csv, f"{nome_padrao_arquivo}.csv"), sep=";", index=False)
+
+                zip_folder(filepath_csv, f"media/{request.user.username}_filtrados.zip")
+
+                context['resultados'] = df.replace({pd.NA: ''}).head(50).values.tolist()
+                context['colunas'] = df.columns.tolist()
+                context['qtd_resultados'] = len(df.index)
+        except Exception as e:
+            return JsonResponse({"error": traceback.format_exc()})
+
+    return render(request, 'filtros.html', context)

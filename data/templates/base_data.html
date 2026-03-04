@@ -222,6 +222,19 @@
           </div>
         </div>
       </div>
+
+      <div class="nav-item w-100">
+        <a class="nav-link d-flex justify-content-between align-items-center" data-bs-toggle="collapse" href="#collapsefilters" role="button" aria-expanded="false" aria-controls="collapsefilters">
+          <span><i class="fas fa-filter me-3"></i> Filtros</span>
+          <i class="fas fa-chevron-down"></i>
+        </a>
+        <div class="collapse" id="collapsefilters">
+          <div class="ps-4">
+            <a class="nav-link" href="{% url 'filtro_geral' %}"><i class="fas fa-light fa-filter me-3"></i> Filtro Geral</a>
+            <!-- <a class="nav-link" href="#"><i class="fas fa-tags me-3"></i> Categorias</a> -->
+          </div>
+        </div>
+      </div>
       <!-- Item com submenu: Configurações -->
       <!-- <div class="nav-item w-100">
         <a class="nav-link d-flex justify-content-between align-items-center" data-bs-toggle="collapse" href="#collapseSettings" role="button" aria-expanded="false" aria-controls="collapseSettings">
