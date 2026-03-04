@@ -788,6 +788,7 @@ def filtra_mailing(df:pd.DataFrame) -> pd.DataFrame:
             df[c] = df[c].apply(clean_phone_number)
     return df
 
+
 def filtra_arquivos(raiz) -> str:
     relatorio = ""
     erros = []
