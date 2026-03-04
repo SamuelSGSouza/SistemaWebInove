@@ -14,6 +14,8 @@ warnings.filterwarnings('ignore')
 import time
 import numpy as np
 from pathlib import Path
+from data.models import salva_dado
+
 
 PASTA_ARQUIVOS_BLACKLIST = os.path.join(os.getcwd(), "media/arquivos_blacklist")
 PASTA_ARQUIVOS_TELS_NEXT = os.path.join(os.getcwd(), "media/arquivos_tels_next")
@@ -518,12 +520,13 @@ def gera_e_atualiza_quarentena(raiz, db):
         telefones = analisa_quarentena(raiz)
         relatorio += f"No fim, base de quarentena ficou com {len(telefones)} telefones após remover aqueles que passaram da data de quarentena."
         
-        blacks = db.objects.filter()[0]
-        blacks.total_dados = len(telefones)
-        blacks.save()
+        salva_dado("Quantidade de Telefones em Quarentena", len(telefones))
+        # blacks = db.objects.filter()[0]
+        # blacks.total_dados = len(telefones)
+        # blacks.save()
         
 
-        salva_log("Finalizando Atualização da blacklist", "oi")
+        # salva_log("Finalizando Atualização da blacklist", "oi")
 
         return relatorio, erros
     except Exception as e:

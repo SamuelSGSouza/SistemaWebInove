@@ -3,9 +3,9 @@
 {% block main_body %}
 <div class="upload-wrapper">
   <div class="upload-card">
-    <h1 class="upload-title">{{tipo_tratamento}}</h1>
+    <h1 class="upload-title">{{base}}</h1>
     <p class="upload-description">
-      {{descricao}}
+        {{descricao}}
     </p>
 
     <form method="post" enctype="multipart/form-data" id="upload-form" class="upload-form">
@@ -29,7 +29,7 @@
       <!-- Botão de envio -->
       <div class="submit-area">
         <button type="submit" class="submit-button" id="submitBtn">
-          <span class="button-text">Aplicar Tratamento </span>
+          <span class="button-text">Atualizar Base </span>
           <span class="spinner" id="spinner" style="display: none;"></span>
         </button>
       </div>
@@ -65,9 +65,9 @@
       </div>
       <h2 class="modal-title">
         {% if modal_type == 'success' %}
-          Operação concluída
+          Base atualizada com sucesso.
         {% else %}
-          Ocorreu um erro
+          Ocorreu um erro ao atualizar a base
         {% endif %}
       </h2>
       <button class="modal-close" id="modalClose">&times;</button>

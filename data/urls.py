@@ -7,5 +7,6 @@ urlpatterns = [
     path('filtro_geral', filtro_geral_view, name="filtro_geral"),
     path('inicia_gerador_view', inicia_gerador_view, name="inicia_gerador_view"),
     path('download_arquivo', download_arquivo_view, name="download_arquivo"),
+    path('atualizacao_bases', AtualizaBases.as_view(), name="atualizacao_bases"),
     path('tratamento_arquivos_externos', TratamentosArquivosExternos.as_view(), name="tratamento_arquivos_externos"),
 ]

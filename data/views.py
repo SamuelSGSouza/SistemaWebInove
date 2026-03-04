@@ -151,6 +151,72 @@ class TratamentosArquivosExternos(LoginRequiredMixin,TemplateView):
         return render(request, self.template_name, ctx)
 
 
+class AtualizaBases(LoginRequiredMixin, TemplateView):
+    template_name = "atualizacao_bases.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["base"] = self.request.GET.get("base")
+
+        dict_tipos = {
+            "BlackList": "Base de telefones em BlackList que NUNCA devem ser utilizados",
+            "Quarentena": "Base de telefones que ficarão em quarentena por determinado período até poderem ser utilizados."
+        }
+        context["descricao"] = dict_tipos[context["base"]]
+        return context
+
+    def post(self,request,*args, **kwargs):
+        arquivos = request.FILES.getlist('arquivo')
+        base = self.request.GET.get("base")
+        PASTAS_RAIZ = {
+            "BlackList": "arquivos_blacklist",
+            "Quarentena": "arquivos_quarentena",
+        }
+
+        pasta_destino = os.path.join(os.getcwd(), "media", PASTAS_RAIZ[base])
+        os.makedirs(pasta_destino, exist_ok=True)
+        
+        if base in ["BlackList", ]:
+            for path in os.listdir(pasta_destino):
+                file = os.path.join(pasta_destino, path)
+                if os.path.isfile(file):
+                    os.remove(file)
+                elif os.path.isdir(file):
+                    shutil.rmtree(file)
+
+        sucessos = []
+        erros = []
+        links = []
+        relatorio = []
+
+        total_arqs = 0
+        for arquivo in arquivos:
+            destino = os.path.join(pasta_destino, arquivo.name)
+            with open(destino, 'wb+') as dest:
+                for chunk in arquivo.chunks():
+                    dest.write(chunk)
+            total_arqs += 1
+            sucesso, mensagem = verifica_arquivo(request,arquivo, destino, PASTAS_RAIZ[base], "")
+            if sucesso:
+                sucessos.append(mensagem)
+            else:
+                erros.append(mensagem)
+
+        if PASTAS_RAIZ[base] == "arquivos_quarentena":
+            relatorio, erros_internos = gera_e_atualiza_quarentena(os.path.join(os.getcwd(), "media"), "")
+            relatorio = relatorio.split("\n")
+
+            if erros_internos:
+                for er in erros_internos:
+                    erros.append(er)
+
+        ctx = self.get_context_data()
+        ctx["show_modal"] = True
+        ctx["modal_type"] = "success" if not erros else "error"
+        ctx["messages"] = relatorio if not erros else erros
+        # ctx["download_url"] = ""
+        return render(request, self.template_name, ctx)
+
 def filtra_mailing_view(request):    
 
 

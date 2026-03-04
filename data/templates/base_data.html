@@ -198,7 +198,7 @@
     </div>
     <nav class="nav flex-column mt-2">
       <a class="nav-link active" href="#">
-        <i class="fas fa-database me-3"></i> Dashboard
+        <i class="fa-solid fa-chart-area me-3"></i> Dashboard
       </a>
       <!-- <a class="nav-link" href="#">
         <i class="fas fa-chart-line me-3"></i> Analytics
@@ -231,6 +231,20 @@
         <div class="collapse" id="collapsearquivos_externos">
           <div class="ps-4">
             <a class="nav-link" href="{% url 'tratamento_arquivos_externos' %}?tipo_tratamento=Limpeza de BlackList"><i class="fas fa-ban me-3"></i>Limpeza de BlackList</a>
+            <!-- <a class="nav-link" href="#"><i class="fas fa-tags me-3"></i> Categorias</a> -->
+          </div>
+        </div>
+      </div>
+
+      <div class="nav-item w-100">
+        <a class="nav-link d-flex justify-content-between align-items-center" data-bs-toggle="collapse" href="#collapseatualizacao_bases" role="button" aria-expanded="false" aria-controls="collapseProducts">
+          <span><i class="fas fa-database me-3"></i>Atualização de Bases</span>
+          <i class="fas fa-chevron-down"></i>
+        </a>
+        <div class="collapse" id="collapseatualizacao_bases">
+          <div class="ps-4">
+            <a class="nav-link" href="{% url 'atualizacao_bases' %}?base=BlackList"><i class="fas fa-ban me-3"></i>Base BlackList</a>
+            <a class="nav-link" href="{% url 'atualizacao_bases' %}?base=Quarentena"><i class="fas fa-lock me-3"></i>Quarentena</a>
             <!-- <a class="nav-link" href="#"><i class="fas fa-tags me-3"></i> Categorias</a> -->
           </div>
         </div>
