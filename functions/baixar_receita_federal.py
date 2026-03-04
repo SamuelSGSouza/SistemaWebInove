@@ -714,6 +714,8 @@ def unifica_dados(nova_execucao):
     for file in os.listdir(pasta_destino):
         if file.endswith(".csv"):
             df = pd.read_csv(os.path.join(pasta_destino,file), sep=";", dtype=DTYPES_RECEITA_FEDERAL)
+            df.drop_duplicates(subset=["cnpj",], inplace=True)
+            df.to_csv(os.path.join(pasta_destino,file), sep=";",index=False)
             for uf, df_uf in df.groupby("uf"):
 
                 df_uf = df_uf[["cnpj", "uf"]]

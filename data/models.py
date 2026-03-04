@@ -67,6 +67,7 @@ class DadoExtracao(models.Model):
     momento_criacao = models.DateTimeField(auto_now=True)
 
 def salva_dado(titulo, quantidade):
+    print(titulo, " ", quantidade )
     DadoExtracao.objects.create(
         titulo=titulo,
         quantidade=quantidade,
