@@ -202,6 +202,7 @@ class AtualizaBases(LoginRequiredMixin, TemplateView):
             else:
                 erros.append(mensagem)
 
+
         if PASTAS_RAIZ[base] == "arquivos_quarentena":
             relatorio, erros_internos = gera_e_atualiza_quarentena(os.path.join(os.getcwd(), "media"), "")
             relatorio = relatorio.split("\n")
