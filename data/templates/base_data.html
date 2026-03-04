@@ -224,6 +224,19 @@
       </div>
 
       <div class="nav-item w-100">
+        <a class="nav-link d-flex justify-content-between align-items-center" data-bs-toggle="collapse" href="#collapsearquivos_externos" role="button" aria-expanded="false" aria-controls="collapseProducts">
+          <span><i class="fas fa-file me-3"></i>Tratamentos em Arquivos Externos</span>
+          <i class="fas fa-chevron-down"></i>
+        </a>
+        <div class="collapse" id="collapsearquivos_externos">
+          <div class="ps-4">
+            <a class="nav-link" href="{% url 'tratamento_arquivos_externos' %}?tipo_tratamento=Limpeza de BlackList"><i class="fas fa-ban me-3"></i>Limpeza de BlackList</a>
+            <!-- <a class="nav-link" href="#"><i class="fas fa-tags me-3"></i> Categorias</a> -->
+          </div>
+        </div>
+      </div>
+
+      <div class="nav-item w-100">
         <a class="nav-link d-flex justify-content-between align-items-center" data-bs-toggle="collapse" href="#collapsefilters" role="button" aria-expanded="false" aria-controls="collapsefilters">
           <span><i class="fas fa-filter me-3"></i> Filtros</span>
           <i class="fas fa-chevron-down"></i>

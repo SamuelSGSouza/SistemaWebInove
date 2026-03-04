@@ -34,22 +34,6 @@ from functions.gerador import inicia_gerador
 class Dashboard(LoginRequiredMixin,TemplateView):
     template_name = "dashboard.html"
 
-# status = Status_Execucoe_DB.objects.create(
-#     sistema="oi"
-# )
-# Fase_Execucao_DB.objects.create(
-#     status_execucao=status,
-#     titulo="Verificação de Viabilidades"
-# )
-# Fase_Execucao_DB.objects.create(
-#     status_execucao=status,
-#     titulo="Análise de Crédito"
-# )
-# Fase_Execucao_DB.objects.create(
-#     status_execucao=status,
-#     titulo="Preenchimento de telefones"
-# )
-
 class Status_Execucao(LoginRequiredMixin,TemplateView):
     template_name = "status_execucao.html"
     def get_context_data(self, **kwargs):
@@ -79,6 +63,92 @@ class Status_Execucao(LoginRequiredMixin,TemplateView):
         return context
 
 
+def download_arquivo_view(request):
+    path = request.GET.get("full_path")
+    if not os.path.exists(path) or not os.path.isfile(path):
+        return JsonResponse({'status': 'error', 'message': 'Pasta não encontrada.'}, status=404)
+    
+    def file_iterator(file_path, chunk_size=8192):
+        with open(file_path, 'rb') as f:
+            while True:
+                chunk = f.read(chunk_size)
+                if not chunk:
+                    break
+                yield chunk
+
+    response = StreamingHttpResponse(file_iterator(path), content_type='application/zip')
+    response['Content-Disposition'] = f'attachment; filename="Arquivo_Tratado.zip"'
+    return response
+
+class TratamentosArquivosExternos(LoginRequiredMixin,TemplateView):
+    template_name = "tratamento_arquivos_externos.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["tipo_tratamento"] = self.request.GET.get("tipo_tratamento")
+
+        dict_tipos = {
+            "Limpeza de BlackList": "Envie aqui um arquivo para que sejam removidos os telefones que estão na BlackList e Quarentena"
+        }
+        context["descricao"] = dict_tipos[context["tipo_tratamento"]]
+        return context
+    
+    def post(self,request,*args, **kwargs):
+        arquivos = request.FILES.getlist('arquivo')
+
+        pasta_usuario = os.path.join(os.getcwd(), "media", f"{request.user.username}")
+        pasta_destino = os.path.join( pasta_usuario, "arquivos_externos",)
+        zip_path = os.path.join(pasta_usuario,"arquivos_filtragem.zip")
+        os.makedirs(pasta_destino, exist_ok=True)
+
+        for path in os.listdir(pasta_destino):
+            file = os.path.join(pasta_destino, path)
+            if os.path.isfile(file):
+                os.remove(file)
+            elif os.path.isdir(file):
+                shutil.rmtree(file)
+
+        sucessos = []
+        erros = []
+        links = []
+        relatorio = []
+
+        total_arqs = 0
+        for arquivo in arquivos:
+            destino = os.path.join(pasta_destino, arquivo.name)
+            with open(destino, 'wb+') as dest:
+                for chunk in arquivo.chunks():
+                    dest.write(chunk)
+            total_arqs += 1
+            sucesso, mensagem = verifica_arquivo(request,arquivo, destino, "", "")
+            if sucesso:
+                sucessos.append(mensagem)
+            else:
+                erros.append(mensagem)
+        pasta_raiz = os.path.join(os.getcwd(), "media")
+        tipo_tratamento = self.request.GET.get("tipo_tratamento")
+        if tipo_tratamento == "Limpeza de BlackList":
+            relatorio, erros_internos = filtra_arquivos(pasta_raiz, pasta_destino, pasta_usuario)
+
+        relatorio = relatorio.split("\n")
+        url_path = reverse('download_arquivo')  # ou reverse('minha_rota', kwargs={'pasta': pasta}) se tiver parâmetros nomeados
+        url_relativa = f"{url_path}?full_path={zip_path}"
+        url_completa = request.build_absolute_uri(url_relativa)
+        
+
+        if erros_internos:
+            for er in erros_internos:
+                erros.append(er) 
+
+        print(f"Sucessos: {sucessos}")
+        print(f"Erros: {erros}")
+        print(f"Relatório: {relatorio}")
+        ctx = self.get_context_data()
+        ctx["show_modal"] = True
+        ctx["modal_type"] = "success" if not erros else "error"
+        ctx["messages"] = relatorio if not erros else erros
+        ctx["download_url"] = url_completa
+        return render(request, self.template_name, ctx)
 
 def filtra_mailing_view(request):    
 
@@ -252,7 +322,6 @@ def inicia_gerador_view(request):
     processo.start()
 
     return JsonResponse({'status': 'success', 'sucessos': [], "erros":[], "links": [], "relatorio": []})
-
 
 def filtro_geral_view(request):
     context = {

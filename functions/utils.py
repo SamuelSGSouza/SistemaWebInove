@@ -789,7 +789,7 @@ def filtra_mailing(df:pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def filtra_arquivos(raiz) -> str:
+def filtra_arquivos(raiz, pasta_arquivos_para_filtrar, pasta_usuario) -> str:
     relatorio = ""
     erros = []
     try:
@@ -798,13 +798,10 @@ def filtra_arquivos(raiz) -> str:
         blacklist_set = set(telefones_blacklist + quarentena)
         relatorio += f"Total de {len(blacklist_set)} telefones na blacklist e quarentena. \n"
 
-        PASTA_ARQUIVOS_FILTRAGEM = os.path.join(raiz, "arquivos_filtragem")
-        os.makedirs(PASTA_ARQUIVOS_FILTRAGEM, exist_ok=True)
-
-        for arq in os.listdir(PASTA_ARQUIVOS_FILTRAGEM):
+        for arq in os.listdir(pasta_arquivos_para_filtrar):
             formato_com_ddd = False
-            file = os.path.join(PASTA_ARQUIVOS_FILTRAGEM, arq)
-            file_sem_contato = os.path.join(PASTA_ARQUIVOS_FILTRAGEM, "sem_contato"+arq)
+            file = os.path.join(pasta_arquivos_para_filtrar, arq)
+            file_sem_contato = os.path.join(pasta_arquivos_para_filtrar, "sem_contato"+arq)
             extensao = os.path.splitext(file)[1].lower()
             sep = _detectar_sep_csv(file)
             encod = _detectar_encoding_csv(file)
@@ -833,7 +830,7 @@ def filtra_arquivos(raiz) -> str:
             
             
             for col in df.columns:
-                if "telefone" in str(col).lower():
+                if "tel" in str(col).lower():
                     colunas_telefone.append(col)
                 
             total_antes = sum(df[col].nunique() for col in colunas_telefone)
@@ -891,9 +888,9 @@ def filtra_arquivos(raiz) -> str:
 
             relatorio +=  f"Arquivo {arq} filtrado com sucesso"
         
-        zip_folder(PASTA_ARQUIVOS_FILTRAGEM, os.path.join(raiz,"arquivos_filtragem.zip"))
-        for arq in os.listdir(PASTA_ARQUIVOS_FILTRAGEM):
-            file = os.path.join(PASTA_ARQUIVOS_FILTRAGEM, arq)
+        zip_folder(pasta_arquivos_para_filtrar, os.path.join(pasta_usuario,"arquivos_filtragem.zip"))
+        for arq in os.listdir(pasta_arquivos_para_filtrar):
+            file = os.path.join(pasta_arquivos_para_filtrar, arq)
             os.remove(file)
         return relatorio,erros
     except Exception as e:

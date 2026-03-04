@@ -1,0 +1,536 @@
+{% extends 'base_data.html' %}
+
+{% block main_body %}
+<div class="upload-wrapper">
+  <div class="upload-card">
+    <h1 class="upload-title">Upload de Arquivo</h1>
+    <p class="upload-description">
+      Envie um arquivo CSV ou Excel para aplicar os filtros desejados. Você pode arrastar e soltar ou clicar para selecionar.
+    </p>
+
+    <form method="post" enctype="multipart/form-data" id="upload-form" class="upload-form">
+      {% csrf_token %}
+
+      <!-- Área de drop / seleção de arquivo -->
+      <div class="drop-zone" id="dropZone">
+        <div class="drop-zone-content">
+          <svg class="upload-icon" viewBox="0 0 24 24" width="48" height="48" stroke="currentColor" stroke-width="1.5" fill="none">
+            <path d="M12 16v-6m0 0L9 11m3-3l3 3M5 12h.01M19 12h.01M12 20h.01M4 20h16a2 2 0 002-2V6a2 2 0 00-2-2H4a2 2 0 00-2 2v12a2 2 0 002 2z" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <p class="drop-zone-text">
+            <span class="drop-zone-main">Arraste e solte seu arquivo aqui</span>
+            <span class="drop-zone-hint">ou <span class="file-browse">clique para procurar</span></span>
+          </p>
+          <input type="file" name="arquivo" id="fileInput" class="file-input" accept=".csv,.xls,.xlsx" required>
+          <p class="file-name" id="fileName">Nenhum arquivo selecionado</p>
+        </div>
+      </div>
+
+      <!-- Botão de envio -->
+      <div class="submit-area">
+        <button type="submit" class="submit-button" id="submitBtn">
+          <span class="button-text">Aplicar filtros</span>
+          <span class="spinner" id="spinner" style="display: none;"></span>
+        </button>
+      </div>
+    </form>
+
+    <!-- Overlay de carregamento (envio) -->
+    <div class="loading-overlay" id="loadingOverlay" style="display: none;">
+      <div class="loading-card">
+        <div class="spinner-large"></div>
+        <p class="loading-text">Processando arquivo...</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de resultado (sucesso/erro) -->
+{% if show_modal %}
+<div class="modal-overlay" id="resultModal" data-modal-type="{{ modal_type }}" data-download-url="{% if download_url %}{{ download_url }}{% endif %}">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h2 class="modal-title">
+        {% if modal_type == 'success' %}
+          ✅ Sucesso
+        {% else %}
+          ❌ Erro
+        {% endif %}
+      </h2>
+      <button class="modal-close" id="modalClose">&times;</button>
+    </div>
+    <div class="modal-body">
+      {% for m in messages %}
+        <p class="modal-message">{{m}}</p>
+      {% endfor %}
+    </div>
+    <div class="modal-footer">
+      <button class="modal-button modal-button-secondary" id="modalCloseBtn">Fechar</button>
+      {% if modal_type == 'success' and download_url %}
+        <a href="{{ download_url }}" class="modal-button modal-button-primary" download>Download</a>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<script>
+  (function() {
+    // Elementos DOM do upload
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const fileNameDisplay = document.getElementById('fileName');
+    const form = document.getElementById('upload-form');
+    const submitBtn = document.getElementById('submitBtn');
+    const spinner = document.getElementById('spinner');
+    const loadingOverlay = document.getElementById('loadingOverlay');
+    const buttonText = submitBtn.querySelector('.button-text');
+
+    // Funções de prevenção de drag
+    function preventDefaults(e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+      dropZone.addEventListener(eventName, preventDefaults, false);
+      document.body.addEventListener(eventName, preventDefaults, false);
+    });
+
+    // Highlight
+    function highlight() { dropZone.classList.add('dragover'); }
+    function unhighlight() { dropZone.classList.remove('dragover'); }
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+      dropZone.addEventListener(eventName, highlight, false);
+    });
+    ['dragleave', 'drop'].forEach(eventName => {
+      dropZone.addEventListener(eventName, unhighlight, false);
+    });
+
+    // Drop
+    dropZone.addEventListener('drop', function(e) {
+      const dt = e.dataTransfer;
+      const files = dt.files;
+      if (files.length) {
+        fileInput.files = files;
+        updateFileName(files[0].name);
+      }
+    });
+
+    // Clique na zona abre o seletor
+    dropZone.addEventListener('click', () => fileInput.click());
+
+    // Atualizar nome do arquivo
+    fileInput.addEventListener('change', function() {
+      if (this.files.length) {
+        updateFileName(this.files[0].name);
+      } else {
+        resetFileName();
+      }
+    });
+
+    function updateFileName(name) {
+      fileNameDisplay.textContent = `Arquivo: ${name}`;
+      fileNameDisplay.classList.add('has-file');
+    }
+
+    function resetFileName() {
+      fileNameDisplay.textContent = 'Nenhum arquivo selecionado';
+      fileNameDisplay.classList.remove('has-file');
+    }
+
+    // Envio do formulário
+    form.addEventListener('submit', function(e) {
+      if (!fileInput.files.length) {
+        e.preventDefault();
+        alert('Por favor, selecione um arquivo.');
+        return;
+      }
+
+      submitBtn.disabled = true;
+      buttonText.style.opacity = '0.6';
+      spinner.style.display = 'inline-block';
+      loadingOverlay.style.display = 'flex';
+    });
+
+    // ========== Gerenciamento do Modal de Resultado ==========
+    const modalOverlay = document.getElementById('resultModal');
+    if (modalOverlay) {
+      // Elementos do modal
+      const modalCloseBtn = document.getElementById('modalCloseBtn');
+      const modalCloseX = document.getElementById('modalClose');
+      
+      function closeModal() {
+        modalOverlay.style.display = 'none';
+        // Opcional: remover overlay do DOM para não atrapalhar interações futuras
+        // Mas pode manter oculto.
+      }
+
+      // Eventos de fechar
+      if (modalCloseBtn) modalCloseBtn.addEventListener('click', closeModal);
+      if (modalCloseX) modalCloseX.addEventListener('click', closeModal);
+
+      // Clicar fora do modal fecha? (opcional)
+      modalOverlay.addEventListener('click', function(e) {
+        if (e.target === modalOverlay) {
+          closeModal();
+        }
+      });
+
+      // Exibir o modal (já está visível porque o bloco condicional do Django o renderiza)
+      // Mas podemos garantir que ele esteja visível (display: flex)
+      modalOverlay.style.display = 'flex';
+
+      // Se houver botão de download, podemos querer manipular algo, mas é um link simples
+      // Não precisa de mais nada.
+    }
+  })();
+</script>
+
+<style>
+  /* Reset básico dentro do bloco (assumindo que base_data já tenha algum reset) */
+  .upload-wrapper {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 70vh;
+    padding: 2rem 1rem;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  }
+
+  .upload-card {
+    max-width: 600px;
+    width: 100%;
+    background: #ffffff;
+    border-radius: 32px;
+    box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.08), 0 8px 24px -8px rgba(0, 0, 0, 0.1);
+    padding: 2.5rem 2rem;
+    transition: box-shadow 0.2s ease;
+  }
+
+  .upload-title {
+    font-size: 2rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    margin: 0 0 0.5rem 0;
+    color: #1a1e2b;
+    line-height: 1.2;
+  }
+
+  .upload-description {
+    font-size: 1rem;
+    line-height: 1.5;
+    color: #5b687c;
+    margin: 0 0 2rem 0;
+  }
+
+  /* Drop zone */
+  .drop-zone {
+    border: 2px dashed #d0d7e6;
+    border-radius: 24px;
+    background: #f9fafc;
+    transition: border-color 0.2s, background-color 0.2s;
+    cursor: pointer;
+    margin-bottom: 2rem;
+  }
+
+  .drop-zone.dragover {
+    border-color: #3b71fe;
+    background-color: #edf2ff;
+  }
+
+  .drop-zone-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2.5rem 1.5rem;
+    text-align: center;
+  }
+
+  .upload-icon {
+    color: #8a99b4;
+    margin-bottom: 1rem;
+    transition: color 0.2s;
+  }
+
+  .drop-zone.dragover .upload-icon {
+    color: #3b71fe;
+  }
+
+  .drop-zone-text {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.125rem;
+    color: #1a1e2b;
+  }
+
+  .drop-zone-main {
+    display: block;
+    font-weight: 500;
+    margin-bottom: 0.25rem;
+  }
+
+  .drop-zone-hint {
+    font-size: 0.875rem;
+    color: #6f7d98;
+  }
+
+  .file-browse {
+    color: #3b71fe;
+    font-weight: 500;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  .file-input {
+    display: none;
+  }
+
+  .file-name {
+    font-size: 0.875rem;
+    color: #6f7d98;
+    margin: 0.75rem 0 0 0;
+    padding: 0.25rem 1rem;
+    background: #edf2f7;
+    border-radius: 30px;
+    display: inline-block;
+    transition: background 0.2s;
+  }
+
+  .file-name.has-file {
+    background: #e1e8f5;
+    color: #1e2b4f;
+    font-weight: 500;
+  }
+
+  /* Área de botão */
+  .submit-area {
+    display: flex;
+    justify-content: center;
+  }
+
+  .submit-button {
+    background: #1a1e2b;
+    color: white;
+    border: none;
+    border-radius: 60px;
+    padding: 1rem 3rem;
+    font-size: 1.125rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 220px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+
+  .submit-button:hover:not(:disabled) {
+    background: #2d3445;
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.15);
+    transform: scale(1.02);
+  }
+
+  .submit-button:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+
+  .submit-button:disabled {
+    opacity: 0.8;
+    cursor: not-allowed;
+    background: #5b687c;
+  }
+
+  .button-text {
+    transition: opacity 0.2s;
+  }
+
+  /* Spinner pequeno dentro do botão */
+  .spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    margin-left: 10px;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: white;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  /* Overlay de carregamento */
+  .loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+  }
+
+  .loading-card {
+    background: white;
+    border-radius: 32px;
+    padding: 2.5rem 3rem;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    text-align: center;
+  }
+
+  .spinner-large {
+    width: 48px;
+    height: 48px;
+    border: 5px solid #e2e8f0;
+    border-radius: 50%;
+    border-top-color: #3b71fe;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 1rem auto;
+  }
+
+  .loading-text {
+    font-size: 1.125rem;
+    font-weight: 500;
+    color: #1a1e2b;
+    margin: 0;
+  }
+
+  /* Modal de resultado */
+  .modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    display: none; /* Inicialmente oculto, será exibido pelo JS se show_modal = true */
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+  }
+
+  .modal-card {
+    background: white;
+    border-radius: 32px;
+    max-width: 450px;
+    width: 90%;
+    box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.3);
+    animation: modalFadeIn 0.3s ease;
+  }
+
+  @keyframes modalFadeIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  .modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.5rem 1.5rem 0.5rem 1.5rem;
+  }
+
+  .modal-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin: 0;
+    color: #1a1e2b;
+  }
+
+  .modal-close {
+    background: none;
+    border: none;
+    font-size: 2rem;
+    line-height: 1;
+    cursor: pointer;
+    color: #8a99b4;
+    transition: color 0.2s;
+    padding: 0 0.5rem;
+  }
+
+  .modal-close:hover {
+    color: #1a1e2b;
+  }
+
+  .modal-body {
+    padding: 1rem 1.5rem;
+  }
+
+  .modal-message {
+    font-size: 1rem;
+    line-height: 1.6;
+    color: #2d3748;
+    margin: 0;
+    white-space: pre-wrap;
+  }
+
+  .modal-footer {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: flex-end;
+    padding: 1.5rem;
+  }
+
+  .modal-button {
+    padding: 0.6rem 1.5rem;
+    border-radius: 40px;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    text-decoration: none;
+    border: none;
+    transition: background 0.2s, transform 0.1s;
+  }
+
+  .modal-button-primary {
+    background: #3b71fe;
+    color: white;
+    box-shadow: 0 4px 12px rgba(59, 113, 254, 0.3);
+  }
+
+  .modal-button-primary:hover {
+    background: #2958d6;
+    transform: scale(1.02);
+  }
+
+  .modal-button-secondary {
+    background: #edf2f7;
+    color: #2d3748;
+  }
+
+  .modal-button-secondary:hover {
+    background: #e2e8f0;
+  }
+
+  /* Responsividade */
+  @media (max-width: 480px) {
+    .upload-card {
+      padding: 1.5rem;
+    }
+    .upload-title {
+      font-size: 1.75rem;
+    }
+    .submit-button {
+      width: 100%;
+      padding: 1rem 1.5rem;
+    }
+    .modal-card {
+      width: 95%;
+    }
+    .modal-footer {
+      flex-direction: column;
+    }
+    .modal-button {
+      text-align: center;
+    }
+  }
+</style>
+{% endblock %}
