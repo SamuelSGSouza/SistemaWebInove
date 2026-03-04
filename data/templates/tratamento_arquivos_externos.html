@@ -29,7 +29,7 @@
       <!-- Botão de envio -->
       <div class="submit-area">
         <button type="submit" class="submit-button" id="submitBtn">
-          <span class="button-text">Aplicar filtros</span>
+          <span class="button-text">Aplicar Tratamento</span>
           <span class="spinner" id="spinner" style="display: none;"></span>
         </button>
       </div>
@@ -50,24 +50,39 @@
 <div class="modal-overlay" id="resultModal" data-modal-type="{{ modal_type }}" data-download-url="{% if download_url %}{{ download_url }}{% endif %}">
   <div class="modal-card">
     <div class="modal-header">
+      <div class="modal-icon">
+        {% if modal_type == 'success' %}
+          <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="#10b981" stroke-width="2">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M8 12l3 3 6-6" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        {% else %}
+          <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="#ef4444" stroke-width="2">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M12 8v5M12 16h.01" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        {% endif %}
+      </div>
       <h2 class="modal-title">
         {% if modal_type == 'success' %}
-          ✅ Sucesso
+          Operação concluída
         {% else %}
-          ❌ Erro
+          Ocorreu um erro
         {% endif %}
       </h2>
       <button class="modal-close" id="modalClose">&times;</button>
     </div>
     <div class="modal-body">
       {% for m in messages %}
-        <p class="modal-message">{{m}}</p>
+        <div class="modal-message-item">
+          {{ m }}
+        </div>
       {% endfor %}
     </div>
     <div class="modal-footer">
       <button class="modal-button modal-button-secondary" id="modalCloseBtn">Fechar</button>
       {% if modal_type == 'success' and download_url %}
-        <a href="{{ download_url }}" class="modal-button modal-button-primary" download>Download</a>
+        <a href="{{ download_url }}" class="modal-button modal-button-primary" download>Baixar arquivo</a>
       {% endif %}
     </div>
   </div>
@@ -532,5 +547,168 @@
       text-align: center;
     }
   }
+  .modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(5px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.modal-card {
+  background: white;
+  border-radius: 32px;
+  max-width: 480px;
+  width: 90%;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  padding: 1.5rem 1.5rem 0.5rem 1.5rem;
+  position: relative;
+}
+
+.modal-icon {
+  flex-shrink: 0;
+  margin-right: 12px;
+  display: flex;
+  align-items: center;
+}
+
+.modal-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #1a1e2b;
+  margin: 0;
+  flex: 1;
+}
+
+.modal-close {
+  background: transparent;
+  border: none;
+  font-size: 2rem;
+  line-height: 1;
+  cursor: pointer;
+  color: #8a99b4;
+  padding: 0;
+  margin-left: 8px;
+  transition: color 0.2s;
+}
+
+.modal-close:hover {
+  color: #1a1e2b;
+}
+
+.modal-body {
+  padding: 1rem 1.5rem 1.5rem 1.5rem;
+}
+
+.modal-message-item {
+  background: #f8fafd;
+  border-left: 4px solid;
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 0.75rem;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: #1e2b4f;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+}
+
+.modal-message-item:last-child {
+  margin-bottom: 0;
+}
+
+[data-modal-type="success"] .modal-message-item {
+  border-left-color: #10b981;
+  background: #f0fdf9;
+}
+
+[data-modal-type="error"] .modal-message-item {
+  border-left-color: #ef4444;
+  background: #fef6f6;
+}
+
+.modal-footer {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  padding: 1rem 1.5rem 1.5rem 1.5rem;
+  border-top: 1px solid #edf2f7;
+}
+
+.modal-button {
+  padding: 0.75rem 1.5rem;
+  border-radius: 40px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  text-decoration: none;
+  text-align: center;
+  transition: all 0.2s;
+  border: none;
+  cursor: pointer;
+  display: inline-block;
+}
+
+.modal-button-primary {
+  background: #1a1e2b;
+  color: white;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+}
+
+.modal-button-primary:hover {
+  background: #2d3445;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+}
+
+.modal-button-secondary {
+  background: #f1f4f9;
+  color: #1a1e2b;
+}
+
+.modal-button-secondary:hover {
+  background: #e5e9f0;
+}
+
+/* Responsividade */
+@media (max-width: 480px) {
+  .modal-card {
+    width: 95%;
+    border-radius: 24px;
+  }
+  .modal-header {
+    padding: 1.25rem 1.25rem 0.25rem 1.25rem;
+  }
+  .modal-title {
+    font-size: 1.25rem;
+  }
+  .modal-body {
+    padding: 1rem 1.25rem;
+  }
+  .modal-footer {
+    padding: 1rem 1.25rem 1.25rem 1.25rem;
+  }
+}
 </style>
 {% endblock %}
