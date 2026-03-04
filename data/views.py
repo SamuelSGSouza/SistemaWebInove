@@ -260,7 +260,6 @@ def filtro_geral_view(request):
         'estados_municipios': DICT_ESTADOS_MUNICIPIOS,
         'cnaes': get_cnaes()
     }
-    return render(request, 'filtro_geral.html', context)
 
     nome_padrao_arquivo = ""
     filepath_csv = os.path.join(os.getcwd(), "media/arquivos_receita_federal_filtrados")
@@ -273,8 +272,9 @@ def filtro_geral_view(request):
 
             # Estados (múltiplos valores via checkbox)
             estados = request.POST.getlist('estado', [])
-            if estados != [""]:
-                estados = [e.strip() for e in estados if e.strip()][0].split(",")
+            print(f"ESTADOS: {estados}")
+            if estados != []:
+                estados = estados
             else:
                 estados = [ 'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 
                             'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 
@@ -286,28 +286,24 @@ def filtro_geral_view(request):
                     nome_padrao_arquivo += f"{estado}_"
 
             # CNAE (múltiplos valores)
-            cnaes_raw = request.POST.get('cnae', '')
-            cnaes = [c.strip() for c in cnaes_raw.split(',') if c.strip()]
+            cnaes = request.POST.getlist('cnae', '')
+            print(f"CNAES: {cnaes}")
             if cnaes:
                 filtros['cnae_fiscal'] = cnaes
 
             # Município (múltiplos valores)
-            municipios_raw = request.POST.get('municipio', '')
-            municipios = [m.strip() for m in municipios_raw.split(',') if m.strip()]
+            municipios = request.POST.getlist('municipio', '')
+            print(f"MUNICIPIOS: {municipios}")
             if municipios:
                 filtros['municipio'] = municipios
 
-            # Bairro (múltiplos valores)
-            bairros_raw = request.POST.get('bairro', '')
-            bairros = [b.strip() for b in bairros_raw.split(',') if b.strip()]
-            if bairros:
-                filtros['bairro'] = bairros
+            # termos_chave = request.POST.get("termos_chave", "")
+            # if termos_chave:
+            #     filtros["termos_chave"] = termos_chave
 
-            termos_chave = request.POST.get("termos_chave", "")
-            if termos_chave:
-                filtros["termos_chave"] = termos_chave
+            tipo_empresa = request.POST.get("tipo_mei", "")
+            print(f"Tipo de empresa: {tipo_empresa}")
 
-            tipo_empresa = request.POST.get("tipoEmpresa", "")
             if tipo_empresa:
                 filtros["MEINAOMEI"] = tipo_empresa
 
@@ -320,6 +316,8 @@ def filtro_geral_view(request):
 
 
             tipoTelefone = request.POST.get('tipoTelefone', '')
+            print(f"Tipo de telefone: {tipoTelefone}")
+
             if tipoTelefone == "apenas_movel":
                 df = remove_fixos(df) 
 
@@ -348,7 +346,6 @@ def filtro_geral_view(request):
             # Preparar dados para exibição
             
             if len(df.index) > 0:
-                print("df vazio não será salvo")
                 max_linhas = 200_000
 
                 if len(df.index) > max_linhas:
@@ -366,7 +363,10 @@ def filtro_geral_view(request):
                 context['resultados'] = df.replace({pd.NA: ''}).head(50).values.tolist()
                 context['colunas'] = df.columns.tolist()
                 context['qtd_resultados'] = len(df.index)
+
+            response = FileResponse(open(f"media/{request.user.username}_filtrados.zip", 'rb'), as_attachment=True, filename='dados_filtro_geral.zip')
+            return response
         except Exception as e:
             return JsonResponse({"error": traceback.format_exc()})
 
-    return render(request, 'filtros.html', context)
+    return render(request, 'filtro_geral.html', context)
