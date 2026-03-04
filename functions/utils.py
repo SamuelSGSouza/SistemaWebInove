@@ -343,7 +343,6 @@ def padronizacao_mailing_final(df: pd.DataFrame, columns=None, separator: str = 
         s = s.where(~s.isin(["NAN", "N/A"]), "")
 
         df[col] = s
-        print(f"Demorou {time.time() - ini} segundos para tratar a coluna {col}")
     return df
 
 def encontra_municipio_por_cep(cep:str, dict_ceps:dict) -> str:
@@ -755,11 +754,9 @@ def filtra_mailing(df:pd.DataFrame) -> pd.DataFrame:
         return df
     ini = time.time()
     telefones_blacklist = ler_arquivos_e_coletar_telefones()
-    print(f"Demorou {time.time() - ini} para ler os telefones na blacklist" )
     
     ini = time.time()
     quarentena = analisa_quarentena("media")
-    print(f"Demorou {time.time() - ini} para ler os telefones na blacklist" )
 
     blacklist_set = set(telefones_blacklist + quarentena)
 
@@ -789,7 +786,6 @@ def filtra_mailing(df:pd.DataFrame) -> pd.DataFrame:
         df[colunas_telefone] = filtered_phones
         for c in colunas_telefone:
             df[c] = df[c].apply(clean_phone_number)
-        print(f"Demorou {time.time() - ini} para tratar a coluna {colunas_telefone}" )
     return df
 
 def filtra_arquivos(raiz) -> str:
@@ -1491,7 +1487,6 @@ def get_dados_mailing(colunas_filtro:dict, campos_retorno:list=[], pasta_selecio
     ini = time.time()
     with ThreadPoolExecutor(max_workers=4) as executor:
         dfs = list(executor.map(processa_arquivo, arquivos_para_ler))
-    print(f"Demorou {time.time() - ini} segundos para ler todos os arquivos")
     if dfs:
         df = pd.concat(dfs)
     else:
@@ -1499,11 +1494,9 @@ def get_dados_mailing(colunas_filtro:dict, campos_retorno:list=[], pasta_selecio
     
     ini = time.time()
     df["cnpj"] = df["cnpj"].apply(lambda x: re.sub(r'[^0-9]', '', x))
-    print(f"Demorou {time.time() - ini} ajustar os cnpjs")
 
     ini = time.time()
     df = padronizacao_mailing_final(df).reset_index(drop=True)
-    print(f"Demorou {time.time() - ini} para tratar os dfs")
 
     if filtro_telefone_blacklist == "apenas_filtrados":
         df = filtra_mailing(df)
@@ -1520,13 +1513,11 @@ def get_dados_mailing(colunas_filtro:dict, campos_retorno:list=[], pasta_selecio
     df[colunas_telefone] = df[colunas_telefone].applymap(
         lambda x: clean_phone_number(x, apenas_celular=apenas_celular)
     )
-    print(f"Demorou {time.time() - ini} para limpar as colunas de telefone")
     
     ini = time.time()
     #garantindo que telefones sempre fiquem à esquerda
     df = compacta_colunas(df, ["TEL1", "TEL2", "TEL3"])
     df = compacta_colunas(df, [f"Telefone_{i}" for i in range(1,21)])
-    print(f"Demorou {time.time() - ini} compactar as colunas de telefone")
     
     ini = time.time()
     if formato_saida == "IPBOX":
@@ -1566,7 +1557,6 @@ def get_dados_mailing(colunas_filtro:dict, campos_retorno:list=[], pasta_selecio
 
 
         df = df[colunas_vonix]
-    print(f"Demorou {time.time() - ini} para organizar no formato desejado")
 
     
     return df

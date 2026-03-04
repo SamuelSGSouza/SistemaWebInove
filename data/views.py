@@ -80,10 +80,7 @@ class Status_Execucao(LoginRequiredMixin,TemplateView):
 
 
 
-def filtra_mailing_view(request):
-    dados = DadoExtracao.objects.filter().order_by("momento_criacao")
-    for dado in dados:
-        print(f"{dado.titulo} - {dado.quantidade}")
+def filtra_mailing_view(request):    
 
 
     context = {
@@ -121,7 +118,7 @@ def filtra_mailing_view(request):
             estados = request.POST.getlist('estado', [])
             print("ESTADOS: ", estados)
             if estados != []:
-                estados = [e.strip() for e in estados if e.strip()][0].split(",")
+                estados = estados
             else:
                 estados = [ 'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 
             'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 
@@ -190,6 +187,7 @@ def filtra_mailing_view(request):
 
                 return render(request, 'filtros_mailing.html', context)
 
+            print("FILTROS: ", filtros)
             for pasta in list(pastas.keys()):
                 df = get_dados_mailing(filtros, pasta_selecionada=pasta, formato_saida=formato_saida, conjunto_telefones=conjunto_telefones, tipos_telefone= tipos_telefone, tipoMailing=tipoMailing, filtro_telefone_blacklist=filtro_telefone_blacklist)
                 df["CREDITO"] =  pastas[pasta]
