@@ -150,6 +150,7 @@ class TratamentosArquivosExternos(LoginRequiredMixin,TemplateView):
         ctx["download_url"] = url_completa
         return render(request, self.template_name, ctx)
 
+
 def filtra_mailing_view(request):    
 
 
