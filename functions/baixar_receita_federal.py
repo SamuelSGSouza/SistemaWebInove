@@ -793,7 +793,6 @@ def fase_1_gerador():
     try:
         Log.objects.filter().delete()
 
-
         salva_log_geral("Iniciou Sistema de Geração de Mailings")
         
         salva_status(nova_execucao, titulo="Iniciando Download Arquivos da Receita Federal",status="Em Andamento")
