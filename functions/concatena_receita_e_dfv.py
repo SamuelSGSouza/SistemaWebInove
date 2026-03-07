@@ -2,6 +2,8 @@ import pandas as pd
 from data.models import *
 import os, traceback, re
 from functions.contantes import *
+from pathlib import Path
+from datetime import datetime
 
 def gera_campos_cep(df:pd.DataFrame, campo_cep, campo_numero, campo_logradouro)-> pd.DataFrame:
     df[campo_numero] = df[campo_numero].apply(lambda x: re.sub(r'\D', '', str(x))) #tirando letras do número
@@ -29,10 +31,9 @@ def pega_lote(string) ->str:
         return lote
     return ""
 
-def fase_2_concatenador(sistema):
+def fase_2_concatenador(sistema, nova_execucao:Status_Execucoe_DB):
     pasta_receita_federal = os.path.join(os.getcwd(), "media", "arquivos_receita_federal")
     if sistema == "oi":
-        print("iniciando sistema OI")
         try:
             # COLUNAS_DFV=["UF","MUNICIPIO","LOCALIDADE","BAIRRO","LOGRADOURO","CEP","CELULA","TIPO_CDO","COMPLEMENTO2","COMPLEMENTO3","CODIGO_LOGRADOURO","NO_FACHADA","COMPLEMENTO1","VIABILIDADE_ATUAL","HP_TOTAL","HP_LIVRE","OPB_CEL","DT_ATUALIZACAO"]
             dtype={"HP_LIVRE": int, "CEP": "string"}
@@ -129,6 +130,68 @@ def fase_2_concatenador(sistema):
 
                 salva_dado(f"Quantidade de Empresas com Viabilidade Secundária no Estado {estado}", len(df_receita_mailing_secundario.index))
 
+                return verificador_fase_2(sistema, nova_execucao)
+                    
 
         except Exception as e:
+            salva_status(nova_execucao, titulo=f"Erro ao Tratar Base da Receita: Arquivo {file} não possui as colunas esperadas",status="Erro")            
+
             print(traceback.format_exc())
+
+
+def verificador_fase_2(sistema, nova_execucao):
+    estados = [ 'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 
+            'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 
+            'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO']
+    #verificar todos os estados foram atualizados na data atual
+    sistemas_dict = {
+        "oi": "media",
+        "giga_mais": "media_giga_mais",
+        "janeiro_2026": "media_janeiro_2026"
+    }
+
+    root = os.path.join(os.getcwd(), sistemas_dict[sistema], "viabilidades")
+    colunas_esperadas = ["data_inicio_atividades", "natureza_juridica", "descricaonj", "cnae_fiscal", "cnae_fiscal_secundaria", "descricaocf", "cnpj", "razao_social", "nome_fantasia", "matriz_filial", "decisor", "situacao_cadastral", "correio_eletronico", "logradouro", "num_fachada", "complemento1", "bairro", "cep", "municipio", "uf", "CPF", "MEINAOMEI", "TEL1", "TEL2", "TEL3"]
+    cnpjs_encontrados = []
+    telefones_encontrados = []
+
+    tipos_viabilidade = ["Primaria", "Secundaria"]
+    for estado in estados:
+        for tipo in tipos_viabilidade:
+            file = f"Viabilidade_{tipo}_{estado}.csv"
+            filepath = os.path.join(root,file)
+            arquivo = Path(filepath)
+            timestamp = arquivo.stat().st_ctime
+            data = datetime.fromtimestamp(timestamp)
+            hoje = datetime.today()
+            if hoje.day != data.day or hoje.month != data.month:
+                #data de criação não foi hoje
+                salva_status(nova_execucao, titulo=f"Erro verificar cnpjs com viabilidade. Arquivo {file} não foi criado hoje.",status="Erro")
+                return False
+            
+            #verificar se todos os estados possuem as mesmas colunas
+            df = pd.read_csv(filepath, sep=";")
+            if df.columns.tolist() != colunas_esperadas:
+                salva_status(nova_execucao, titulo=f"Erro verificar cnpjs com viabilidade. Arquivo {file} não possui as colunas esperadas",status="Erro")            
+                return False
+            
+            #verificar se há cnpjs repetidos
+            if len(df["cnpj"].tolist()) != len(df["cnpj"].unique().tolist()):
+                salva_status(nova_execucao, titulo=f"Erro verificar cnpjs com viabilidade. Arquivo {file} possui cnpjs repetidos",status="Erro")            
+
+                return False
+            
+            df_repetidos = df[df["cnpj"].isin(cnpjs_encontrados)]
+            if len(df_repetidos.index) > 1:
+                salva_status(nova_execucao, titulo=f"Erro verificar cnpjs com viabilidade. Arquivo {file} possui cnpjs repetidos com outro arquivo",status="Erro")            
+
+                return False
+            
+            df_repetidos += df["cnpj"].unique().tolist()
+
+            # colunas_telefone = ["TEL1", "TEL2", "TEL3"]
+            # df_telefones = df[colunas_telefone]
+            # for index, row in df_telefones.iterrows():
+            #     tels = [row["TEL1"], row["TEL2"], row["TEL3"]]
+
+    return True

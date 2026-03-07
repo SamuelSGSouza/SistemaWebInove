@@ -813,7 +813,7 @@ def fase_1_gerador():
         salva_status(nova_execucao, titulo="Finalização dos Dados da Receita Federal",status="Concluido")
 
 
-        if verificador_fase_1():
+        if verificador_fase_1(nova_execucao):
 
             salva_log_geral("Entrando em modo de pausa para aguardar os DFV's")
             
@@ -822,6 +822,8 @@ def fase_1_gerador():
             salva_dado("Total Empresas Receita Federal", total_dados)
             salva_dado("Total Empresas MEI na Receita Federal", total_dados_receita_Mei)
             salva_dado("Total Empresas NMEI na Receita Federal", total_dados-total_dados_receita_Mei)
+
+            return True
 
     except Exception as e:
         salva_log_geral(f"Erro ao Tratar Base da Receita: {e}")
@@ -834,6 +836,56 @@ def fase_1_gerador():
         gc.collect()
         
         return
+
+def verificador_fase_1(nova_execucao):
+    estados = [ 'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 
+            'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 
+            'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO']
+    #verificar todos os estados foram atualizados na data atual
+    root = os.path.join(os.getcwd(), "media", "arquivos_receita_federal")
+    colunas_esperadas = ["data_inicio_atividades", "natureza_juridica", "descricaonj", "cnae_fiscal", "cnae_fiscal_secundaria", "descricaocf", "cnpj", "razao_social", "nome_fantasia", "matriz_filial", "decisor", "situacao_cadastral", "correio_eletronico", "logradouro", "num_fachada", "complemento1", "bairro", "cep", "municipio", "uf", "CPF", "MEINAOMEI", "TEL1", "TEL2", "TEL3"]
+    cnpjs_encontrados = []
+    telefones_encontrados = []
+
+
+    for estado in estados:
+        file = f"{estado}.csv"
+        filepath = os.path.join(root,file)
+        arquivo = Path(filepath)
+        timestamp = arquivo.stat().st_ctime
+        data = datetime.fromtimestamp(timestamp)
+        hoje = datetime.today()
+        if hoje.day != data.day or hoje.month != data.month:
+            #data de criação não foi hoje
+            salva_status(nova_execucao, titulo=f"Erro ao Tratar Base da Receita: Arquivo {file} não foi criado hoje.",status="Erro")
+            return False
+        
+        #verificar se todos os estados possuem as mesmas colunas
+        df = pd.read_csv(filepath, sep=";")
+        if df.columns.tolist() != colunas_esperadas:
+            salva_status(nova_execucao, titulo=f"Erro ao Tratar Base da Receita: Arquivo {file} não possui as colunas esperadas",status="Erro")            
+            return False
+        
+        #verificar se há cnpjs repetidos
+        if len(df["cnpj"].tolist()) != len(df["cnpj"].unique().tolist()):
+            salva_status(nova_execucao, titulo=f"Erro ao Tratar Base da Receita: Arquivo {file} possui cnpjs repetidos",status="Erro")            
+
+            return False
+        
+        df_repetidos = df[df["cnpj"].isin(cnpjs_encontrados)]
+        if len(df_repetidos.index) > 1:
+            salva_status(nova_execucao, titulo=f"Erro ao Tratar Base da Receita: Arquivo {file} possui cnpjs repetidos com outro arquivo",status="Erro")            
+
+            return False
+        
+        df_repetidos += df["cnpj"].unique().tolist()
+
+        # colunas_telefone = ["TEL1", "TEL2", "TEL3"]
+        # df_telefones = df[colunas_telefone]
+        # for index, row in df_telefones.iterrows():
+        #     tels = [row["TEL1"], row["TEL2"], row["TEL3"]]
+
+    return True
 
 if __name__ == "__main__":
     fase_1_gerador()
