@@ -164,7 +164,7 @@
       {% for fase in fases %}
         <div class="step-item">
                 <div class="step-icon">
-                    {% if fase.status == "Concluído" %}
+                    {% if fase.status == "Concluido" %}
                         <i class="bi bi-check-circle-fill text-success step-icon"></i>
                     {% elif fase.status == "Pendente" %}
                         <i class="bi bi-circle text-secondary step-icon" style="opacity: 0.3;"></i>
@@ -174,7 +174,7 @@
                 </div>
                 <div class="step-name">{{fase.titulo}}</div>
                 <div>
-                    {% if fase.status == "Concluído" %}
+                    {% if fase.status == "Concluido" %}
                         <span class="step-badge bg-success bg-opacity-10 text-success">Concluído</span>
                     {% elif fase.status == "Pendente" %}
                         <span class="step-badge bg-light text-secondary">Pendente</span>

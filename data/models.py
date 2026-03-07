@@ -14,7 +14,7 @@ class DadosGerais(models.Model):
     
 class Status_Execucoe_DB(models.Model):
     sistema = models.CharField(choices=OPCOES_SISTEMA,default="geral", max_length=255)
-    momento_inicializacao = models.DateTimeField(auto_now=True)
+    momento_inicializacao = models.DateTimeField(auto_now_add=True)
     momento_finalizacao = models.DateTimeField(auto_now=True)
 
 
@@ -44,12 +44,14 @@ def salva_status(execucao:Status_Execucoe_DB, titulo, status):
         "Erro": "danger"
     }
 
+    Fase_Execucao_DB.objects.filter(status_execucao=execucao, status="Em Andamento").update(status="Concluido")
     Fase_Execucao_DB.objects.create(
         status_execucao=execucao,
         titulo=titulo,
         status=status,
         color=dict_color[status]
     )
+    execucao.save()
 
 class Log(models.Model):
     sistema = models.CharField(choices=OPCOES_SISTEMA,default="geral", max_length=255)
@@ -58,6 +60,7 @@ class Log(models.Model):
     
 
 def salva_log(msg,sistema):
+    print(msg, " ", sistema )
     Log.objects.create(log=msg, sistema=sistema)
 
 
