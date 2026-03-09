@@ -880,7 +880,7 @@ def verificador_fase_1(nova_execucao):
 
             return False
         
-        df_repetidos += df["cnpj"].unique().tolist()
+        cnpjs_encontrados += df["cnpj"].unique().tolist()
 
         # colunas_telefone = ["TEL1", "TEL2", "TEL3"]
         # df_telefones = df[colunas_telefone]
