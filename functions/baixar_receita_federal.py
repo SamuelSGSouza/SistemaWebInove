@@ -829,7 +829,7 @@ def fase_1_gerador():
             return True
 
     except Exception as e:
-        salva_status(nova_execucao, titulo=f"Falha ao Tratar dados da Receita Federal {traceback.format_exc()}",status="Erro")
+        salva_status(nova_execucao, titulo=f"Falha ao Tratar dados da Receita Federal {e}",status="Erro")
 
         return False
     finally:
@@ -861,7 +861,6 @@ def verificador_fase_1(nova_execucao):
             #data de criação não foi hoje
             salva_status(nova_execucao, titulo=f"Erro ao Tratar Base da Receita: Arquivo {file} não foi criado hoje.",status="Erro")
             return False
-        
         
         #verificar se todos os estados possuem as mesmas colunas
         df = pd.read_csv(filepath, sep=";")
