@@ -829,7 +829,7 @@ def fase_1_gerador():
             return True
 
     except Exception as e:
-        salva_status(nova_execucao, titulo=f"Falha ao Tratar dados da Receita Federal {e}",status="Erro")
+        salva_status(nova_execucao, titulo=f"Falha ao Tratar dados da Receita Federal {traceback.format_exc()}",status="Erro")
 
         return False
     finally:
