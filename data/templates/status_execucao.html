@@ -168,6 +168,8 @@
                         <i class="bi bi-check-circle-fill text-success step-icon"></i>
                     {% elif fase.status == "Pendente" %}
                         <i class="bi bi-circle text-secondary step-icon" style="opacity: 0.3;"></i>
+                    {% elif fase.status == "Erro" %}
+                        <i class="bi bi-x-circle text-danger step-icon" style="opacity: 0.3;"></i>
                     {% else %}
                         <i class="bi bi-arrow-repeat spinner-custom text-primary step-icon"></i>
                     {% endif %}
@@ -178,6 +180,8 @@
                         <span class="step-badge bg-success bg-opacity-10 text-success">Concluído</span>
                     {% elif fase.status == "Pendente" %}
                         <span class="step-badge bg-light text-secondary">Pendente</span>
+                    {% elif fase.status == "Erro" %}
+                        <span class="step-badge bg-danger text-white">Falha de Execução</span>
                     {% else %}
                         <span class="step-badge bg-primary bg-opacity-10 text-primary">Em andamento</span>
                     {% endif %}

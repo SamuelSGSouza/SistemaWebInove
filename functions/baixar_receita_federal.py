@@ -793,7 +793,7 @@ def realiza_limpeza():
 @fecha_conexoes
 def fase_1_gerador():
 
-    nova_execucao = Status_Execucoe_DB.objects.filter().order_by("-momento_inicializacao")[0]
+    nova_execucao = Status_Execucoe_DB.objects.filter(sistema="geral").order_by("-id")[0]
     try:
         # Log.objects.filter().delete()
 
@@ -814,7 +814,7 @@ def fase_1_gerador():
         # unifica_dados(nova_execucao)
         # realiza_limpeza()
         # salva_status(nova_execucao, titulo="Finalização dos Dados da Receita Federal",status="Concluido")
-
+        print("Começando a verificar")
 
         if verificador_fase_1(nova_execucao):
 
@@ -851,6 +851,8 @@ def verificador_fase_1(nova_execucao):
 
 
     for estado in estados:
+        salva_status(nova_execucao, titulo=f"Verificando integridade dos dados do estado {estado}",status="Em Andamento")
+
         file = f"{estado}.csv"
         filepath = os.path.join(root,file)
         arquivo = Path(filepath)

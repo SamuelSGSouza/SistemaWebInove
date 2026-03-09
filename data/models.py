@@ -43,7 +43,7 @@ def salva_status(execucao:Status_Execucoe_DB, titulo, status):
         "Pendente": "secondary",
         "Erro": "danger"
     }
-
+    print(titulo)
     Fase_Execucao_DB.objects.filter(status_execucao=execucao, status="Em Andamento").update(status="Concluido")
     Fase_Execucao_DB.objects.create(
         status_execucao=execucao,
@@ -52,6 +52,7 @@ def salva_status(execucao:Status_Execucoe_DB, titulo, status):
         color=dict_color[status]
     )
     execucao.save()
+    print("status salvo com sucesso")
 
 class Log(models.Model):
     sistema = models.CharField(choices=OPCOES_SISTEMA,default="geral", max_length=255)

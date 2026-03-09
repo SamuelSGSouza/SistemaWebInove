@@ -53,16 +53,15 @@ class Status_Execucao(LoginRequiredMixin,TemplateView):
         context["acompanhar_gerador_activate"] = "active"
 
         possiveis_status = Status_Execucoe_DB.objects.filter(sistema=sistema).order_by("-id")
-        print(possiveis_status)
         if possiveis_status.exists():
             status = possiveis_status[0]
             context["data_inicializacao"] = status.momento_inicializacao
             context["data_finalizacao"] = status.momento_finalizacao
 
             context["fases"] = Fase_Execucao_DB.objects.filter(status_execucao=status).order_by("-id")
+            for fase in context["fases"]:
+                print(fase.titulo)
             context["fase_atual"] = context["fases"][len(context["fases"])-1].titulo
-            for f in context["fases"]:
-                print(f.titulo, f.status)
         return context
 
 
