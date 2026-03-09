@@ -33,7 +33,7 @@ def pega_lote(string) ->str:
 
 def fase_2_concatenador(sistema, nova_execucao:Status_Execucoe_DB):
     pasta_receita_federal = os.path.join(os.getcwd(), "media", "arquivos_receita_federal")
-    salva_status(nova_execucao, f"Iniciando análise de viabilidades para o sistema {sistema}")
+    salva_status(nova_execucao, f"Iniciando análise de viabilidades para o sistema {sistema}", status="Em Andamento")
     if sistema == "oi":
         try:
             # COLUNAS_DFV=["UF","MUNICIPIO","LOCALIDADE","BAIRRO","LOGRADOURO","CEP","CELULA","TIPO_CDO","COMPLEMENTO2","COMPLEMENTO3","CODIGO_LOGRADOURO","NO_FACHADA","COMPLEMENTO1","VIABILIDADE_ATUAL","HP_TOTAL","HP_LIVRE","OPB_CEL","DT_ATUALIZACAO"]
@@ -45,7 +45,7 @@ def fase_2_concatenador(sistema, nova_execucao:Status_Execucoe_DB):
                 os.remove(os.path.join(path_viabilidades, file))
 
             for estado in ESTADOS_BR:        
-                salva_status(nova_execucao, f"Iniciando análise de viabilidades no estado {estado}")
+                salva_status(nova_execucao, f"Iniciando análise de viabilidades no estado {estado}", status="Em Andamento")
     
                 df_receita = pd.read_csv(os.path.join(pasta_receita_federal, f"{estado}.csv"), sep=";", dtype=DTYPES_RECEITA_FEDERAL)
                 df_receita = gera_campos_cep(df_receita, "cep", "num_fachada", "logradouro")
@@ -159,10 +159,10 @@ def verificador_fase_2(sistema, nova_execucao):
     telefones_encontrados = []
 
     tipos_viabilidade = ["Primaria", "Secundaria"]
-    salva_status(nova_execucao, f"Iniciando validação dos dados de viabilidades")
+    salva_status(nova_execucao, f"Iniciando validação dos dados de viabilidades",  status="Em Andamento")
 
     for estado in estados:
-        salva_status(nova_execucao, f"Iniciando validação dos dados de viabilidades no estado {estado}")
+        salva_status(nova_execucao, f"Iniciando validação dos dados de viabilidades no estado {estado}",  status="Em Andamento")
 
         for tipo in tipos_viabilidade:
             file = f"Viabilidade_{tipo}_{estado}.csv"
