@@ -5,7 +5,7 @@ from data.models import *
 from pathlib import Path
 from datetime import datetime
 
-def define_credito(raiz):
+def fase_3_define_credito(raiz, sistema):
 
     viabilidades_path = os.path.join(raiz, "viabilidades")
     viabilidades_credito_path = os.path.join(raiz, "viabilidades_credito")
@@ -19,7 +19,7 @@ def define_credito(raiz):
     df_credito = df_credito[df_credito["CONTAINS_K"] == False]
 
     cnpjs_aprovados = df_credito[df_credito["APROVADO/NEGADO"] == "S"]["CNPJ"].unique().tolist()
-    cnpjs_negados = df_credito[df_credito["APROVADO/NEGADO"] == "N"]["CNPJ"].unique().tolist()
+    cnpjs_negados = df_credito[df_credito["APROVADO/NEGADO"] != "S"]["CNPJ"].unique().tolist()
 
     for file in os.listdir(viabilidades_path):
         filepath = os.path.join(viabilidades_path, file)
@@ -37,12 +37,14 @@ def define_credito(raiz):
             "credito"
         ] = "Negado"
         
+        estado = pasta_destino.split(".")[0].split("_")[-1]
+
         salva_dado(
-            "Quantidade de cnpjs com crédito aprovado", 
+            f"Quantidade de cnpjs com crédito aprovado no estado {}", 
             df_viabilidade[df_viabilidade["credito"] == "Aprovado"]["cnpj"].unique().tolist()
         )
         salva_dado(
-            "Quantidade de cnpjs com crédito aprovado", 
+            f"Quantidade de cnpjs com crédito aprovado {}", 
             df_viabilidade[df_viabilidade["credito"] == "Negado"]["cnpj"].unique().tolist()
         )
 
