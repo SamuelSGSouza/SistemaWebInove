@@ -825,7 +825,7 @@ def fase_1_gerador():
             salva_dado("Total Empresas Receita Federal", total_dados)
             salva_dado("Total Empresas MEI na Receita Federal", total_dados_receita_Mei)
             salva_dado("Total Empresas NMEI na Receita Federal", total_dados-total_dados_receita_Mei)
-
+            salva_status(nova_execucao, titulo="Dados da Receita Salvos com sucesso.",status="Concluido")
             return True
 
     except Exception as e:
