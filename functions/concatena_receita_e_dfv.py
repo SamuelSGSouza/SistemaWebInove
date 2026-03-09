@@ -143,6 +143,7 @@ def fase_2_concatenador(sistema, nova_execucao:Status_Execucoe_DB):
     #         return False
 
 
+
     return verificador_fase_2(sistema, nova_execucao)
 
 def verificador_fase_2(sistema, nova_execucao):
