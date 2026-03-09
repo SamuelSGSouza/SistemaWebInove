@@ -862,6 +862,7 @@ def verificador_fase_1(nova_execucao):
             salva_status(nova_execucao, titulo=f"Erro ao Tratar Base da Receita: Arquivo {file} não foi criado hoje.",status="Erro")
             return False
         
+        
         #verificar se todos os estados possuem as mesmas colunas
         df = pd.read_csv(filepath, sep=";")
         if df.columns.tolist() != colunas_esperadas:
