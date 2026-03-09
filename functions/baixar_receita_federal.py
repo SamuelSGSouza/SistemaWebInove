@@ -793,36 +793,35 @@ def realiza_limpeza():
 @fecha_conexoes
 def fase_1_gerador():
 
-    nova_execucao = Status_Execucoe_DB.objects.create()
+    nova_execucao = Status_Execucoe_DB.objects.filter().order_by("-momento_inicializacao")[0]
     try:
-        Log.objects.filter().delete()
+        # Log.objects.filter().delete()
 
-        salva_log_geral("Iniciou Sistema de Geração de Mailings")
+        # salva_log_geral("Iniciou Sistema de Geração de Mailings")
         
-        salva_status(nova_execucao, titulo="Iniciando Download Arquivos da Receita Federal",status="Em Andamento")
-        baixa_arquivos_receita()
+        # salva_status(nova_execucao, titulo="Iniciando Download Arquivos da Receita Federal",status="Em Andamento")
+        # baixa_arquivos_receita()
         
-        salva_status(nova_execucao, titulo="Iniciando Extração dos Arquivos da Receita Federal",status="Em Andamento")
+        # salva_status(nova_execucao, titulo="Iniciando Extração dos Arquivos da Receita Federal",status="Em Andamento")
 
 
 
-        extrair_zip_e_renomear()
+        # extrair_zip_e_renomear()
 
-        salva_status(nova_execucao, titulo="Iniciando Unificação e limpeza dos Arquivos da Receita Federal",status="Em Andamento")
+        # salva_status(nova_execucao, titulo="Iniciando Unificação e limpeza dos Arquivos da Receita Federal",status="Em Andamento")
 
 
-        unifica_dados(nova_execucao)
-        realiza_limpeza()
-        salva_log_geral("Unificou e Tratou Bases da Receita")
-        salva_status(nova_execucao, titulo="Finalização dos Dados da Receita Federal",status="Concluido")
+        # unifica_dados(nova_execucao)
+        # realiza_limpeza()
+        # salva_status(nova_execucao, titulo="Finalização dos Dados da Receita Federal",status="Concluido")
 
 
         if verificador_fase_1(nova_execucao):
 
-            salva_log_geral("Entrando em modo de pausa para aguardar os DFV's")
             
 
             global total_dados
+            global total_dados_receita_Mei
             salva_dado("Total Empresas Receita Federal", total_dados)
             salva_dado("Total Empresas MEI na Receita Federal", total_dados_receita_Mei)
             salva_dado("Total Empresas NMEI na Receita Federal", total_dados-total_dados_receita_Mei)
@@ -830,8 +829,7 @@ def fase_1_gerador():
             return True
 
     except Exception as e:
-        salva_log_geral(f"Erro ao Tratar Base da Receita: {e}")
-        salva_status(nova_execucao, titulo="Falha ao Tratar dados da Receita Federal",status="Erro")
+        salva_status(nova_execucao, titulo=f"Falha ao Tratar dados da Receita Federal {e}",status="Erro")
 
         return False
     finally:
