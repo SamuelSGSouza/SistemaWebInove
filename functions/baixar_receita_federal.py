@@ -719,6 +719,9 @@ def unifica_dados(nova_execucao):
         if file.endswith(".csv"):
             df = pd.read_csv(os.path.join(pasta_destino,file), sep=";", dtype=DTYPES_RECEITA_FEDERAL)
             df.drop_duplicates(subset=["cnpj",], inplace=True)
+            estado = pasta_destino.split(".")[0].split("_")[-1]
+            salva_dado(f"Total Empresas ATIVAS no estado {estado}", len(df.index))
+
             df.to_csv(os.path.join(pasta_destino,file), sep=";",index=False)
             for uf, df_uf in df.groupby("uf"):
 

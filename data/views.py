@@ -391,7 +391,7 @@ def inicia_gerador_view(request):
     processo = threading.Thread(target=inicia_gerador, args=(sistema,))
     processo.start()
 
-    return JsonResponse({'status': 'success', 'sucessos': [], "erros":[], "links": [], "relatorio": []})
+    return JsonResponse({'status': 'success', 'sucessos': [f"Iniciou sistema {sistema} com sucesso!",], "erros":[], "links": [], "relatorio": []})
 
 def filtro_geral_view(request):
     context = {

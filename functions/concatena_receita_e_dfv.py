@@ -33,6 +33,7 @@ def pega_lote(string) ->str:
 
 def fase_2_concatenador(sistema, nova_execucao:Status_Execucoe_DB):
     pasta_receita_federal = os.path.join(os.getcwd(), "media", "arquivos_receita_federal")
+    salva_status(nova_execucao, f"Iniciando análise de viabilidades para o sistema {sistema}")
     if sistema == "oi":
         try:
             # COLUNAS_DFV=["UF","MUNICIPIO","LOCALIDADE","BAIRRO","LOGRADOURO","CEP","CELULA","TIPO_CDO","COMPLEMENTO2","COMPLEMENTO3","CODIGO_LOGRADOURO","NO_FACHADA","COMPLEMENTO1","VIABILIDADE_ATUAL","HP_TOTAL","HP_LIVRE","OPB_CEL","DT_ATUALIZACAO"]
@@ -43,7 +44,9 @@ def fase_2_concatenador(sistema, nova_execucao:Status_Execucoe_DB):
             for file in os.listdir(path_viabilidades):
                 os.remove(os.path.join(path_viabilidades, file))
 
-            for estado in ESTADOS_BR:            
+            for estado in ESTADOS_BR:        
+                salva_status(nova_execucao, f"Iniciando análise de viabilidades no estado {estado}")
+    
                 df_receita = pd.read_csv(os.path.join(pasta_receita_federal, f"{estado}.csv"), sep=";", dtype=DTYPES_RECEITA_FEDERAL)
                 df_receita = gera_campos_cep(df_receita, "cep", "num_fachada", "logradouro")
 
@@ -128,9 +131,9 @@ def fase_2_concatenador(sistema, nova_execucao:Status_Execucoe_DB):
                 df_receita_mailing_secundario = df_receita_nao_coletados[df_receita_nao_coletados["cep"].isin(ceps_especificos_dfv)]
                 df_receita_mailing_secundario.to_csv(os.path.join(path_viabilidades, f"Viabilidade_Secundaria_{estado}.csv"), sep=";", index=False)
 
-                salva_dado(f"Quantidade de Empresas com Viabilidade Secundária no Estado {estado}", len(df_receita_mailing_secundario.index))
+            salva_dado(f"Quantidade de Empresas com Viabilidade Secundária no Estado {estado}", len(df_receita_mailing_secundario.index))
 
-                return verificador_fase_2(sistema, nova_execucao)
+            return verificador_fase_2(sistema, nova_execucao)
                     
 
         except Exception as e:
@@ -156,7 +159,11 @@ def verificador_fase_2(sistema, nova_execucao):
     telefones_encontrados = []
 
     tipos_viabilidade = ["Primaria", "Secundaria"]
+    salva_status(nova_execucao, f"Iniciando validação dos dados de viabilidades")
+
     for estado in estados:
+        salva_status(nova_execucao, f"Iniciando validação dos dados de viabilidades no estado {estado}")
+
         for tipo in tipos_viabilidade:
             file = f"Viabilidade_{tipo}_{estado}.csv"
             filepath = os.path.join(root,file)
