@@ -8,3 +8,5 @@ SistemaWeb
 .env
 db.sqlite3
 ConfigInoveOS.sh
+*.csv
+*teste*

@@ -1395,13 +1395,13 @@ def compacta_colunas(df: pd.DataFrame, colunas: list) -> pd.DataFrame:
     df[colunas] = result
     return df
 
-def get_dados_mailing(colunas_filtro:dict, campos_retorno:list=[], pasta_selecionada:str="", formato_saida:str="padrao", conjunto_telefones:str="todos", tipos_telefone:str="todos", tipoMailing:str="ambos", filtro_telefone_blacklist:str="apenas_filtrados") -> pd.DataFrame:
-    filepath = os.path.join(os.getcwd(), pasta_selecionada)
+def get_dados_mailing(colunas_filtro:dict, campos_retorno:list=[], tipos_credito:list=[], formato_saida:str="padrao", conjunto_telefones:str="todos", tipos_telefone:str="todos", tipoMailing:str="ambos", filtro_telefone_blacklist:str="apenas_filtrados", pasta_dados:str="") -> pd.DataFrame:
+    
     arquivos_para_ler = []
     colunas_ip_box = ["cnpj", "razao_social", "decisor", "correio_eletronico", "logradouro", "num_fachada", "complemento1", "bairro", "cep", "municipio", "uf", "DDD1", "TEL1", "DDD2", "TEL2", "DDD3", "TEL3", "DDD4", "TEL4", "DDD5", "TEL5", "DDD6", "TEL6", "DDD7", "TEL7", "DDD8", "TEL8", ]
     colunas_vonix = ["TELEFONE1", "TELEFONE2", "TELEFONE3", "TELEFONE4", "TELEFONE5", "TELEFONE6", "TELEFONE7", "TELEFONE8", "CNPJ", "NOME", "DECISOR", "EMAIL", "LOGRADOURO", "NUMERO", "COMPLEMENTO", "CEP", "BAIRRO ALTO", "CIDADE", "UF", "ORIGEM",]
-    for f in os.listdir(filepath):
-        df_path = os.path.join(filepath, f)
+    for f in os.listdir(pasta_dados):
+        df_path = os.path.join(pasta_dados, f)
         coletar = False
         for col in colunas_filtro["uf"]:
             if col in f and f.endswith(".csv"):

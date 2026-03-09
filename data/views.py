@@ -58,7 +58,7 @@ class Status_Execucao(LoginRequiredMixin,TemplateView):
             context["data_inicializacao"] = status.momento_inicializacao
             context["data_finalizacao"] = status.momento_finalizacao
 
-            context["fases"] = Fase_Execucao_DB.objects.filter(status_execucao=status).order_by("-id")
+            context["fases"] = [f for f in Fase_Execucao_DB.objects.filter(status_execucao=status).order_by("-id")]
             for fase in context["fases"]:
                 print(fase.titulo)
             context["fase_atual"] = context["fases"][len(context["fases"])-1].titulo
@@ -307,20 +307,18 @@ def filtra_mailing_view(request):
 
             # Obter dados do CSV
             dfs = []
-            pastas = {
-            }
+            tipos_credito = []
             if checkbox_credito_preaprovado:
-                pastas[f"{pasta_raiz}/viabilidades_credito_enriquecido"] = "APROVADO"
+                tipos_credito.append("Aprovado")
                 
 
             if checkbox_pre_negado:
-                pastas[f"{pasta_raiz}/viabilidades_credito_pre_negado_enriquecido"] = "PRENEGADO"
-
+                tipos_credito.append("Negado")
 
             if checkbox_sem_info_credito:
-                pastas[f"{pasta_raiz}/viabilidades_credito_nao_informado_enriquecido"] = "SEM INFO"
+                tipos_credito.append("Sem Infos")
 
-            if len(list(pastas.keys())) == 0:
+            if len(tipos_credito) == 0:
                 df = pd.DataFrame()
                 df.to_csv(os.path.join(filepath_csv, f"{nome_padrao_arquivo}.csv"), sep=";", index=False)
 
@@ -330,11 +328,11 @@ def filtra_mailing_view(request):
 
                 return render(request, 'filtros_mailing.html', context)
 
+            filtros["credito"] = tipos_credito
             print("FILTROS: ", filtros)
-            for pasta in list(pastas.keys()):
-                df = get_dados_mailing(filtros, pasta_selecionada=pasta, formato_saida=formato_saida, conjunto_telefones=conjunto_telefones, tipos_telefone= tipos_telefone, tipoMailing=tipoMailing, filtro_telefone_blacklist=filtro_telefone_blacklist)
-                df["CREDITO"] =  pastas[pasta]
-                dfs.append(df)
+            pasta_dados = os.path.join(pasta_raiz, "viabilidades_credito_enriquecido")
+            df = get_dados_mailing(filtros, tipos_credito=tipos_credito, formato_saida=formato_saida, conjunto_telefones=conjunto_telefones, tipos_telefone= tipos_telefone, tipoMailing=tipoMailing, filtro_telefone_blacklist=filtro_telefone_blacklist, pasta_dados=pasta_dados)
+            dfs.append(df)
 
             df = pd.concat(dfs)
             df.drop_duplicates(subset=["cnpj"], keep="first",inplace=True)
