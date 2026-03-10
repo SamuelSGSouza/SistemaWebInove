@@ -17,6 +17,11 @@ def fase_4_enriquecer(sistema, nova_execucao):
 
     df_enriquecimento = pd.read_csv(enriquecimento_path, sep=";", dtype=str,)
     df_enriquecimento["DOCUMENTO"] = df_enriquecimento["DOCUMENTO"].apply(lambda x: re.sub(r"\D+", "", str(x)).zfill(14))
+    
+    if df_enriquecimento["DOCUMENTO"].duplicated().sum() > 0:
+        salva_status(nova_execucao, titulo=f"Erro encontrar telefones para enriquecimento. Arquivo de enriquecimento possui cnpjs repetidos",status="Erro")            
+        return
+    
     todos_telefones = set()
     for file in os.listdir(viabilidades_credito_path):
         filepath = os.path.join(viabilidades_credito_path, file)
