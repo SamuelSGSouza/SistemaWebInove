@@ -48,6 +48,12 @@ def fase_4_enriquecer(sistema, nova_execucao):
     if df_enriquecimento["DOCUMENTO"].duplicated().sum() > 0:
         salva_status(nova_execucao, titulo=f"Erro encontrar telefones para enriquecimento. Arquivo de enriquecimento possui cnpjs repetidos",status="Erro")            
         return
+    if len(df_enriquecimento["DOCUMENTO"].unique().tolist()) < 1_000_000:
+        salva_status(nova_execucao, titulo=f"Erro encontrar telefones para enriquecimento. Arquivo de enriquecimento não possui a quantidade de cnpjs esperados",status="Erro")            
+        return
+    if len(df_enriquecimento["Telefone_1"].unique().tolist()) < 1_000_000:
+        salva_status(nova_execucao, titulo=f"Erro encontrar telefones para enriquecimento. Arquivo de enriquecimento não possui a quantidade de telefones esperados",status="Erro")            
+        return
     
     todos_telefones = set()
     for file in os.listdir(viabilidades_credito_path):
