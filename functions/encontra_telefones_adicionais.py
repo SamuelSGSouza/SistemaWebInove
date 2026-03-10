@@ -18,6 +18,33 @@ def fase_4_enriquecer(sistema, nova_execucao):
     df_enriquecimento = pd.read_csv(enriquecimento_path, sep=";", dtype=str,)
     df_enriquecimento["DOCUMENTO"] = df_enriquecimento["DOCUMENTO"].apply(lambda x: re.sub(r"\D+", "", str(x)).zfill(14))
     
+    cols_tel = [f"Telefone_{i}" for i in range(1, 21)]
+
+    # transforma telefones em linhas
+    df_long = df_enriquecimento.melt(
+        id_vars="DOCUMENTO",
+        value_vars=cols_tel,
+        value_name="telefone"
+    )
+
+    # remove vazios
+    df_long = df_long.dropna(subset=["telefone"])
+    df_long = df_long[df_long["telefone"] != ""]
+
+    # agrupa por documento juntando todos os telefones
+    df_group = df_long.groupby("DOCUMENTO")["telefone"].apply(list).reset_index()
+
+    # garante no máximo 20
+    df_group["telefone"] = df_group["telefone"].apply(lambda x: x[:20])
+
+    # volta para colunas Telefone_1...Telefone_20
+    df_enriquecimento = pd.DataFrame(
+        df_group["telefone"].tolist(),
+        columns=[f"Telefone_{i}" for i in range(1, 21)]
+    )
+
+    df_enriquecimento.insert(0, "DOCUMENTO", df_group["DOCUMENTO"])
+
     if df_enriquecimento["DOCUMENTO"].duplicated().sum() > 0:
         salva_status(nova_execucao, titulo=f"Erro encontrar telefones para enriquecimento. Arquivo de enriquecimento possui cnpjs repetidos",status="Erro")            
         return
