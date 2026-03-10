@@ -178,7 +178,7 @@ def verificador_fase_4(sistema, nova_execucao):
                     return False
                 df_tels = df[df[col_tel].astype(str).str.len() > 3]
                 teles = df_tels[col_tel].unique().tolist()
-                salva_status(nova_execucao, titulo=f"Total de telefones encontrados na coluna {col_tel}: {teles}",status="Em Andamento")            
+                salva_status(nova_execucao, titulo=f"Total de telefones encontrados na coluna {col_tel}: {len(teles)}",status="Em Andamento")            
 
                 telefones_encontrados += teles
             
