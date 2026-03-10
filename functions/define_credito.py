@@ -86,11 +86,17 @@ def verificador_fase_3(sistema, nova_execucao):
                 return False
             arquivo = Path(filepath)
             timestamp = arquivo.stat().st_ctime
-            data = datetime.fromtimestamp(timestamp)
-            hoje = datetime.today()
-            if hoje.day != data.day or hoje.month != data.month:
-                #data de criação não foi hoje
-                salva_status(nova_execucao, titulo=f"Erro verificar análise de crédito. Arquivo {file} não foi criado hoje.",status="Erro")
+            data_criacao = datetime.fromtimestamp(timestamp)
+
+            agora = datetime.now()
+
+            if agora - data_criacao > timedelta(hours=24):
+                # arquivo não foi criado nas últimas 24h
+                salva_status(
+                    nova_execucao,
+                    titulo=f"Erro encontrar telefones para enriquecimento. Arquivo {file} não foi criado nas últimas 24h.",
+                    status="Erro"
+                )
                 return False
             
             #verificar se todos os estados possuem as colunas esperadas
