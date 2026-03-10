@@ -3,7 +3,7 @@ import os, re
 from .contantes import *
 from data.models import *
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timedelta
 from .contantes import *
 
 def fase_3_define_credito(nova_execucao:Status_Execucoe_DB, sistema):
