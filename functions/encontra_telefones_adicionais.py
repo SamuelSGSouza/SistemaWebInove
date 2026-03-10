@@ -63,6 +63,10 @@ def fase_4_enriquecer(sistema, nova_execucao):
 
         df_viabilidades_credito.drop(columns=["DOCUMENTO", "CHAVE_ESPECIFICA", "CHAVE_GERAL"], inplace=True)
 
+        if df_viabilidades_credito["cnpj"].duplicated().sum() > 0:
+            salva_status(nova_execucao, titulo=f"Erro encontrar telefones para enriquecimento. Viabilidade do tipo {tipo_viabilidade} no estado {estado} ficou com cnpjs repetidos",status="Erro")            
+            return
+
         df_viabilidades_credito.to_csv(os.path.join(viabilidades_credito_enriquecido_path, file), sep=";", index=False)
     
     if verificador_fase_4(sistema, nova_execucao):
