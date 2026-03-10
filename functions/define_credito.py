@@ -7,55 +7,55 @@ from datetime import datetime
 from .contantes import *
 
 def fase_3_define_credito(nova_execucao:Status_Execucoe_DB, sistema):
-    raiz = os.path.join(os.getcwd(), PASTAS_RAIZ[sistema])
-    viabilidades_path = os.path.join(raiz, "viabilidades")
-    viabilidades_credito_path = os.path.join(raiz, "viabilidades_credito")
-    for file in os.listdir(viabilidades_credito_path):
-        os.remove(os.path.join(viabilidades_credito_path, file))
-    creditos_path = os.path.join(os.getcwd(), "media", "arquivos_credito", "credito.csv")
+    # raiz = os.path.join(os.getcwd(), PASTAS_RAIZ[sistema])
+    # viabilidades_path = os.path.join(raiz, "viabilidades")
+    # viabilidades_credito_path = os.path.join(raiz, "viabilidades_credito")
+    # for file in os.listdir(viabilidades_credito_path):
+    #     os.remove(os.path.join(viabilidades_credito_path, file))
+    # creditos_path = os.path.join(os.getcwd(), "media", "arquivos_credito", "credito.csv")
 
-    df_credito = pd.read_csv(creditos_path, sep=";",)
-    df_credito["CNPJ"] = df_credito["CNPJ"].apply(lambda x: re.sub(r"\D+", "", str(x)).zfill(14))
-    df_credito["CONTAINS_K"] = df_credito["LETRAS_STATUS"].apply(lambda x: True if "k" in str(x).lower() else False)
-    df_credito = df_credito[df_credito["CONTAINS_K"] == False]
+    # df_credito = pd.read_csv(creditos_path, sep=";",)
+    # df_credito["CNPJ"] = df_credito["CNPJ"].apply(lambda x: re.sub(r"\D+", "", str(x)).zfill(14))
+    # df_credito["CONTAINS_K"] = df_credito["LETRAS_STATUS"].apply(lambda x: True if "k" in str(x).lower() else False)
+    # df_credito = df_credito[df_credito["CONTAINS_K"] == False]
 
-    cnpjs_aprovados = df_credito[df_credito["APROVADO/NEGADO"] == "S"]["CNPJ"].unique().tolist()
-    cnpjs_negados = df_credito[df_credito["APROVADO/NEGADO"] != "S"]["CNPJ"].unique().tolist()
+    # cnpjs_aprovados = df_credito[df_credito["APROVADO/NEGADO"] == "S"]["CNPJ"].unique().tolist()
+    # cnpjs_negados = df_credito[df_credito["APROVADO/NEGADO"] != "S"]["CNPJ"].unique().tolist()
 
-    for file in os.listdir(viabilidades_path):
-        filepath = os.path.join(viabilidades_path, file)
+    # for file in os.listdir(viabilidades_path):
+    #     filepath = os.path.join(viabilidades_path, file)
 
-        estado = filepath.split(".")[0].split("_")[-1]
-        tipo_viabilidade = filepath.split(".")[0].split("_")[-2]
+    #     estado = filepath.split(".")[0].split("_")[-1]
+    #     tipo_viabilidade = filepath.split(".")[0].split("_")[-2]
 
-        salva_status(nova_execucao, f"Análise de crédito nos cnpjs com viabilidade {tipo_viabilidade} no estado {estado}", status="Em Andamento")
+    #     salva_status(nova_execucao, f"Análise de crédito nos cnpjs com viabilidade {tipo_viabilidade} no estado {estado}", status="Em Andamento")
 
-        df_viabilidade = pd.read_csv(filepath, sep=";", dtype=DTYPES_RECEITA_FEDERAL)
-        df_viabilidade["cnpj"] = df_viabilidade["cnpj"].apply(lambda x: re.sub(r"\D+", "", str(x)).zfill(14))
-        df_viabilidade["credito"] = "Sem Infos"
+    #     df_viabilidade = pd.read_csv(filepath, sep=";", dtype=DTYPES_RECEITA_FEDERAL)
+    #     df_viabilidade["cnpj"] = df_viabilidade["cnpj"].apply(lambda x: re.sub(r"\D+", "", str(x)).zfill(14))
+    #     df_viabilidade["credito"] = "Sem Infos"
 
-        df_viabilidade.loc[
-            df_viabilidade["cnpj"].isin(cnpjs_aprovados),
-            "credito"
-        ] = "Aprovado"
+    #     df_viabilidade.loc[
+    #         df_viabilidade["cnpj"].isin(cnpjs_aprovados),
+    #         "credito"
+    #     ] = "Aprovado"
 
-        df_viabilidade.loc[
-            df_viabilidade["cnpj"].isin(cnpjs_negados),
-            "credito"
-        ] = "Negado"
+    #     df_viabilidade.loc[
+    #         df_viabilidade["cnpj"].isin(cnpjs_negados),
+    #         "credito"
+    #     ] = "Negado"
         
         
 
-        salva_dado(
-            f"Quantidade de cnpjs com viabilidade {tipo_viabilidade} e crédito aprovado no estado {estado}", 
-            len(df_viabilidade[df_viabilidade["credito"] == "Aprovado"]["cnpj"].unique().tolist())
-        )
-        salva_dado(
-            f"Quantidade de cnpjs com viabilidade {tipo_viabilidade} e crédito negado no estado {estado}", 
-            len(df_viabilidade[df_viabilidade["credito"] == "Negado"]["cnpj"].unique().tolist())
-        )
+    #     salva_dado(
+    #         f"Quantidade de cnpjs com viabilidade {tipo_viabilidade} e crédito aprovado no estado {estado}", 
+    #         len(df_viabilidade[df_viabilidade["credito"] == "Aprovado"]["cnpj"].unique().tolist())
+    #     )
+    #     salva_dado(
+    #         f"Quantidade de cnpjs com viabilidade {tipo_viabilidade} e crédito negado no estado {estado}", 
+    #         len(df_viabilidade[df_viabilidade["credito"] == "Negado"]["cnpj"].unique().tolist())
+    #     )
 
-        df_viabilidade.to_csv(os.path.join(viabilidades_credito_path,file ), sep=";", index=False)
+    #     df_viabilidade.to_csv(os.path.join(viabilidades_credito_path,file ), sep=";", index=False)
 
 
 

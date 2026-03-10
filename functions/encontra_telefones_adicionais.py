@@ -8,63 +8,62 @@ from datetime import datetime, timedelta
 
 
 def fase_4_enriquecer(sistema, nova_execucao):
-    # raiz = os.path.join(os.getcwd(), PASTAS_RAIZ[sistema])
-    # viabilidades_credito_path = os.path.join(raiz, "viabilidades_credito")
-    # viabilidades_credito_enriquecido_path = os.path.join(raiz, "viabilidades_credito_enriquecido")
-    # for file in os.listdir(viabilidades_credito_enriquecido_path):
-    #     os.remove(os.path.join(viabilidades_credito_enriquecido_path, file))
-    # enriquecimento_path = os.path.join(os.getcwd(), "media", "arquivos_enriquecimento", "enriquecimento.csv")
+    raiz = os.path.join(os.getcwd(), PASTAS_RAIZ[sistema])
+    viabilidades_credito_path = os.path.join(raiz, "viabilidades_credito")
+    viabilidades_credito_enriquecido_path = os.path.join(raiz, "viabilidades_credito_enriquecido")
+    for file in os.listdir(viabilidades_credito_enriquecido_path):
+        os.remove(os.path.join(viabilidades_credito_enriquecido_path, file))
+    enriquecimento_path = os.path.join(os.getcwd(), "media", "arquivos_enriquecimento", "enriquecimento.csv")
 
-    # df_enriquecimento = pd.read_csv(enriquecimento_path, sep=";", dtype=str,)
-    # df_enriquecimento["DOCUMENTO"] = df_enriquecimento["DOCUMENTO"].apply(lambda x: re.sub(r"\D+", "", str(x)).zfill(14))
-    # todos_telefones = set()
-    # for file in os.listdir(viabilidades_credito_path):
-    #     filepath = os.path.join(viabilidades_credito_path, file)
+    df_enriquecimento = pd.read_csv(enriquecimento_path, sep=";", dtype=str,)
+    df_enriquecimento["DOCUMENTO"] = df_enriquecimento["DOCUMENTO"].apply(lambda x: re.sub(r"\D+", "", str(x)).zfill(14))
+    todos_telefones = set()
+    for file in os.listdir(viabilidades_credito_path):
+        filepath = os.path.join(viabilidades_credito_path, file)
         
-    #     estado = filepath.split(".")[0].split("_")[-1]
-    #     tipo_viabilidade = filepath.split(".")[0].split("_")[-2]
-    #     salva_status(nova_execucao, titulo=f"Encontrando telefones adicionais para os cnpjs do tipo {tipo_viabilidade} no estado {estado} ",status="Em Andamento")            
+        estado = filepath.split(".")[0].split("_")[-1]
+        tipo_viabilidade = filepath.split(".")[0].split("_")[-2]
+        salva_status(nova_execucao, titulo=f"Encontrando telefones adicionais para os cnpjs do tipo {tipo_viabilidade} no estado {estado} ",status="Em Andamento")            
 
-    #     df_viabilidades_credito = pd.read_csv(filepath, sep=";", dtype=DTYPES_RECEITA_FEDERAL)
-    #     df_viabilidades_credito["cnpj"] = df_viabilidades_credito["cnpj"].apply(lambda x: re.sub(r"\D+", "", str(x)).zfill(14))
+        df_viabilidades_credito = pd.read_csv(filepath, sep=";", dtype=DTYPES_RECEITA_FEDERAL)
+        df_viabilidades_credito["cnpj"] = df_viabilidades_credito["cnpj"].apply(lambda x: re.sub(r"\D+", "", str(x)).zfill(14))
         
 
-    #     cols_telefone = [f"Telefone_{i}" for i in range(1,21)]
+        cols_telefone = [f"Telefone_{i}" for i in range(1,21)]
 
-    #     df_viabilidades_credito = df_viabilidades_credito.merge(
-    #         df_enriquecimento[["DOCUMENTO"] + cols_telefone],
-    #         left_on="cnpj",
-    #         right_on="DOCUMENTO",
-    #         how="left"
-    #     )
-    #     cols_grupo1 = ["TEL1", "TEL2", "TEL3"]
-    #     cols_grupo2 = cols_telefone
+        df_viabilidades_credito = df_viabilidades_credito.merge(
+            df_enriquecimento[["DOCUMENTO"] + cols_telefone],
+            left_on="cnpj",
+            right_on="DOCUMENTO",
+            how="left"
+        )
+        cols_grupo1 = ["TEL1", "TEL2", "TEL3"]
+        cols_grupo2 = cols_telefone
 
-    #     cols_telefones = cols_grupo1 + cols_grupo2
+        cols_telefones = cols_grupo1 + cols_grupo2
 
-    #     df_viabilidades_credito[cols_telefones] = (
-    #         df_viabilidades_credito[cols_telefones].apply(lambda col: col.map(clean_phone_number))
-    #     )
+        df_viabilidades_credito[cols_telefones] = (
+            df_viabilidades_credito[cols_telefones].apply(lambda col: col.map(clean_phone_number))
+        )
 
-    #     def ordenar_telefones(row, cols):
-    #         tels = list(set([t for t in row[cols] if t and t not in todos_telefones]))   # mantém só telefones válidos
-    #         tels += [""] * (len(cols) - len(tels))  # completa com vazio
-    #         row[cols] = tels
-    #         todos_telefones.update(tels)
-    #         return row
+        def ordenar_telefones(row, cols):
+            tels = list(set([t for t in row[cols] if t and t not in todos_telefones]))   # mantém só telefones válidos
+            tels += [""] * (len(cols) - len(tels))  # completa com vazio
+            row[cols] = tels
+            todos_telefones.update(tels)
+            return row
 
-    #     df_viabilidades_credito = df_viabilidades_credito.apply(
-    #         ordenar_telefones, axis=1, cols=cols_grupo1
-    #     )
+        df_viabilidades_credito = df_viabilidades_credito.apply(
+            ordenar_telefones, axis=1, cols=cols_grupo1
+        )
 
-    #     df_viabilidades_credito = df_viabilidades_credito.apply(
-    #         ordenar_telefones, axis=1, cols=cols_grupo2
-    #     )
+        df_viabilidades_credito = df_viabilidades_credito.apply(
+            ordenar_telefones, axis=1, cols=cols_grupo2
+        )
 
-    #     df_viabilidades_credito.drop(columns=["DOCUMENTO", "CHAVE_ESPECIFICA", "CHAVE_GERAL"], inplace=True)
+        df_viabilidades_credito.drop(columns=["DOCUMENTO", "CHAVE_ESPECIFICA", "CHAVE_GERAL"], inplace=True)
 
-    #     df_viabilidades_credito.to_csv(os.path.join(viabilidad
-    # es_credito_enriquecido_path, file), sep=";", index=False)
+        df_viabilidades_credito.to_csv(os.path.join(viabilidades_credito_enriquecido_path, file), sep=";", index=False)
     
     if verificador_fase_4(sistema, nova_execucao):
         salva_status(nova_execucao, "Enriquecimento de telefones concluído.", status="Concluido")
