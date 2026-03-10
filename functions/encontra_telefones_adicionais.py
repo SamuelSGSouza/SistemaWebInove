@@ -178,10 +178,10 @@ def verificador_fase_4(sistema, nova_execucao):
                     return False
                 df_tels = df[df[col_tel].astype(str).str.len() > 3]
                 teles = df_tels[col_tel].unique().tolist()
-                salva_status(nova_execucao, titulo=f"Total de telefones encontrados na coluna {col_tel}: {len(teles)}",status="Em Andamento")            
 
                 telefones_encontrados += teles
             
+            salva_status(nova_execucao, titulo=f"Total de telefones encontrados até o momento: {len(telefones_encontrados)}",status="Em Andamento")            
 
             tipos_credito = df["credito"].unique().tolist()
             if len(tipos_credito) != 3:
