@@ -4,7 +4,7 @@ from data.models import *
 import pandas as pd
 from .utils import clean_phone_number
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timedelta
 
 
 def fase_4_enriquecer(sistema, nova_execucao):
@@ -63,7 +63,8 @@ def fase_4_enriquecer(sistema, nova_execucao):
 
     #     df_viabilidades_credito.drop(columns=["DOCUMENTO", "CHAVE_ESPECIFICA", "CHAVE_GERAL"], inplace=True)
 
-    #     df_viabilidades_credito.to_csv(os.path.join(viabilidades_credito_enriquecido_path, file), sep=";", index=False)
+    #     df_viabilidades_credito.to_csv(os.path.join(viabilidad
+    # es_credito_enriquecido_path, file), sep=";", index=False)
     
     if verificador_fase_4(sistema, nova_execucao):
         salva_status(nova_execucao, "Enriquecimento de telefones concluído.", status="Concluido")
@@ -94,11 +95,17 @@ def verificador_fase_4(sistema, nova_execucao):
                 return False
             arquivo = Path(filepath)
             timestamp = arquivo.stat().st_ctime
-            data = datetime.fromtimestamp(timestamp)
-            hoje = datetime.today()
-            if hoje.day != data.day or hoje.month != data.month:
-                #data de criação não foi hoje
-                salva_status(nova_execucao, titulo=f"Erro encontrar telefones para enriquecimento. Arquivo {file} não foi criado hoje.",status="Erro")
+            data_criacao = datetime.fromtimestamp(timestamp)
+
+            agora = datetime.now()
+
+            if agora - data_criacao > timedelta(hours=24):
+                # arquivo não foi criado nas últimas 24h
+                salva_status(
+                    nova_execucao,
+                    titulo=f"Erro encontrar telefones para enriquecimento. Arquivo {file} não foi criado nas últimas 24h.",
+                    status="Erro"
+                )
                 return False
             
             #verificar se todos os estados possuem as colunas esperadas
