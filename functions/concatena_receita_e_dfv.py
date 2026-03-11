@@ -12,7 +12,7 @@ def gera_campos_cep(df:pd.DataFrame, campo_cep, campo_numero, campo_logradouro)-
     df["CHAVE_GERAL"] = df[campo_cep].astype(str) + df[campo_logradouro].astype(str).str[-3:] + df[campo_numero].astype(str)
 
     for index, row in df.iterrows():
-        if str(row[campo_cep]).endswith("000") or len(row["CHAVE_ESPECIFICA"]) < 10:
+        if str(row[campo_cep]).endswith("000") or len(row["CHAVE_ESPECIFICA"].strip()) < 9:
             df.at[index, "CHAVE_ESPECIFICA"] = ""
         
         if not str(row[campo_cep]).endswith("000") or len(str(row["CHAVE_GERAL"])) < 10:
@@ -49,6 +49,7 @@ def fase_2_concatenador(sistema, nova_execucao:Status_Execucoe_DB):
     
                 df_receita = pd.read_csv(os.path.join(pasta_receita_federal, f"{estado}.csv"), sep=";", dtype=DTYPES_RECEITA_FEDERAL)
                 df_receita = gera_campos_cep(df_receita, "cep", "num_fachada", "logradouro")
+                df_receita["cnpj"] = df_receita["cnpj"].apply(lambda x: re.sub(r"\D+", "", str(x)).zfill(14))
 
                 df_receita.drop_duplicates(subset=["cnpj"], keep="first", inplace=True)
 
