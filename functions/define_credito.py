@@ -64,6 +64,15 @@ def fase_3_define_credito(nova_execucao:Status_Execucoe_DB, sistema):
             f"Quantidade de cnpjs com viabilidade {tipo_viabilidade} e crédito negado no estado {estado} - NAO MEI", 
             len(df_N_meis[df_N_meis["credito"] == "Negado"]["cnpj"].unique().tolist())
         )
+        salva_dado(
+            f"Quantidade de cnpjs com viabilidade {tipo_viabilidade} e sem infos de crédito no estado {estado} - NAO MEI", 
+            len(df_N_meis[df_N_meis["credito"] == "Sem Infos"]["cnpj"].unique().tolist())
+        )
+
+        salva_dado(
+                f"Quantidade de cnpjs com viabilidade {tipo_viabilidade} e sem infos de crédito no estado {estado} - MEI", 
+                len(df_meis[df_meis["credito"] == "Sem Infos"]["cnpj"].unique().tolist())
+            )
 
         df_viabilidade.to_csv(os.path.join(viabilidades_credito_path,file ), sep=";", index=False)
 

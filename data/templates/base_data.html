@@ -344,60 +344,6 @@
 </div>
 
 <!-- Script para gráficos de pizza e link ativo -->
-<script>
-  // Inicialização dos gráficos de pizza
-  document.addEventListener('DOMContentLoaded', function () {
-    // Gráfico 1: Vendas por categoria
-    const ctx1 = document.getElementById('pieChartCategories').getContext('2d');
-    new Chart(ctx1, {
-      type: 'pie',
-      data: {
-        labels: ['Eletrônicos', 'Vestuário', 'Casa e Jardim', 'Livros', 'Esportes'],
-        datasets: [{
-          data: [35, 25, 20, 10, 10],
-          backgroundColor: ['#0d6efd', '#20c997', '#ffc107', '#dc3545', '#6f42c1'],
-          borderWidth: 0
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: true,
-        plugins: {
-          legend: { position: 'bottom' }
-        }
-      }
-    });
 
-    // Gráfico 2: Origem do tráfego
-    const ctx2 = document.getElementById('pieChartTraffic').getContext('2d');
-    new Chart(ctx2, {
-      type: 'doughnut', // também poderia ser 'pie'
-      data: {
-        labels: ['Busca Orgânica', 'Redes Sociais', 'E-mail', 'Direto', 'Referências'],
-        datasets: [{
-          data: [40, 25, 15, 12, 8],
-          backgroundColor: ['#0d6efd', '#20c997', '#ffc107', '#dc3545', '#6f42c1'],
-          borderWidth: 0
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: true,
-        plugins: {
-          legend: { position: 'bottom' }
-        },
-        cutout: '60%' // para efeito de donut
-      }
-    });
-  });
-
-  // Destacar link ativo (simulação)
-  document.querySelectorAll('.nav-link').forEach(link => {
-    link.addEventListener('click', function(e) {
-      document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
-      this.classList.add('active');
-    });
-  });
-</script>
 {% endblock %}
 

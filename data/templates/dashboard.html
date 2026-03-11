@@ -65,24 +65,23 @@
     <div class="row g-4 mb-4">
       <div class="col-md-6">
         <div class="chart-placeholder">
-          <h5 class="fw-semibold mb-3">Vendas por categoria</h5>
-          <canvas id="pieChartCategories" style="max-height: 250px; width: 100%;"></canvas>
+          <h5 class="fw-semibold mb-3">Créditos MEI</h5>
+          <canvas id="ChartMEI" style="max-height: 250px; width: 100%;"></canvas>
         </div>
       </div>
       <div class="col-md-6">
         <div class="chart-placeholder">
-          <h5 class="fw-semibold mb-3">Origem do tráfego</h5>
-          <canvas id="pieChartTraffic" style="max-height: 250px; width: 100%;"></canvas>
+          <h5 class="fw-semibold mb-3">Créditos Não MEI</h5>
+          <canvas id="ChartNMEI" style="max-height: 250px; width: 100%;"></canvas>
         </div>
       </div>
     </div>
 
     <!-- Gráfico de barras e pedidos recentes (inalterado) -->
-    <div class="row g-4 mb-4">
+    <!-- <div class="row g-4 mb-4">
       <div class="col-lg-7">
         <div class="chart-placeholder">
           <h5 class="fw-semibold mb-4">Receita mensal</h5>
-          <!-- Placeholder de gráfico de barras simples -->
           <div class="mb-4">
             <div class="d-flex justify-content-between mb-1"><span>Jan</span> <span>R$ 32k</span></div>
             <div class="bar" style="width: 70%;"></div>
@@ -122,7 +121,7 @@
           <a href="#" class="text-decoration-none mt-auto">Ver todos <i class="fas fa-arrow-right ms-1"></i></a>
         </div>
       </div>
-    </div>
+    </div> -->
 
     <!-- Tabela de pedidos -->
     <div class="chart-placeholder">
@@ -310,4 +309,60 @@
 </script>
     </div>
   </div>
+
+  <script>
+  // Inicialização dos gráficos de pizza
+  document.addEventListener('DOMContentLoaded', function () {
+    // Gráfico 1: Vendas por categoria
+    const ctx1 = document.getElementById('ChartMEI').getContext('2d');
+    new Chart(ctx1, {
+      type: 'pie',
+      data: {
+        labels: ['Crédito Aprovado', 'Crédito Negado', 'Sem Info de Crédito', ],
+        datasets: [{
+          data: [{{quantidade_credito_aprovado_mei}}, {{quantidade_credito_negado_mei}}, {{quantidade_credito_sem_info_mei}}],
+          backgroundColor: ['#20c997','#dc3545', '#ffc107'],
+          borderWidth: 0
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+          legend: { position: 'bottom' }
+        }
+      }
+    });
+
+    // Gráfico 2: Origem do tráfego
+    const ctx2 = document.getElementById('ChartNMEI').getContext('2d');
+    new Chart(ctx2, {
+      type: 'doughnut', // também poderia ser 'pie'
+      data: {
+        labels: ['Crédito Aprovado', 'Crédito Negado', 'Sem Info de Crédito',],
+        datasets: [{
+          data: [{{quantidade_credito_aprovado_N_mei}}, {{quantidade_credito_negado_N_mei}}, {{quantidade_credito_sem_info_N_mei}}],
+          backgroundColor: ['#20c997','#dc3545', '#ffc107'],
+          borderWidth: 0
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+          legend: { position: 'bottom' }
+        },
+        cutout: '60%' // para efeito de donut
+      }
+    });
+  });
+
+  // Destacar link ativo (simulação)
+  document.querySelectorAll('.nav-link').forEach(link => {
+    link.addEventListener('click', function(e) {
+      document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+      this.classList.add('active');
+    });
+  });
+</script>
 {% endblock %}

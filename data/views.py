@@ -32,31 +32,50 @@ from functions.gerador import inicia_gerador
 
 # Create your views here.
 
-# for file in os.listdir("media/viabilidades"):
-#     filepath = os.path.join("media/viabilidades", file)
-#     estado = filepath.split(".")[0].split("_")[-1]
-#     tipo_viabilidade = filepath.split(".")[0].split("_")[-2]
+for file in os.listdir("media/viabilidades"):
+    filepath = os.path.join("media/viabilidades", file)
+    estado = filepath.split(".")[0].split("_")[-1]
+    tipo_viabilidade = filepath.split(".")[0].split("_")[-2]
 
-#     quantidade = len(pd.read_csv(filepath, sep=";", dtype=DTYPES_RECEITA_FEDERAL).index)
-#     salva_dado(f"Quantidade de Empresas com Viabilidade {tipo_viabilidade} no Estado {estado}", quantidade)
+    quantidade = len(pd.read_csv(filepath, sep=";", dtype=DTYPES_RECEITA_FEDERAL).index)
+    salva_dado(f"Quantidade de Empresas com Viabilidade {tipo_viabilidade} no Estado {estado}", quantidade)
 
-# for file in os.listdir("media/viabilidades_credito"):
-#     filepath = os.path.join("media/viabilidades_credito", file)
-#     estado = filepath.split(".")[0].split("_")[-1]
-#     tipo_viabilidade = filepath.split(".")[0].split("_")[-2]
+for file in os.listdir("media/viabilidades_credito"):
+    filepath = os.path.join("media/viabilidades_credito", file)
+    estado = filepath.split(".")[0].split("_")[-1]
+    tipo_viabilidade = filepath.split(".")[0].split("_")[-2]
 
-#     df_viabilidade = pd.read_csv(filepath, sep=";", dtype=DTYPES_RECEITA_FEDERAL)
+    df_viabilidade = pd.read_csv(filepath, sep=";", dtype=DTYPES_RECEITA_FEDERAL)
 
-#     df_meis = df_viabilidade[df_viabilidade["MEINAOMEI"] == "S"]
-#     df_N_meis = df_viabilidade[df_viabilidade["MEINAOMEI"] != "S"]
-#     salva_dado(
-#         f"Quantidade de cnpjs com viabilidade {tipo_viabilidade} e crédito aprovado no estado {estado} - MEI", 
-#         len(df_meis[df_meis["credito"] == "Aprovado"]["cnpj"].unique().tolist())
-#     )
-#     salva_dado(
-#             f"Quantidade de cnpjs com viabilidade {tipo_viabilidade} e crédito aprovado no estado {estado} - NAO MEI", 
-#             len(df_N_meis[df_N_meis["credito"] == "Aprovado"]["cnpj"].unique().tolist())
-#         )
+    df_meis = df_viabilidade[df_viabilidade["MEINAOMEI"] == "S"]
+    df_N_meis = df_viabilidade[df_viabilidade["MEINAOMEI"] != "S"]
+    salva_dado(
+        f"Quantidade de cnpjs com viabilidade {tipo_viabilidade} e crédito aprovado no estado {estado} - MEI", 
+        len(df_meis[df_meis["credito"] == "Aprovado"]["cnpj"].unique().tolist())
+    )
+    salva_dado(
+            f"Quantidade de cnpjs com viabilidade {tipo_viabilidade} e crédito aprovado no estado {estado} - NAO MEI", 
+            len(df_N_meis[df_N_meis["credito"] == "Aprovado"]["cnpj"].unique().tolist())
+        )
+
+    salva_dado(
+            f"Quantidade de cnpjs com viabilidade {tipo_viabilidade} e crédito negado no estado {estado} - MEI", 
+            len(df_meis[df_meis["credito"] == "Negado"]["cnpj"].unique().tolist())
+        )
+    salva_dado(
+        f"Quantidade de cnpjs com viabilidade {tipo_viabilidade} e crédito negado no estado {estado} - NAO MEI", 
+        len(df_N_meis[df_N_meis["credito"] == "Negado"]["cnpj"].unique().tolist())
+    )
+    salva_dado(
+            f"Quantidade de cnpjs com viabilidade {tipo_viabilidade} e sem infos de crédito no estado {estado} - NAO MEI", 
+            len(df_N_meis[df_N_meis["credito"] == "Sem Infos"]["cnpj"].unique().tolist())
+        )
+
+    salva_dado(
+            f"Quantidade de cnpjs com viabilidade {tipo_viabilidade} e sem infos de crédito no estado {estado} - MEI", 
+            len(df_meis[df_meis["credito"] == "Sem Infos"]["cnpj"].unique().tolist())
+        )
+    
 salva_dado("Total Empresas Receita Federal", 27924132)
 
 
@@ -76,6 +95,17 @@ class Dashboard(LoginRequiredMixin,TemplateView):
 
         dados_credito = []
 
+        quantidade_credito_aprovado_N_mei = 0
+        quantidade_credito_aprovado_mei = 0
+        
+        
+        quantidade_credito_negado_N_mei = 0
+        quantidade_credito_negado_mei = 0
+        
+
+        quantidade_credito_sem_info_N_mei = 0
+        quantidade_credito_sem_info_mei = 0
+
         for estado in ESTADOS_BR:
             dado = DadoExtracao.objects.filter(titulo__icontains=f"Quantidade de Empresas com Viabilidade Primaria no Estado {estado}").order_by("-id")[0]
             total_viabilidades += dado.quantidade
@@ -86,14 +116,43 @@ class Dashboard(LoginRequiredMixin,TemplateView):
             total_viabilidades_secundarias += dado.quantidade
 
             dado_NMEI_primario = DadoExtracao.objects.filter(titulo__icontains=f"Quantidade de cnpjs com viabilidade Primaria e crédito aprovado no estado {estado} - NAO MEI").order_by("-id")[0]
-            dado_MEI_primario = DadoExtracao.objects.filter(titulo__icontains=f"Quantidade de cnpjs com viabilidade Primaria e crédito aprovado no estado {estado} - MEI").order_by("-id")[0]
+            quantidade_credito_aprovado_N_mei += dado_NMEI_primario.quantidade
             dado_NMEI_secundaria = DadoExtracao.objects.filter(titulo__icontains=f"Quantidade de cnpjs com viabilidade Secundaria e crédito aprovado no estado {estado} - NAO MEI").order_by("-id")[0]
+            quantidade_credito_aprovado_N_mei += dado_NMEI_secundaria.quantidade
+            dado_MEI_primario = DadoExtracao.objects.filter(titulo__icontains=f"Quantidade de cnpjs com viabilidade Primaria e crédito aprovado no estado {estado} - MEI").order_by("-id")[0]
+            quantidade_credito_aprovado_mei += dado_MEI_primario.quantidade
             dado_MEI_secundaria = DadoExtracao.objects.filter(titulo__icontains=f"Quantidade de cnpjs com viabilidade Secundaria e crédito aprovado no estado {estado} - MEI").order_by("-id")[0]
-            
+            quantidade_credito_aprovado_mei += dado_MEI_secundaria.quantidade
+
+            dado_MEI_secundaria_negado = DadoExtracao.objects.filter(titulo__icontains=f"Quantidade de cnpjs com viabilidade Secundaria e crédito negado no estado {estado} - MEI").order_by("-id")[0]
+            quantidade_credito_negado_mei += dado_MEI_secundaria_negado.quantidade
+            dado_MEI_primario_negado = DadoExtracao.objects.filter(titulo__icontains=f"Quantidade de cnpjs com viabilidade Primaria e crédito negado no estado {estado} - MEI").order_by("-id")[0]
+            quantidade_credito_negado_mei += dado_MEI_primario_negado.quantidade
+            dado_NMEI_secundaria_negado = DadoExtracao.objects.filter(titulo__icontains=f"Quantidade de cnpjs com viabilidade Secundaria e crédito negado no estado {estado} - NAO MEI").order_by("-id")[0]
+            quantidade_credito_negado_N_mei += dado_NMEI_secundaria_negado.quantidade
+            dado_NMEI_primario_negado = DadoExtracao.objects.filter(titulo__icontains=f"Quantidade de cnpjs com viabilidade Primaria e crédito negado no estado {estado} - NAO MEI").order_by("-id")[0]
+            quantidade_credito_negado_N_mei += dado_NMEI_primario_negado.quantidade
+
+
+            dado_MEI_secundaria_sem_infos = DadoExtracao.objects.filter(titulo__icontains=f"Quantidade de cnpjs com viabilidade Secundaria e sem infos de crédito no estado {estado} - MEI").order_by("-id")[0]
+            quantidade_credito_sem_info_mei += dado_MEI_secundaria_sem_infos.quantidade
+            dado_MEI_primario_sem_info = DadoExtracao.objects.filter(titulo__icontains=f"Quantidade de cnpjs com viabilidade Primaria e sem infos de crédito no estado {estado} - MEI").order_by("-id")[0]
+            quantidade_credito_sem_info_mei += dado_MEI_primario_sem_info.quantidade
+            dado_NMEI_secundaria_sem_info = DadoExtracao.objects.filter(titulo__icontains=f"Quantidade de cnpjs com viabilidade Secundaria e sem infos de crédito no estado {estado} - NAO MEI").order_by("-id")[0]
+            quantidade_credito_sem_info_N_mei += dado_NMEI_secundaria_sem_info.quantidade
+            dado_NMEI_primario_sem_info = DadoExtracao.objects.filter(titulo__icontains=f"Quantidade de cnpjs com viabilidade Primaria e sem infos de crédito no estado {estado} - NAO MEI").order_by("-id")[0]
+            quantidade_credito_sem_info_N_mei += dado_NMEI_primario_sem_info.quantidade
         
         ctx["total_empresas_viabilidade"] = total_viabilidades
         ctx["total_empresas_viabilidade_primaria"] = total_viabilidades_primarias
         ctx["total_empresas_viabilidade_secundaria"] = total_viabilidades_secundarias
+
+        ctx["quantidade_credito_aprovado_N_mei"] = quantidade_credito_aprovado_N_mei
+        ctx["quantidade_credito_aprovado_mei"] = quantidade_credito_aprovado_mei
+        ctx["quantidade_credito_negado_N_mei"] = quantidade_credito_negado_N_mei
+        ctx["quantidade_credito_negado_mei"] = quantidade_credito_negado_mei
+        ctx["quantidade_credito_sem_info_N_mei"] = quantidade_credito_sem_info_N_mei
+        ctx["quantidade_credito_sem_info_mei"] = quantidade_credito_sem_info_mei
         return ctx
 
 class Status_Execucao(LoginRequiredMixin,TemplateView):
