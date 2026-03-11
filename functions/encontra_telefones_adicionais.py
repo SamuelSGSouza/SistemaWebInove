@@ -193,5 +193,4 @@ def verificador_fase_4(sistema, nova_execucao):
             # df_telefones = df[colunas_telefone]
             # for index, row in df_telefones.iterrows():
             #     tels = [row["TEL1"], row["TEL2"], row["TEL3"]]
-
     return True
