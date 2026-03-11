@@ -59,6 +59,7 @@ from functions.gerador import inicia_gerador
 #         )
 salva_dado("Total Empresas Receita Federal", 27924132)
 
+
 class Dashboard(LoginRequiredMixin,TemplateView):
     template_name = "dashboard.html"
     
