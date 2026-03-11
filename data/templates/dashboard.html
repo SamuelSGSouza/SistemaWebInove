@@ -1,5 +1,5 @@
 {% extends 'base_data.html' %}
-
+{% load humanize %}
 {% block main_body %}
 
     <!-- Cabeçalho da página -->
@@ -18,20 +18,19 @@
             <i class="fas fa-building"></i>
           </div>
           <div>
-            <span class="text-muted text-uppercase small">Empresas com Viabilidade</span>
-            <h3 class="fw-bold mb-0">45.678</h3>
-            <!-- <span class="text-success small"><i class="fas fa-arrow-up me-1"></i> +12%</span> -->
+            <span class="text-muted text-uppercase small">Empresas Encontradas na RF</span>
+            <h3 class="fw-bold mb-0">{{ total_empresas.quantidade|intcomma }}</h3>            <!-- <span class="text-success small"><i class="fas fa-arrow-up me-1"></i> +12%</span> -->
           </div>
         </div>
       </div>
       <div class="col-md-6 col-xl-3">
         <div class="stat-card p-3 d-flex align-items-center">
           <div class="stat-icon me-3" style="background: #e3f2fd; color: #0dcaf0;">
-            <i class="fas fa-dollar-sign"></i>
+            <i class="fas fa-briefcase"></i>
           </div>
           <div>
-            <span class="text-muted text-uppercase small">Empresas com crédito informado</span>
-            <h3 class="fw-bold mb-0">2.345</h3>
+            <span class="text-muted text-uppercase small">Total de Empresas com viabilidade</span>
+            <h3 class="fw-bold mb-0">{{total_empresas_viabilidade|intcomma}}</h3>
             <!-- <span class="text-success small"><i class="fas fa-arrow-up me-1"></i> +5%</span> -->
           </div>
         </div>
@@ -39,23 +38,23 @@
       <div class="col-md-6 col-xl-3">
         <div class="stat-card p-3 d-flex align-items-center">
           <div class="stat-icon me-3" style="background: #dbfed9; color: #13ff07;">
-            <i class="fas fa-check"></i>
+            <i class="fas fa-star"></i>
           </div>
           <div>
-            <span class="text-muted text-uppercase small">Empresas com crédito aprovado</span>
-            <h3 class="fw-bold mb-0">1.287</h3>
+            <span class="text-muted text-uppercase small">Viabilidades Primárias</span>
+            <h3 class="fw-bold mb-0">{{total_empresas_viabilidade_primaria|intcomma}}</h3>
             <!-- <span class="text-success small"><i class="fas fa-arrow-up me-1"></i> +8%</span> -->
           </div>
         </div>
       </div>
       <div class="col-md-6 col-xl-3">
         <div class="stat-card p-3 d-flex align-items-center">
-          <div class="stat-icon me-3" style="background: #feebe8; color: #c14a42;">
-            <i class="fas fa-x"></i>
+          <div class="stat-icon me-3" style="background: #feebe8; color: #0755ff;">
+            <i class="far fa-star"></i>
           </div>
           <div>
-            <span class="text-muted text-uppercase small">Empresas com crédito negado</span>
-            <h3 class="fw-bold mb-0">25.454</h3>
+            <span class="text-muted text-uppercase small">Viabilidades Secundárias</span>
+            <h3 class="fw-bold mb-0">{{total_empresas_viabilidade_secundaria|intcomma}}</h3>
             <!-- <span class="text-danger small"><i class="fas fa-arrow-down me-1"></i> -2%</span> -->
           </div>
         </div>
@@ -127,43 +126,188 @@
 
     <!-- Tabela de pedidos -->
     <div class="chart-placeholder">
-      <h5 class="fw-semibold mb-3">Últimos pedidos</h5>
-      <div class="table-responsive">
-        <table class="table table-custom align-middle mb-0">
-          <thead class="text-muted small">
-            <tr>
-              <th>Pedido</th>
-              <th>Cliente</th>
-              <th>Data</th>
-              <th>Valor</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>#INV-1001</td>
-              <td><i class="fas fa-user-circle me-2"></i> Ana Silva</td>
-              <td>12/05/2025</td>
-              <td>R$ 349,90</td>
-              <td><span class="badge-status"><i class="fas fa-check-circle me-1"></i> Entregue</span></td>
-            </tr>
-            <tr>
-              <td>#INV-1002</td>
-              <td><i class="fas fa-user-circle me-2"></i> Carlos Lima</td>
-              <td>11/05/2025</td>
-              <td>R$ 1.279,00</td>
-              <td><span class="badge-status bg-warning bg-opacity-10 text-warning"><i class="fas fa-clock me-1"></i> Pendente</span></td>
-            </tr>
-            <tr>
-              <td>#INV-1003</td>
-              <td><i class="fas fa-user-circle me-2"></i> Mariana Costa</td>
-              <td>10/05/2025</td>
-              <td>R$ 89,90</td>
-              <td><span class="badge-status"><i class="fas fa-check-circle me-1"></i> Entregue</span></td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      <h5 class="fw-semibold mb-3">Todos os Dados</h5>
+      
+      <div class="table-wrapper">
+  <!-- Campo de filtro -->
+  <div class="filter-container">
+    <input
+      type="text"
+      id="filterInput"
+      class="filter-input"
+      placeholder="🔍 Filtrar por título..."
+      aria-label="Filtrar por título"
+    />
+  </div>
+
+  <!-- Tabela -->
+  <div class="table-responsive">
+    <table class="table table-custom align-middle mb-0" id="dataTable">
+      <thead class="table-header">
+        <tr>
+          <th>Dado</th>
+          <th>Quantidade</th>
+          <th>Data atualização</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for dado in dados %}
+        <tr>
+          <td>{{ dado.titulo }}</td>
+          <td>{{ dado.quantidade }}</td>
+          <td>{{ dado.momento_criacao }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<style>
+  /* Estilo geral da página (opcional – ajuste conforme seu projeto) */
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #f8fafc;
+    margin: 0;
+    padding: 20px;
+  }
+
+  /* Container que envolve filtro + tabela */
+  .table-wrapper {
+    max-width: 1200px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 20px 35px -8px rgba(0, 0, 0, 0.1), 0 5px 10px -4px rgba(0, 0, 0, 0.05);
+    padding: 1.5rem;
+    transition: all 0.2s ease;
+  }
+
+  /* Estilo do campo de filtro */
+  .filter-container {
+    margin-bottom: 1.5rem;
+  }
+
+  .filter-input {
+    width: 100%;
+    max-width: 320px;
+    padding: 0.75rem 1rem;
+    font-size: 0.95rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 60px; /* pill shape */
+    outline: none;
+    background: #ffffff;
+    transition: all 0.2s;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+    font-family: inherit;
+  }
+
+  .filter-input:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
+  }
+
+  .filter-input::placeholder {
+    color: #94a3b8;
+    font-weight: 300;
+  }
+
+  /* Estilo da tabela */
+  .table-custom {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0 6px;
+    margin: 0;
+  }
+
+  .table-custom th {
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: #475569;
+    background: #f1f5f9;
+    padding: 1rem 1.25rem;
+    white-space: nowrap;
+    border: none;
+  }
+
+  .table-custom td {
+    background: white;
+    padding: 1rem 1.25rem;
+    color: #1e293b;
+    font-size: 0.95rem;
+    border: none;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    transition: background 0.15s;
+  }
+
+  /* Primeiro e último th/td com bordas arredondadas */
+  .table-custom th:first-child {
+    border-top-left-radius: 14px;
+    border-bottom-left-radius: 14px;
+  }
+  .table-custom th:last-child {
+    border-top-right-radius: 14px;
+    border-bottom-right-radius: 14px;
+  }
+
+  .table-custom td:first-child {
+    border-top-left-radius: 14px;
+    border-bottom-left-radius: 14px;
+  }
+  .table-custom td:last-child {
+    border-top-right-radius: 14px;
+    border-bottom-right-radius: 14px;
+  }
+
+  /* Linhas com leve elevação ao passar o mouse */
+  .table-custom tbody tr:hover td {
+    background: #fafdff;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.02);
+    cursor: default;
+  }
+
+  /* Responsividade: mantém a rolagem horizontal em telas pequenas */
+  .table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+</style>
+
+<script>
+  (function() {
+    // Função de filtro
+    function filterTable() {
+      const input = document.getElementById('filterInput');
+      const filterValue = input.value.trim().toLowerCase();
+      const table = document.getElementById('dataTable');
+      const rows = table.querySelectorAll('tbody tr');
+
+      rows.forEach(row => {
+        const titleCell = row.querySelector('td:first-child'); // primeira coluna = título
+        if (titleCell) {
+          const titleText = titleCell.textContent || titleCell.innerText;
+          if (titleText.toLowerCase().includes(filterValue)) {
+            row.style.display = ''; // mostra
+          } else {
+            row.style.display = 'none'; // esconde
+          }
+        }
+      });
+    }
+
+    // Aguarda o carregamento completo do DOM
+    document.addEventListener('DOMContentLoaded', function() {
+      const input = document.getElementById('filterInput');
+      if (input) {
+        input.addEventListener('keyup', filterTable);
+        // Opcional: também filtra ao colar ou recortar
+        input.addEventListener('search', filterTable); // para o botão "x" de reset em alguns navegadores
+      }
+    });
+  })();
+</script>
     </div>
   </div>
 {% endblock %}

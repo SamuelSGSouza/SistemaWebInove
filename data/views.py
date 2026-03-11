@@ -31,8 +31,69 @@ from functions.contantes import *
 from functions.gerador import inicia_gerador
 
 # Create your views here.
+
+for file in os.listdir("media/viabilidades"):
+    filepath = os.path.join("media/viabilidades", file)
+    estado = filepath.split(".")[0].split("_")[-1]
+    tipo_viabilidade = filepath.split(".")[0].split("_")[-2]
+
+    quantidade = len(pd.read_csv(filepath, sep=";", dtype=DTYPES_RECEITA_FEDERAL).index)
+    salva_dado(f"Quantidade de Empresas com Viabilidade {tipo_viabilidade} no Estado {estado}", quantidade)
+
+for file in os.listdir("media/viabilidades_credito"):
+    filepath = os.path.join("media/viabilidades_credito", file)
+    estado = filepath.split(".")[0].split("_")[-1]
+    tipo_viabilidade = filepath.split(".")[0].split("_")[-2]
+
+    df_viabilidade = pd.read_csv(filepath, sep=";", dtype=DTYPES_RECEITA_FEDERAL)
+
+    df_meis = df_viabilidade[df_viabilidade["MEINAOMEI"] == "S"]
+    df_N_meis = df_viabilidade[df_viabilidade["MEINAOMEI"] != "S"]
+    salva_dado(
+        f"Quantidade de cnpjs com viabilidade {tipo_viabilidade} e crédito aprovado no estado {estado} - MEI", 
+        len(df_meis[df_meis["credito"] == "Aprovado"]["cnpj"].unique().tolist())
+    )
+    salva_dado(
+            f"Quantidade de cnpjs com viabilidade {tipo_viabilidade} e crédito aprovado no estado {estado} - NAO MEI", 
+            len(df_N_meis[df_N_meis["credito"] == "Aprovado"]["cnpj"].unique().tolist())
+        )
+
+
 class Dashboard(LoginRequiredMixin,TemplateView):
     template_name = "dashboard.html"
+    
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["dados"] = DadoExtracao.objects.filter().order_by("-id")
+        if not DadoExtracao.objects.filter(titulo="Total Empresas Receita Federal").exists():
+            DadoExtracao.objects.create(titulo="Total Empresas Receita Federal", quantidade=27924132)
+        ctx["total_empresas"] = DadoExtracao.objects.filter(titulo="Total Empresas Receita Federal").order_by("-id")[0]
+        
+        total_viabilidades = 0
+        total_viabilidades_primarias = 0 
+        total_viabilidades_secundarias = 0 
+
+        dados_credito = []
+
+        for estado in ESTADOS_BR:
+            dado = DadoExtracao.objects.filter(titulo__icontains=f"Quantidade de Empresas com Viabilidade Primaria no Estado {estado}").order_by("-id")[0]
+            total_viabilidades += dado.quantidade
+            total_viabilidades_primarias += dado.quantidade
+
+            dado = DadoExtracao.objects.filter(titulo__icontains=f"Quantidade de Empresas com Viabilidade Secundaria no Estado {estado}").order_by("-id")[0]
+            total_viabilidades += dado.quantidade
+            total_viabilidades_secundarias += dado.quantidade
+
+            dado_NMEI_primario = DadoExtracao.objects.filter(titulo__icontains=f"Quantidade de cnpjs com viabilidade Primaria e crédito aprovado no estado {estado} - NAO MEI").order_by("-id")[0]
+            dado_MEI_primario = DadoExtracao.objects.filter(titulo__icontains=f"Quantidade de cnpjs com viabilidade Primaria e crédito aprovado no estado {estado} - MEI").order_by("-id")[0]
+            dado_NMEI_secundaria = DadoExtracao.objects.filter(titulo__icontains=f"Quantidade de cnpjs com viabilidade Secundaria e crédito aprovado no estado {estado} - NAO MEI").order_by("-id")[0]
+            dado_MEI_secundaria = DadoExtracao.objects.filter(titulo__icontains=f"Quantidade de cnpjs com viabilidade Secundaria e crédito aprovado no estado {estado} - MEI").order_by("-id")[0]
+            
+        
+        ctx["total_empresas_viabilidade"] = total_viabilidades
+        ctx["total_empresas_viabilidade_primaria"] = total_viabilidades_primarias
+        ctx["total_empresas_viabilidade_secundaria"] = total_viabilidades_secundarias
+        return ctx
 
 class Status_Execucao(LoginRequiredMixin,TemplateView):
     template_name = "status_execucao.html"
@@ -64,7 +125,7 @@ class Status_Execucao(LoginRequiredMixin,TemplateView):
             context["fase_atual"] = context["fases"][len(context["fases"])-1].titulo
         return context
 
-# dados = [['Total de empresas Ativas Meis no estado federal/MG', 1814017], ['Total de empresas Ativas NÃO Meis no estado federal/MG', 1092601], ['Total de empresas Ativas Meis no estado federal/TO', 107953], ['Total de empresas Ativas NÃO Meis no estado federal/TO', 73478], ['Total de empresas Ativas Meis no estado federal/ES', 388652], ['Total de empresas Ativas NÃO Meis no estado federal/ES', 291255], ['Total de empresas Ativas Meis no estado federal/SC', 849553], ['Total de empresas Ativas NÃO Meis no estado federal/SC', 661250], ['Total de empresas Ativas Meis no estado federal/PA', 326359], ['Total de empresas Ativas NÃO Meis no estado federal/PA', 204691], ['Total de empresas Ativas Meis no estado federal/AP', 29232], ['Total de empresas Ativas NÃO Meis no estado federal/AP', 23259], ['Total de empresas Ativas Meis no estado federal/MT', 340693], ['Total de empresas Ativas NÃO Meis no estado federal/MT', 224477], ['Total de empresas Ativas Meis no estado federal/RS', 1058683], ['Total de empresas Ativas NÃO Meis no estado federal/RS', 686749], ['Total de empresas Ativas Meis no estado federal/GO', 625067], ['Total de empresas Ativas NÃO Meis no estado federal/GO', 415746], ['Total de empresas Ativas Meis no estado federal/SP', 4853509], ['Total de empresas Ativas NÃO Meis no estado federal/SP', 3640312], ['Total de empresas Ativas Meis no estado federal/RN', 206158], ['Total de empresas Ativas NÃO Meis no estado federal/RN', 104181], ['Total de empresas Ativas Meis no estado federal/PB', 230985], ['Total de empresas Ativas NÃO Meis no estado federal/PB', 118993], ['Total de empresas Ativas Meis no estado federal/AM', 186088], ['Total de empresas Ativas NÃO Meis no estado federal/AM', 102263], ['Total de empresas Ativas Meis no estado federal/MS', 236921], ['Total de empresas Ativas NÃO Meis no estado federal/MS', 142567], ['Total de empresas Ativas Meis no estado federal/BA', 816523], ['Total de empresas Ativas NÃO Meis no estado federal/BA', 474885], ['Total de empresas Ativas Meis no estado federal/CE', 481848], ['Total de empresas Ativas NÃO Meis no estado federal/CE', 273189], ['Total de empresas Ativas Meis no estado federal/MA', 226996], ['Total de empresas Ativas NÃO Meis no estado federal/MA', 154741], ['Total de empresas Ativas Meis no estado federal/RR', 32696], ['Total de empresas Ativas NÃO Meis no estado federal/RR', 17788], ['Total de empresas Ativas Meis no estado federal/RO', 103020], ['Total de empresas Ativas NÃO Meis no estado federal/RO', 69561], ['Total de empresas Ativas Meis no estado federal/SE', 106979], ['Total de empresas Ativas NÃO Meis no estado federal/SE', 66684], ['Total de empresas Ativas Meis no estado federal/RJ', 1505523], ['Total de empresas Ativas NÃO Meis no estado federal/RJ', 813805], ['Total de empresas Ativas Meis no estado federal/AL', 162794], ['Total de empresas Ativas NÃO Meis no estado federal/AL', 76124], ['Total de empresas Ativas Meis no estado federal/PE', 496708], ['Total de empresas Ativas NÃO Meis no estado federal/PE', 249336], ['Total de empresas Ativas Meis no estado federal/DF', 255061], ['Total de empresas Ativas NÃO Meis no estado federal/DF', 224299], ['Total de empresas Ativas Meis no estado federal/AC', 32922], ['Total de empresas Ativas NÃO Meis no estado federal/AC', 22479], ['Total de empresas Ativas Meis no estado federal/PI', 150575], ['Total de empresas Ativas NÃO Meis no estado federal/PI', 90456], ['Total de empresas Ativas Meis no estado federal/PR', 1137338], ['Total de empresas Ativas NÃO Meis no estado federal/PR', 846110], ['Total de Empresas Mei ativas encontradas', 16762853], ['Total de Empresas Mei ativas encontradas', 11161279], ['Total de Empresas ativas encontradas', 27924132]]
+# dados = [['Total de empresas Ativas Meis no estado federal/MG', 1814017], ['Total de empresas Ativas NÃO Meis no estado federal/MG', 1092601], ['Total de empresas Ativas Meis no estado federal/TO', 107953], ['Total de empresas Ativas NÃO Meis no estado federal/TO', 73478], ['Total de empresas Ativas Meis no estado federal/ES', 388652], ['Total de empresas Ativas NÃO Meis no estado federal/ES', 291255], ['Total de empresas Ativas Meis no estado federal/SC', 849553], ['Total de empresas Ativas NÃO Meis no estado federal/SC', 661250], ['Total de empresas Ativas Meis no estado federal/PA', 326359], ['Total de empresas Ativas NÃO Meis no estado federal/PA', 204691], ['Total de empresas Ativas Meis no estado federal/AP', 29232], ['Total de empresas Ativas NÃO Meis no estado federal/AP', 23259], ['Total de empresas Ativas Meis no estado federal/MT', 340693], ['Total de empresas Ativas NÃO Meis no estado federal/MT', 224477], ['Total de empresas Ativas Meis no estado federal/RS', 1058683], ['Total de empresas Ativas NÃO Meis no estado federal/RS', 686749], ['Total de empresas Ativas Meis no estado federal/GO', 625067], ['Total de empresas Ativas NÃO Meis no estado federal/GO', 415746], ['Total de empresas Ativas Meis no estado federal/SP', 4853509], ['Total de empresas Ativas NÃO Meis no estado federal/SP', 3640312], ['Total de empresas Ativas Meis no estado federal/RN', 206158], ['Total de empresas Ativas NÃO Meis no estado federal/RN', 104181], ['Total de empresas Ativas Meis no estado federal/PB', 230985], ['Total de empresas Ativas NÃO Meis no estado federal/PB', 118993], ['Total de empresas Ativas Meis no estado federal/AM', 186088], ['Total de empresas Ativas NÃO Meis no estado federal/AM', 102263], ['Total de empresas Ativas Meis no estado federal/MS', 236921], ['Total de empresas Ativas NÃO Meis no estado federal/MS', 142567], ['Total de empresas Ativas Meis no estado federal/BA', 816523], ['Total de empresas Ativas NÃO Meis no estado federal/BA', 474885], ['Total de empresas Ativas Meis no estado federal/CE', 481848], ['Total de empresas Ativas NÃO Meis no estado federal/CE', 273189], ['Total de empresas Ativas Meis no estado federal/MA', 226996], ['Total de empresas Ativas NÃO Meis no estado federal/MA', 154741], ['Total de empresas Ativas Meis no estado federal/RR', 32696], ['Total de empresas Ativas NÃO Meis no estado federal/RR', 17788], ['Total de empresas Ativas Meis no estado federal/RO', 103020], ['Total de empresas Ativas NÃO Meis no estado federal/RO', 69561], ['Total de empresas Ativas Meis no estado federal/SE', 106979], ['Total de empresas Ativas NÃO Meis no estado federal/SE', 66684], ['Total de empresas Ativas Meis no estado federal/RJ', 1505523], ['Total de empresas Ativas NÃO Meis no estado federal/RJ', 813805], ['Total de empresas Ativas Meis no estado federal/AL', 162794], ['Total de empresas Ativas NÃO Meis no estado federal/AL', 76124], ['Total de empresas Ativas Meis no estado federal/PE', 496708], ['Total de empresas Ativas NÃO Meis no estado federal/PE', 249336], ['Total de empresas Ativas Meis no estado federal/DF', 255061], ['Total de empresas Ativas NÃO Meis no estado federal/DF', 224299], ['Total de empresas Ativas Meis no estado federal/AC', 32922], ['Total de empresas Ativas NÃO Meis no estado federal/AC', 22479], ['Total de empresas Ativas Meis no estado federal/PI', 150575], ['Total de empresas Ativas NÃO Meis no estado federal/PI', 90456], ['Total de empresas Ativas Meis no estado federal/PR', 1137338], ['Total de empresas Ativas NÃO Meis no estado federal/PR', 846110], ['Total Empresas MEI na Receita Federal', 16762853], ['Total Empresas NMEI na Receita Federal', 11161279], ['Total Empresas Receita Federal', 27924132]]
 # for dado in dados:
 #     salva_dado(dado[0], dado[1])
 
