@@ -9,7 +9,7 @@ def inicia_gerador(sistema="oi"):
     # if fase_1_ok:
         nova_execucao = Status_Execucoe_DB.objects.create(sistema=sistema)
         fase_2_ok = fase_2_concatenador(sistema=sistema, nova_execucao=nova_execucao)
-        if fase_2_ok:
-            fase_3_ok = fase_3_define_credito(sistema=sistema, nova_execucao=nova_execucao)
-            if fase_3_ok:
-                fase_4_enriquecer(sistema=sistema, nova_execucao=nova_execucao)
+        # if fase_2_ok:
+        #     fase_3_ok = fase_3_define_credito(sistema=sistema, nova_execucao=nova_execucao)
+        #     if fase_3_ok:
+        fase_4_enriquecer(sistema=sistema, nova_execucao=nova_execucao)
