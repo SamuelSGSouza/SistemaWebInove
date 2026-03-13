@@ -53,6 +53,7 @@ def salva_status(execucao:Status_Execucoe_DB, titulo, status):
         color=dict_color[status]
     )
     execucao.save()
+    
     print("status salvo com sucesso")
 
 class Log(models.Model):
@@ -82,7 +83,7 @@ def salva_dado(titulo, quantidade, sistema="oi"):
         quantidade=quantidade,
         sistema=sistema
     )
-    
+
 
 class IniciacaoSistema(models.Model):
     mes_ano = models.CharField(max_length=255,unique=True)
