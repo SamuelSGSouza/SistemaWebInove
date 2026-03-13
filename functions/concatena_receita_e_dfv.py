@@ -139,11 +139,70 @@ def fase_2_concatenador(sistema, nova_execucao:Status_Execucoe_DB):
 
         except Exception as e:
             salva_status(nova_execucao, titulo=f"Erro ao Tratar Base da Receita: Arquivo {file} não possui as colunas esperadas",status="Erro")            
-
-            print(traceback.format_exc())
             return False
 
+    elif sistema == "janeiro_2026":
+        try:
+            
+            cnpjs_ja_coletados = []
+            pasta_cnpjs_coletados = os.path.join(os.getcwd(), "media", "viabilidades")
+            for file in os.listdir(pasta_cnpjs_coletados):
+                filepath = os.path.join(pasta_cnpjs_coletados, file)
 
+                df_coletado = pd.read_csv(filepath, sep=";", dtype=DTYPES_RECEITA_FEDERAL)
+                df_coletado["cnpj"] = df_coletado["cnpj"].apply(lambda x: re.sub(r"\D+", "", str(x)).zfill(14))
+                cnpjs = df_coletado["cnpj"].unique().tolist()
+                cnpjs_ja_coletados+= cnpjs
+
+            # COLUNAS_DFV=["UF","MUNICIPIO","LOCALIDADE","BAIRRO","LOGRADOURO","CEP","CELULA","TIPO_CDO","COMPLEMENTO2","COMPLEMENTO3","CODIGO_LOGRADOURO","NO_FACHADA","COMPLEMENTO1","VIABILIDADE_ATUAL","HP_TOTAL","HP_LIVRE","OPB_CEL","DT_ATUALIZACAO"]
+            dtype={"CNPJ": "string", "POSSE_FIBRA_CPF": "string", "SOCIO_COM_FIBRA_NO_ENDERECO": "string"}
+            path_arquivos_dfv = os.path.join(os.getcwd(), "media_janeiro_2026", "arquivos_dfv")
+            path_viabilidades = os.path.join(os.getcwd(), "media_janeiro_2026", "viabilidades")
+
+            for file in os.listdir(path_viabilidades):
+                os.remove(os.path.join(path_viabilidades, file))
+
+            for estado in ESTADOS_BR:        
+                salva_status(nova_execucao, f"Iniciando análise de viabilidades no estado {estado}", status="Em Andamento")
+    
+                df_receita = pd.read_csv(os.path.join(pasta_receita_federal, f"{estado}.csv"), sep=";", dtype=DTYPES_RECEITA_FEDERAL)
+                df_receita = gera_campos_cep(df_receita, "cep", "num_fachada", "logradouro")
+                df_receita["cnpj"] = df_receita["cnpj"].apply(lambda x: re.sub(r"\D+", "", str(x)).zfill(14))
+
+                df_receita.drop_duplicates(subset=["cnpj"], keep="first", inplace=True)
+
+                dfs_dfv = []
+                for file in os.listdir(path_arquivos_dfv):
+                    if estado in file:
+
+                        df_dfv_estado = pd.read_excel(os.path.join(path_arquivos_dfv, file), dtype=dtype)
+                        dfs_dfv.append(df_dfv_estado)
+
+                df_dfv = pd.concat(dfs_dfv)
+
+                df_dfv = df_dfv[df_dfv["POSSE_FIBRA_CPF"] != "SIM"]
+                df_dfv = df_dfv[df_dfv["SOCIO_COM_FIBRA_NO_ENDERECO"] != "SIM"]
+                df_dfv["CNPJ"] = df_dfv["CNPJ"].apply(lambda x: re.sub(r"\D+", "", str(x)).zfill(14))
+                
+                print(df_dfv["SOCIO_COM_FIBRA_NO_ENDERECO"].unique().tolist())
+                df_dfv = df_dfv[~df_dfv["CNPJ"].isin(cnpjs_ja_coletados)]
+
+                cnpjs_viaveis = df_dfv["CNPJ"].unique().tolist()
+
+                df_receita = df_receita[df_receita["cnpj"].isin(cnpjs_viaveis)]
+                df_receita.to_csv(os.path.join(path_viabilidades, f"Viabilidade_Primaria_{estado}.csv"), sep=";", index=False)
+                salva_dado(f"Quantidade de Empresas com Viabilidade Primaria no Estado {estado}", len(df_receita_viaveis.index))
+                pd.DataFrame(columns=df_receita.columns).to_csv(os.path.join(path_viabilidades, f"Viabilidade_Secundaria_{estado}.csv"), sep=";", index=False)
+
+                salva_dado(f"Quantidade de Empresas com Viabilidade Secundaria no Estado {estado}", len(df_receita_mailing_secundario.index))
+
+            
+                    
+
+        except Exception as e:
+            print(traceback.format_exc())
+            salva_status(nova_execucao, titulo=f"{e}",status="Erro")            
+            return False
 
 
 

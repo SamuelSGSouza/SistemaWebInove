@@ -77,6 +77,16 @@
     letter-spacing: 0.3px;
     box-shadow: 0 10px 20px -8px rgba(102,126,234,0.4);
   }
+  .status-badge-2 {
+    font-size: 1rem;
+    padding: 0.5rem 1.5rem;
+    border-radius: 50px;
+    background: linear-gradient(135deg, #ead866, #a29e4b);
+    color: white;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    box-shadow: 0 10px 20px -8px rgba(234, 219, 102, 0.4);
+  }
   .spinner-custom {
     animation: spin 2s linear infinite;
     display: inline-block;
@@ -108,6 +118,10 @@
       <i class="bi bi-speedometer2 me-2" style="color: #4e73df;"></i>
       Painel de Status do Sistema - {{sistema}}
     </h2>
+    {% if is_janeiro %}
+    <a href="{% url 'atualizacao_bases' %}?base=Mailing Janeiro 2026"class="btn status-badge-2" id="ModalForm">Gerar Novo Mailing</a>
+    
+    {% endif %}
     <a href="{% url 'filtra_mailing' %}"class="btn status-badge" id="currentStatusBadge">Filtrar/Baixar</a>
   </div>
 

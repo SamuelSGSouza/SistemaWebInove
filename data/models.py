@@ -67,15 +67,20 @@ def salva_log(msg,sistema):
 
 
 class DadoExtracao(models.Model):
+    sistema = models.CharField(choices=(
+        ('oi', 'oi'),
+        ('janeiro_2026', 'janeiro_2026'),
+    ), max_length=255, default="oi")
     titulo = models.CharField(max_length=255)
     quantidade = models.IntegerField()
     momento_criacao = models.DateTimeField(auto_now=True)
 
-def salva_dado(titulo, quantidade):
-    print(titulo, " ", quantidade )
+def salva_dado(titulo, quantidade, sistema="oi"):
+    
     DadoExtracao.objects.create(
         titulo=titulo,
         quantidade=quantidade,
+        sistema=sistema
     )
 
 class IniciacaoSistema(models.Model):

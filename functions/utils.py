@@ -1127,6 +1127,7 @@ def verifica_arquivo(request, arquivo_original, caminho: str, nome_pasta: str, s
             return False, f"O arquivo {arquivo_original} não contém dados."
         
         if nome_pasta not in list(dicionario_colunas_sistema.keys()):
+            print("NOME DA PASTA", nome_pasta)
             return True, "Arquivos Carregados com sucesso!"
         
         # ── 4. Encaminha para a função de validação/colunas correspondente ────
@@ -1190,6 +1191,7 @@ def verifica_base_perfilamento(request, extensao, arquivo_original, caminho_fina
     return True,f"Arquivo {arquivo_original.name} Cadastrado com sucesso!"
 
 def verifica_base_dfv(request, extensao, arquivo_original,caminho_final, df:pd.DataFrame, sistema:str) -> list:
+    print("verificando dfv")
     if sistema == "oi":
         COLUNAS_DFV=["UF","MUNICIPIO","LOCALIDADE","BAIRRO","LOGRADOURO","CEP","CELULA","TIPO_CDO","COMPLEMENTO2","COMPLEMENTO3","CODIGO_LOGRADOURO","NO_FACHADA","COMPLEMENTO1","VIABILIDADE_ATUAL","HP_TOTAL","HP_LIVRE","OPB_CEL","DT_ATUALIZACAO"]
     elif sistema == "giga_mais":

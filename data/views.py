@@ -28,7 +28,7 @@ from django.db.models import Count
 from django.core.paginator import Paginator
 import json
 from functions.contantes import *
-from functions.gerador import inicia_gerador
+from functions.gerador import inicia_gerador, inicia_gerador_mailing_2026
 
 # Create your views here.
 
@@ -161,6 +161,7 @@ class Dashboard(LoginRequiredMixin,TemplateView):
             ctx["ultima_exec"] = status.momento_inicializacao
 
         return ctx
+    
 
 class Status_Execucao(LoginRequiredMixin,TemplateView):
     template_name = "status_execucao.html"
@@ -168,6 +169,8 @@ class Status_Execucao(LoginRequiredMixin,TemplateView):
         context =  super().get_context_data(**kwargs)
 
         sistema = self.request.GET.get("sistema", "geral")
+        if not sistema:
+            sistema = self.request.GET.get("sistema", "geral")
         titulos = {
             'oi': "Mailing Original",
             'geral': "Mailing Original",
@@ -175,6 +178,8 @@ class Status_Execucao(LoginRequiredMixin,TemplateView):
             'janeiro_2026': "Mailing Janeiro 2026"
         }
         context["sistema"] = sistema
+        if sistema == "janeiro_2026":
+            context["is_janeiro"] = True
         context['titulo'] = titulos[sistema]
         self.request.session["sistema"] = sistema
 
@@ -187,10 +192,61 @@ class Status_Execucao(LoginRequiredMixin,TemplateView):
             context["data_finalizacao"] = status.momento_finalizacao
 
             context["fases"] = [f for f in Fase_Execucao_DB.objects.filter(status_execucao=status).order_by("-id")]
-            for fase in context["fases"]:
-                print(fase.titulo)
             context["fase_atual"] = context["fases"][len(context["fases"])-1].titulo
         return context
+    
+    def post(self, *args, **kwargs):
+        arquivos = self.request.FILES.getlist('arquivo')
+
+        pasta_destino = os.path.join(os.getcwd(), "media_janeiro_2026", f"arquivos_dfv")
+        os.makedirs(pasta_destino, exist_ok=True)
+
+        for path in os.listdir(pasta_destino):
+            file = os.path.join(pasta_destino, path)
+            if os.path.isfile(file):
+                os.remove(file)
+            elif os.path.isdir(file):
+                shutil.rmtree(file)
+
+        sucessos = []
+        erros = []
+        links = []
+        relatorio = []
+
+        total_arqs = 0
+        for arquivo in arquivos:
+            destino = os.path.join(pasta_destino, arquivo.name)
+            with open(destino, 'wb+') as dest:
+                for chunk in arquivo.chunks():
+                    dest.write(chunk)
+            total_arqs += 1
+            sucesso, mensagem = verifica_arquivo(self.request,arquivo, destino, "arquivos_dfv", sistema="janeiro_2026")
+            if sucesso:
+                sucessos.append(mensagem)
+            else:
+                erros.append(mensagem)
+        
+        print("Sucesssos ", sucessos)
+        print("Erros ", erros)
+        print("Mensagem ", mensagem)
+        context = {}
+        sistema="janeiro_2026"
+        context["sistema"] = sistema
+        context["is_janeiro"] = True
+        context["titulo"] = "Mailing Janeiro 2026"
+        self.request.session["sistema"] = sistema
+
+        context["acompanhar_gerador_activate"] = "active"
+
+        possiveis_status = Status_Execucoe_DB.objects.filter(sistema=sistema).order_by("-id")
+        if possiveis_status.exists():
+            status = possiveis_status[0]
+            context["data_inicializacao"] = status.momento_inicializacao
+            context["data_finalizacao"] = status.momento_finalizacao
+
+            context["fases"] = [f for f in Fase_Execucao_DB.objects.filter(status_execucao=status).order_by("-id")]
+            context["fase_atual"] = context["fases"][len(context["fases"])-1].titulo
+        return render(self.request, self.template_name, context=context)
 
 # dados = [['Total de empresas Ativas Meis no estado federal/MG', 1814017], ['Total de empresas Ativas NÃO Meis no estado federal/MG', 1092601], ['Total de empresas Ativas Meis no estado federal/TO', 107953], ['Total de empresas Ativas NÃO Meis no estado federal/TO', 73478], ['Total de empresas Ativas Meis no estado federal/ES', 388652], ['Total de empresas Ativas NÃO Meis no estado federal/ES', 291255], ['Total de empresas Ativas Meis no estado federal/SC', 849553], ['Total de empresas Ativas NÃO Meis no estado federal/SC', 661250], ['Total de empresas Ativas Meis no estado federal/PA', 326359], ['Total de empresas Ativas NÃO Meis no estado federal/PA', 204691], ['Total de empresas Ativas Meis no estado federal/AP', 29232], ['Total de empresas Ativas NÃO Meis no estado federal/AP', 23259], ['Total de empresas Ativas Meis no estado federal/MT', 340693], ['Total de empresas Ativas NÃO Meis no estado federal/MT', 224477], ['Total de empresas Ativas Meis no estado federal/RS', 1058683], ['Total de empresas Ativas NÃO Meis no estado federal/RS', 686749], ['Total de empresas Ativas Meis no estado federal/GO', 625067], ['Total de empresas Ativas NÃO Meis no estado federal/GO', 415746], ['Total de empresas Ativas Meis no estado federal/SP', 4853509], ['Total de empresas Ativas NÃO Meis no estado federal/SP', 3640312], ['Total de empresas Ativas Meis no estado federal/RN', 206158], ['Total de empresas Ativas NÃO Meis no estado federal/RN', 104181], ['Total de empresas Ativas Meis no estado federal/PB', 230985], ['Total de empresas Ativas NÃO Meis no estado federal/PB', 118993], ['Total de empresas Ativas Meis no estado federal/AM', 186088], ['Total de empresas Ativas NÃO Meis no estado federal/AM', 102263], ['Total de empresas Ativas Meis no estado federal/MS', 236921], ['Total de empresas Ativas NÃO Meis no estado federal/MS', 142567], ['Total de empresas Ativas Meis no estado federal/BA', 816523], ['Total de empresas Ativas NÃO Meis no estado federal/BA', 474885], ['Total de empresas Ativas Meis no estado federal/CE', 481848], ['Total de empresas Ativas NÃO Meis no estado federal/CE', 273189], ['Total de empresas Ativas Meis no estado federal/MA', 226996], ['Total de empresas Ativas NÃO Meis no estado federal/MA', 154741], ['Total de empresas Ativas Meis no estado federal/RR', 32696], ['Total de empresas Ativas NÃO Meis no estado federal/RR', 17788], ['Total de empresas Ativas Meis no estado federal/RO', 103020], ['Total de empresas Ativas NÃO Meis no estado federal/RO', 69561], ['Total de empresas Ativas Meis no estado federal/SE', 106979], ['Total de empresas Ativas NÃO Meis no estado federal/SE', 66684], ['Total de empresas Ativas Meis no estado federal/RJ', 1505523], ['Total de empresas Ativas NÃO Meis no estado federal/RJ', 813805], ['Total de empresas Ativas Meis no estado federal/AL', 162794], ['Total de empresas Ativas NÃO Meis no estado federal/AL', 76124], ['Total de empresas Ativas Meis no estado federal/PE', 496708], ['Total de empresas Ativas NÃO Meis no estado federal/PE', 249336], ['Total de empresas Ativas Meis no estado federal/DF', 255061], ['Total de empresas Ativas NÃO Meis no estado federal/DF', 224299], ['Total de empresas Ativas Meis no estado federal/AC', 32922], ['Total de empresas Ativas NÃO Meis no estado federal/AC', 22479], ['Total de empresas Ativas Meis no estado federal/PI', 150575], ['Total de empresas Ativas NÃO Meis no estado federal/PI', 90456], ['Total de empresas Ativas Meis no estado federal/PR', 1137338], ['Total de empresas Ativas NÃO Meis no estado federal/PR', 846110], ['Total Empresas MEI na Receita Federal', 16762853], ['Total Empresas NMEI na Receita Federal', 11161279], ['Total Empresas Receita Federal', 27924132]]
 # for dado in dados:
@@ -221,9 +277,14 @@ class TratamentosArquivosExternos(LoginRequiredMixin,TemplateView):
         context["tipo_tratamento"] = self.request.GET.get("tipo_tratamento")
 
         dict_tipos = {
-            "Limpeza de BlackList": "Envie aqui um arquivo para que sejam removidos os telefones que estão na BlackList e Quarentena"
+            "Limpeza de BlackList": "Envie aqui um arquivo para que sejam removidos os telefones que estão na BlackList e Quarentena",
         }
         context["descricao"] = dict_tipos[context["tipo_tratamento"]]
+
+        pasta = self.request.GET.get("pasta", "")
+        self.request.session["pasta"] = pasta
+        sistema = self.request.GET.get("sistema", "")
+        self.request.session["sistema"] = sistema
         return context
     
     def post(self,request,*args, **kwargs):
@@ -245,7 +306,8 @@ class TratamentosArquivosExternos(LoginRequiredMixin,TemplateView):
         erros = []
         links = []
         relatorio = []
-
+        erros_internos= None
+        
         total_arqs = 0
         for arquivo in arquivos:
             destino = os.path.join(pasta_destino, arquivo.name)
@@ -263,8 +325,7 @@ class TratamentosArquivosExternos(LoginRequiredMixin,TemplateView):
         if tipo_tratamento == "Limpeza de BlackList":
             relatorio, erros_internos = filtra_arquivos(pasta_raiz, pasta_destino, pasta_usuario)
         
-        if tipo_tratamento == "Limpeza de BlackList":
-            relatorio, erros_internos = filtra_arquivos(pasta_raiz, pasta_destino, pasta_usuario)
+        
 
         relatorio = relatorio.split("\n")
         url_path = reverse('download_arquivo')  # ou reverse('minha_rota', kwargs={'pasta': pasta}) se tiver parâmetros nomeados
@@ -276,9 +337,6 @@ class TratamentosArquivosExternos(LoginRequiredMixin,TemplateView):
             for er in erros_internos:
                 erros.append(er) 
 
-        print(f"Sucessos: {sucessos}")
-        print(f"Erros: {erros}")
-        print(f"Relatório: {relatorio}")
         ctx = self.get_context_data()
         ctx["show_modal"] = True
         ctx["modal_type"] = "success" if not erros else "error"
@@ -296,7 +354,8 @@ class AtualizaBases(LoginRequiredMixin, TemplateView):
 
         dict_tipos = {
             "BlackList": "Base de telefones em BlackList que NUNCA devem ser utilizados",
-            "Quarentena": "Base de telefones que ficarão em quarentena por determinado período até poderem ser utilizados."
+            "Quarentena": "Base de telefones que ficarão em quarentena por determinado período até poderem ser utilizados.",
+            "Mailing Janeiro 2026": "Envie aqui os arquivos de mailing restrito para iniciar a geração de um novo mailing."
         }
         context["descricao"] = dict_tipos[context["base"]]
         return context
@@ -307,12 +366,13 @@ class AtualizaBases(LoginRequiredMixin, TemplateView):
         PASTAS_RAIZ = {
             "BlackList": "arquivos_blacklist",
             "Quarentena": "arquivos_quarentena",
+            "Mailing Janeiro 2026": "arquivos_dfv",
         }
-
-        pasta_destino = os.path.join(os.getcwd(), "media", PASTAS_RAIZ[base])
+        pasta_media = "media_janeiro_2026" if base == "Mailing Janeiro 2026" else "media"
+        pasta_destino = os.path.join(os.getcwd(), pasta_media, PASTAS_RAIZ[base])
         os.makedirs(pasta_destino, exist_ok=True)
         
-        if base in ["BlackList", ]:
+        if base in ["BlackList", "Mailing Janeiro 2026"]:
             for path in os.listdir(pasta_destino):
                 file = os.path.join(pasta_destino, path)
                 if os.path.isfile(file):
@@ -325,6 +385,8 @@ class AtualizaBases(LoginRequiredMixin, TemplateView):
         links = []
         relatorio = []
 
+        sistema = self.request.session.get("sistema", "")
+
         total_arqs = 0
         for arquivo in arquivos:
             destino = os.path.join(pasta_destino, arquivo.name)
@@ -332,7 +394,7 @@ class AtualizaBases(LoginRequiredMixin, TemplateView):
                 for chunk in arquivo.chunks():
                     dest.write(chunk)
             total_arqs += 1
-            sucesso, mensagem = verifica_arquivo(request,arquivo, destino, PASTAS_RAIZ[base], "")
+            sucesso, mensagem = verifica_arquivo(request,arquivo, destino, PASTAS_RAIZ[base], sistema)
             if sucesso:
                 sucessos.append(mensagem)
             else:
@@ -346,6 +408,11 @@ class AtualizaBases(LoginRequiredMixin, TemplateView):
             if erros_internos:
                 for er in erros_internos:
                     erros.append(er)
+
+        if PASTAS_RAIZ[base] == "arquivos_dfv":
+            processo = threading.Thread(target=inicia_gerador_mailing_2026, args=("janeiro_2026",))
+            processo.start()
+            relatorio.append("Sistema Mailing Janeiro 2026 iniciado com sucesso!")
 
         ctx = self.get_context_data()
         ctx["show_modal"] = True
