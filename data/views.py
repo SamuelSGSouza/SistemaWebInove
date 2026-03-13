@@ -78,6 +78,9 @@ from functions.gerador import inicia_gerador
     
 # salva_dado("Total Empresas Receita Federal", 27924132)
 
+verifica_atualizacao_receita()
+
+
 
 class Dashboard(LoginRequiredMixin,TemplateView):
     template_name = "dashboard.html"
@@ -153,6 +156,12 @@ class Dashboard(LoginRequiredMixin,TemplateView):
         ctx["quantidade_credito_negado_mei"] = quantidade_credito_negado_mei
         ctx["quantidade_credito_sem_info_N_mei"] = quantidade_credito_sem_info_N_mei
         ctx["quantidade_credito_sem_info_mei"] = quantidade_credito_sem_info_mei
+
+        possiveis_status = Status_Execucoe_DB.objects.filter(sistema="geral").order_by("-id")
+        if possiveis_status.exists():
+            status = possiveis_status[0]
+            ctx["ultima_exec"] = status.momento_inicializacao
+
         return ctx
 
 class Status_Execucao(LoginRequiredMixin,TemplateView):
@@ -253,6 +262,9 @@ class TratamentosArquivosExternos(LoginRequiredMixin,TemplateView):
                 erros.append(mensagem)
         pasta_raiz = os.path.join(os.getcwd(), "media")
         tipo_tratamento = self.request.GET.get("tipo_tratamento")
+        if tipo_tratamento == "Limpeza de BlackList":
+            relatorio, erros_internos = filtra_arquivos(pasta_raiz, pasta_destino, pasta_usuario)
+        
         if tipo_tratamento == "Limpeza de BlackList":
             relatorio, erros_internos = filtra_arquivos(pasta_raiz, pasta_destino, pasta_usuario)
 
