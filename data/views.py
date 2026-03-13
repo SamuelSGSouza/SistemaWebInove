@@ -80,8 +80,6 @@ from functions.gerador import inicia_gerador
 
 verifica_atualizacao_receita()
 
-
-
 class Dashboard(LoginRequiredMixin,TemplateView):
     template_name = "dashboard.html"
     
