@@ -194,7 +194,7 @@ def fase_2_concatenador(sistema, nova_execucao:Status_Execucoe_DB):
                 salva_dado(f"Quantidade de Empresas com Viabilidade Primaria no Estado {estado}", len(df_receita.index), 'janeiro_2026')
                 pd.DataFrame(columns=df_receita.columns).to_csv(os.path.join(path_viabilidades, f"Viabilidade_Secundaria_{estado}.csv"), sep=";", index=False)
 
-                salva_dado(f"Quantidade de Empresas com Viabilidade Secundaria no Estado {estado}", len(df_receita_mailing_secundario.index), 'janeiro_2026')
+                salva_dado(f"Quantidade de Empresas com Viabilidade Secundaria no Estado {estado}", 0, 'janeiro_2026')
 
             
                     
