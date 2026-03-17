@@ -78,13 +78,14 @@ from functions.gerador import inicia_gerador, inicia_gerador_mailing_2026
     
 # salva_dado("Total Empresas Receita Federal", 27924132)
 
-verifica_atualizacao_receita()
+
 
 
 class Dashboard(LoginRequiredMixin,TemplateView):
     template_name = "dashboard.html"
     
     def get_context_data(self, **kwargs):
+        verifica_atualizacao_receita()
         ctx = super().get_context_data(**kwargs)
         ctx["dados"] = DadoExtracao.objects.filter().order_by("-id")
         if not DadoExtracao.objects.filter(titulo="Total Empresas Receita Federal").exists():
