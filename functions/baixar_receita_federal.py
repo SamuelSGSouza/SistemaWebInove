@@ -796,7 +796,7 @@ def realiza_limpeza():
 @fecha_conexoes
 def fase_1_gerador():
 
-    nova_execucao = Status_Execucoe_DB.objects.filter(sistema="geral").order_by("-id")[0]
+    nova_execucao = Status_Execucoe_DB.objects.create(sistema="geral")
     try:
         Log.objects.filter().delete()
 
