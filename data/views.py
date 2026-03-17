@@ -31,7 +31,6 @@ from functions.contantes import *
 from functions.gerador import inicia_gerador, inicia_gerador_mailing_2026
 
 # Create your views here.
-
 for file in os.listdir("media/viabilidades"):
     filepath = os.path.join("media/viabilidades", file)
     estado = filepath.split(".")[0].split("_")[-1]
