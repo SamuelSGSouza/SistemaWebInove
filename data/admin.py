@@ -11,3 +11,8 @@ class Status_Execucoe_DB_Admin(admin.ModelAdmin):
     pass
 
 admin.site.register(Status_Execucoe_DB, Status_Execucoe_DB_Admin)
+
+class IniciacaoSistema_Admin(admin.ModelAdmin):
+    pass
+
+admin.site.register(IniciacaoSistema, IniciacaoSistema_Admin)
