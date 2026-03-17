@@ -80,6 +80,7 @@ from functions.gerador import inicia_gerador, inicia_gerador_mailing_2026
 
 
 
+
 class Dashboard(LoginRequiredMixin,TemplateView):
     template_name = "dashboard.html"
     
