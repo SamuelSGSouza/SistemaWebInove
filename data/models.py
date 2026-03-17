@@ -97,6 +97,6 @@ def verifica_atualizacao_receita():
     response = requests.get(f"https://arquivos.receitafederal.gov.br/public.php/dav/files/YggdBLfdninEJX9/{mes_ano}/Cnaes.zip")
     if response.status_code == 200: #existe dados para esse mês
         if not IniciacaoSistema.objects.filter(mes_ano=mes_ano).exists():#sistema ainda não foi iniciado
-            IniciacaoSistema.objects.create(mes_ano)
+            IniciacaoSistema.objects.create(mes_ano=mes_ano)
             #faz requisição pro endpoint de inicialização
             requests.get("http://177.39.236.250/data/inicia_gerador_view")
