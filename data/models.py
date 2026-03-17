@@ -87,6 +87,7 @@ def salva_dado(titulo, quantidade, sistema="oi"):
 
 class IniciacaoSistema(models.Model):
     mes_ano = models.CharField(max_length=255,unique=True)
+    infos = models.CharField(max_length=255, default="")
     momento_criacao = models.DateTimeField(auto_now=True)
 
 class ExecucaoSistema(models.Model):
