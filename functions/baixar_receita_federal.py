@@ -562,7 +562,7 @@ def unifica_dados(nova_execucao):
     i = 1
     for file in os.listdir(pasta_estabelecimentos):
         csv = os.path.join(pasta_estabelecimentos, file)
-        chunks = pd.read_csv(csv, sep = ';', names = COLUNAS_TIPOS_ARQUIVOS["estabelecimentos"], usecols=['cnpj_basico', 'cnpj_ordem', 'cnpj_dv', 'matriz_filial', 'nome_fantasia','situacao_cadastral', 'data_situacao_cadastral', 'pais', 'data_inicio_atividades', 'cnae_fiscal', 'cnae_fiscal_secundaria', 'tipo_logradouro', 'logradouro','numero', 'complemento', 'bairro', 'cep', 'uf', 'municipio', 'ddd1', 'telefone1', 'ddd2', 'telefone2', 'ddd_fax', 'fax', 'correio_eletronico',], encoding = 'latin-1', dtype = DTYPES["estabelecimentos"], skipinitialspace=True, quotechar='"', chunksize=500_000)
+        chunks = pd.read_csv(csv, sep = ';', names = COLUNAS_TIPOS_ARQUIVOS["estabelecimentos"], usecols=['cnpj_basico', 'cnpj_ordem', 'cnpj_dv', 'matriz_filial', 'nome_fantasia','situacao_cadastral', 'data_situacao_cadastral', 'pais', 'data_inicio_atividades', 'cnae_fiscal', 'cnae_fiscal_secundaria', 'tipo_logradouro', 'logradouro','numero', 'complemento', 'bairro', 'cep', 'uf', 'municipio', 'ddd1', 'telefone1', 'ddd2', 'telefone2', 'ddd_fax', 'fax', 'correio_eletronico',], encoding = 'latin-1', dtype = DTYPES["estabelecimentos"], skipinitialspace=True, quotechar='"', chunksize=3_000_000)
         for df_estab in chunks:
             df_estab = df_estab[df_estab['situacao_cadastral'].isin(['2', '02'])]
             df_estab = fillna_categoricals(df_estab)
