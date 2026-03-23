@@ -357,6 +357,7 @@ class AtualizaBases(LoginRequiredMixin, TemplateView):
         dict_tipos = {
             "BlackList": "Base de telefones em BlackList que NUNCA devem ser utilizados",
             "Quarentena": "Base de telefones que ficarão em quarentena por determinado período até poderem ser utilizados.",
+            "Credito": "Base de crédito a ser verificado no mailing",
             "Mailing Janeiro 2026": "Envie aqui os arquivos de mailing restrito para iniciar a geração de um novo mailing."
         }
         context["descricao"] = dict_tipos[context["base"]]
@@ -369,6 +370,7 @@ class AtualizaBases(LoginRequiredMixin, TemplateView):
             "BlackList": "arquivos_blacklist",
             "Quarentena": "arquivos_quarentena",
             "Mailing Janeiro 2026": "arquivos_dfv",
+            "Credito": "arquivos_credito",
         }
         pasta_media = "media_janeiro_2026" if base == "Mailing Janeiro 2026" else "media"
         pasta_destino = os.path.join(os.getcwd(), pasta_media, PASTAS_RAIZ[base])
@@ -405,6 +407,14 @@ class AtualizaBases(LoginRequiredMixin, TemplateView):
 
         if PASTAS_RAIZ[base] == "arquivos_quarentena":
             relatorio, erros_internos = gera_e_atualiza_quarentena(os.path.join(os.getcwd(), "media"), "")
+            relatorio = relatorio.split("\n")
+
+            if erros_internos:
+                for er in erros_internos:
+                    erros.append(er)
+
+        if PASTAS_RAIZ[base] == "arquivos_credito":
+            relatorio, erros_internos = gera_e_atualiza_dados_credito("media")
             relatorio = relatorio.split("\n")
 
             if erros_internos:

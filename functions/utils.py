@@ -677,8 +677,6 @@ def gera_e_atualiza_dados_credito(raiz="media"):
         df_credito["CNPJ"] = df_credito["CNPJ"].apply(lambda x: re.sub(r'\D', '', x))
         df_credito["CNPJ"] = df_credito["CNPJ"].str.zfill(14)
 
-        salva_log("Padronizou CNPJS no df credito", "oi")
-
         total_cnpjs = df_credito["CNPJ"].unique().tolist()
         relatorio += f"Atualmente, a base de informações de crédito possui {len(total_cnpjs)} cnpjs mapeados.\n"
 
@@ -739,13 +737,7 @@ def gera_e_atualiza_dados_credito(raiz="media"):
 
         df_credito.to_csv(ARQUIVO_CREDITO, sep=";", index=False)
 
-        db_base_credito = BaseInfoCredito.objects.filter()
-        if not db_base_credito.exists():
-            BaseInfoCredito.objects.create()
-            db_base_credito = BaseInfoCredito.objects.filter()
-        db = db_base_credito[0]
-        db.total_dados = len(df_credito.index)
-        db.save()
+        salva_dado(titulo="Total de empresas com crédito informado", quantidade=len(df_credito.index), sistema="geral")
 
         return relatorio, erros
     except Exception as e:
