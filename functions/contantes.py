@@ -8,7 +8,7 @@ DTYPES_RECEITA_FEDERAL={"data_inicio_atividades":"string", "natureza_juridica": 
 PASTAS_RAIZ = {
     "oi": "media",
     "giga_mais": "media_giga_mais",
-    "janeiro_2026": "media_janeiro_2026"
+    "mailing_2026": "media_janeiro_2026"
 }
 
 DICT_ESTADOS_MUNICIPIOS = {
