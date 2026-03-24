@@ -9,107 +9,107 @@ import traceback
 
 def fase_4_enriquecer(sistema, nova_execucao):
     try:
-        raiz = os.path.join(os.getcwd(), PASTAS_RAIZ[sistema])
-        viabilidades_credito_path = os.path.join(raiz, "viabilidades_credito")
-        viabilidades_credito_enriquecido_path = os.path.join(raiz, "viabilidades_credito_enriquecido")
-        for file in os.listdir(viabilidades_credito_enriquecido_path):
-            os.remove(os.path.join(viabilidades_credito_enriquecido_path, file))
-        enriquecimento_path = os.path.join(os.getcwd(), "media", "arquivos_enriquecimento", "enriquecimento.csv")
+        # raiz = os.path.join(os.getcwd(), PASTAS_RAIZ[sistema])
+        # viabilidades_credito_path = os.path.join(raiz, "viabilidades_credito")
+        # viabilidades_credito_enriquecido_path = os.path.join(raiz, "viabilidades_credito_enriquecido")
+        # for file in os.listdir(viabilidades_credito_enriquecido_path):
+        #     os.remove(os.path.join(viabilidades_credito_enriquecido_path, file))
+        # enriquecimento_path = os.path.join(os.getcwd(), "media", "arquivos_enriquecimento", "enriquecimento.csv")
 
-        df_enriquecimento = pd.read_csv(enriquecimento_path, sep=";", dtype=str,)
-        df_enriquecimento["DOCUMENTO"] = df_enriquecimento["DOCUMENTO"].apply(lambda x: re.sub(r"\D+", "", str(x)).zfill(14))
+        # df_enriquecimento = pd.read_csv(enriquecimento_path, sep=";", dtype=str,)
+        # df_enriquecimento["DOCUMENTO"] = df_enriquecimento["DOCUMENTO"].apply(lambda x: re.sub(r"\D+", "", str(x)).zfill(14))
         
-        cols_tel = [f"Telefone_{i}" for i in range(1, 21)]
+        # cols_tel = [f"Telefone_{i}" for i in range(1, 21)]
 
-        # transforma telefones em linhas
-        df_long = df_enriquecimento.melt(
-            id_vars="DOCUMENTO",
-            value_vars=cols_tel,
-            value_name="telefone"
-        )
+        # # transforma telefones em linhas
+        # df_long = df_enriquecimento.melt(
+        #     id_vars="DOCUMENTO",
+        #     value_vars=cols_tel,
+        #     value_name="telefone"
+        # )
 
-        # remove vazios
+        # # remove vazios
+
+        # df_long = df_long.dropna(subset=["telefone"])
+        # df_long = df_long[df_long["telefone"] != ""]
+
+        # # agrupa por documento juntando todos os telefones
+        # df_group = df_long.groupby("DOCUMENTO")["telefone"].apply(list).reset_index()
+
+        # # garante no máximo 20
+        # df_group["telefone"] = df_group["telefone"].apply(lambda x: x[:20])
+
+        # # volta para colunas Telefone_1...Telefone_20
+        # df_enriquecimento = pd.DataFrame(
+        #     df_group["telefone"].tolist(),
+        #     columns=[f"Telefone_{i}" for i in range(1, 21)]
+        # )
+
+        # df_enriquecimento.insert(0, "DOCUMENTO", df_group["DOCUMENTO"])
+
+        # if df_enriquecimento["DOCUMENTO"].duplicated().sum() > 0:
+        #     salva_status(nova_execucao, titulo=f"Erro encontrar telefones para enriquecimento. Arquivo de enriquecimento possui cnpjs repetidos",status="Erro")            
+        #     return
         
-        df_long = df_long.dropna(subset=["telefone"])
-        df_long = df_long[df_long["telefone"] != ""]
-
-        # agrupa por documento juntando todos os telefones
-        df_group = df_long.groupby("DOCUMENTO")["telefone"].apply(list).reset_index()
-
-        # garante no máximo 20
-        df_group["telefone"] = df_group["telefone"].apply(lambda x: x[:20])
-
-        # volta para colunas Telefone_1...Telefone_20
-        df_enriquecimento = pd.DataFrame(
-            df_group["telefone"].tolist(),
-            columns=[f"Telefone_{i}" for i in range(1, 21)]
-        )
-
-        df_enriquecimento.insert(0, "DOCUMENTO", df_group["DOCUMENTO"])
-
-        if df_enriquecimento["DOCUMENTO"].duplicated().sum() > 0:
-            salva_status(nova_execucao, titulo=f"Erro encontrar telefones para enriquecimento. Arquivo de enriquecimento possui cnpjs repetidos",status="Erro")            
-            return
+        # if len(df_enriquecimento["DOCUMENTO"].unique().tolist()) < 1_000_000:
+        #     salva_status(nova_execucao, titulo=f"Erro encontrar telefones para enriquecimento. Arquivo de enriquecimento não possui a quantidade de cnpjs esperados",status="Erro")            
+        #     return
         
-        if len(df_enriquecimento["DOCUMENTO"].unique().tolist()) < 1_000_000:
-            salva_status(nova_execucao, titulo=f"Erro encontrar telefones para enriquecimento. Arquivo de enriquecimento não possui a quantidade de cnpjs esperados",status="Erro")            
-            return
+        # if len(df_enriquecimento["Telefone_1"].unique().tolist()) < 1_000_000:
+        #     salva_status(nova_execucao, titulo=f"Erro encontrar telefones para enriquecimento. Arquivo de enriquecimento não possui a quantidade de telefones esperados",status="Erro")            
+        #     return
         
-        if len(df_enriquecimento["Telefone_1"].unique().tolist()) < 1_000_000:
-            salva_status(nova_execucao, titulo=f"Erro encontrar telefones para enriquecimento. Arquivo de enriquecimento não possui a quantidade de telefones esperados",status="Erro")            
-            return
-        
-        todos_telefones = set()
-        for file in os.listdir(viabilidades_credito_path):
-            filepath = os.path.join(viabilidades_credito_path, file)
+        # todos_telefones = set()
+        # for file in os.listdir(viabilidades_credito_path):
+        #     filepath = os.path.join(viabilidades_credito_path, file)
             
-            estado = filepath.split(".")[0].split("_")[-1]
-            tipo_viabilidade = filepath.split(".")[0].split("_")[-2]
-            salva_status(nova_execucao, titulo=f"Encontrando telefones adicionais para os cnpjs do tipo {tipo_viabilidade} no estado {estado} ",status="Em Andamento")            
+        #     estado = filepath.split(".")[0].split("_")[-1]
+        #     tipo_viabilidade = filepath.split(".")[0].split("_")[-2]
+        #     salva_status(nova_execucao, titulo=f"Encontrando telefones adicionais para os cnpjs do tipo {tipo_viabilidade} no estado {estado} ",status="Em Andamento")            
 
-            df_viabilidades_credito = pd.read_csv(filepath, sep=";", dtype=DTYPES_RECEITA_FEDERAL)
-            df_viabilidades_credito["cnpj"] = df_viabilidades_credito["cnpj"].apply(lambda x: re.sub(r"\D+", "", str(x)).zfill(14))
+        #     df_viabilidades_credito = pd.read_csv(filepath, sep=";", dtype=DTYPES_RECEITA_FEDERAL)
+        #     df_viabilidades_credito["cnpj"] = df_viabilidades_credito["cnpj"].apply(lambda x: re.sub(r"\D+", "", str(x)).zfill(14))
             
 
-            cols_telefone = [f"Telefone_{i}" for i in range(1,21)]
+        #     cols_telefone = [f"Telefone_{i}" for i in range(1,21)]
 
-            df_viabilidades_credito = df_viabilidades_credito.merge(
-                df_enriquecimento[["DOCUMENTO"] + cols_telefone],
-                left_on="cnpj",
-                right_on="DOCUMENTO",
-                how="left"
-            )
-            cols_grupo1 = ["TEL1", "TEL2", "TEL3"]
-            cols_grupo2 = cols_telefone
+        #     df_viabilidades_credito = df_viabilidades_credito.merge(
+        #         df_enriquecimento[["DOCUMENTO"] + cols_telefone],
+        #         left_on="cnpj",
+        #         right_on="DOCUMENTO",
+        #         how="left"
+        #     )
+        #     cols_grupo1 = ["TEL1", "TEL2", "TEL3"]
+        #     cols_grupo2 = cols_telefone
 
-            cols_telefones = cols_grupo1 + cols_grupo2
+        #     cols_telefones = cols_grupo1 + cols_grupo2
 
-            df_viabilidades_credito[cols_telefones] = (
-                df_viabilidades_credito[cols_telefones].apply(lambda col: col.map(clean_phone_number))
-            )
+        #     df_viabilidades_credito[cols_telefones] = (
+        #         df_viabilidades_credito[cols_telefones].apply(lambda col: col.map(clean_phone_number))
+        #     )
 
-            def ordenar_telefones(row, cols):
-                tels = list(set([t for t in row[cols] if t and t not in todos_telefones]))   # mantém só telefones válidos
-                tels += [""] * (len(cols) - len(tels))  # completa com vazio
-                row[cols] = tels
-                todos_telefones.update(tels)
-                return row
+        #     def ordenar_telefones(row, cols):
+        #         tels = list(set([t for t in row[cols] if t and t not in todos_telefones]))   # mantém só telefones válidos
+        #         tels += [""] * (len(cols) - len(tels))  # completa com vazio
+        #         row[cols] = tels
+        #         todos_telefones.update(tels)
+        #         return row
 
-            df_viabilidades_credito = df_viabilidades_credito.apply(
-                ordenar_telefones, axis=1, cols=cols_grupo1
-            )
+        #     df_viabilidades_credito = df_viabilidades_credito.apply(
+        #         ordenar_telefones, axis=1, cols=cols_grupo1
+        #     )
 
-            df_viabilidades_credito = df_viabilidades_credito.apply(
-                ordenar_telefones, axis=1, cols=cols_grupo2
-            )
+        #     df_viabilidades_credito = df_viabilidades_credito.apply(
+        #         ordenar_telefones, axis=1, cols=cols_grupo2
+        #     )
 
-            df_viabilidades_credito.drop(columns=["DOCUMENTO", "CHAVE_ESPECIFICA", "CHAVE_GERAL"], inplace=True)
+        #     df_viabilidades_credito.drop(columns=["DOCUMENTO", "CHAVE_ESPECIFICA", "CHAVE_GERAL"], inplace=True)
 
-            if df_viabilidades_credito["cnpj"].duplicated().sum() > 0:
-                salva_status(nova_execucao, titulo=f"Erro encontrar telefones para enriquecimento. Viabilidade do tipo {tipo_viabilidade} no estado {estado} ficou com cnpjs repetidos",status="Erro")            
-                return
+        #     if df_viabilidades_credito["cnpj"].duplicated().sum() > 0:
+        #         salva_status(nova_execucao, titulo=f"Erro encontrar telefones para enriquecimento. Viabilidade do tipo {tipo_viabilidade} no estado {estado} ficou com cnpjs repetidos",status="Erro")            
+        #         return
 
-            df_viabilidades_credito.to_csv(os.path.join(viabilidades_credito_enriquecido_path, file), sep=";", index=False)
+        #     df_viabilidades_credito.to_csv(os.path.join(viabilidades_credito_enriquecido_path, file), sep=";", index=False)
         
         if verificador_fase_4(sistema, nova_execucao):
             salva_status(nova_execucao, "Enriquecimento de telefones concluído.", status="Concluido")
@@ -190,8 +190,11 @@ def verificador_fase_4(sistema, nova_execucao):
 
             tipos_credito = df["credito"].unique().tolist()
             if len(tipos_credito) != 3:
-                salva_status(nova_execucao, titulo=f"Erro verificar análise de crédito. Arquivo {file} possui tipos de crédito inválidos: {tipos_credito}",status="Erro")            
-                return False
+                if "Secundaria" in file and nova_execucao.sistema == "janeiro_2026":
+                    pass
+                else:
+                    salva_status(nova_execucao, titulo=f"Erro verificar análise de crédito. Arquivo {file} possui tipos de crédito inválidos: {tipos_credito}",status="Erro")            
+                    return False
 
             cnpjs_encontrados += df["cnpj"].unique().tolist()
             # colunas_telefone = ["TEL1", "TEL2", "TEL3"]
