@@ -29,6 +29,7 @@ def fase_4_enriquecer(sistema, nova_execucao):
         )
 
         # remove vazios
+        
         df_long = df_long.dropna(subset=["telefone"])
         df_long = df_long[df_long["telefone"] != ""]
 
