@@ -15,7 +15,9 @@ import time
 import numpy as np
 from pathlib import Path
 from data.models import salva_dado
-
+import traceback
+from concurrent.futures import ProcessPoolExecutor
+from typing import List, Tuple
 
 PASTA_ARQUIVOS_BLACKLIST = os.path.join(os.getcwd(), "media/arquivos_blacklist")
 PASTA_ARQUIVOS_TELS_NEXT = os.path.join(os.getcwd(), "media/arquivos_tels_next")
@@ -658,88 +660,95 @@ def gera_e_atualiza_enriquecimento():
         erros.append(traceback.format_exc())
         return relatorio, erros     
     
-def gera_e_atualiza_dados_credito(raiz="media"):
-    # mantém o fuso correto
+def processar_arquivo_individual(caminho_completo: str, campos_obrigatorios: List[str]) -> pd.DataFrame:
+    extensao = os.path.splitext(caminho_completo)[1].lower()
+    
+    try:
+        if extensao in [".csv", ".txt"]:
+            # Nota: Certifique-se que _detectar_encoding_csv esteja acessível ou importada
+            enc = _detectar_encoding_csv(caminho_completo) 
+            df = pd.read_csv(caminho_completo, sep=";", dtype=str, encoding=enc, on_bad_lines="skip")
+        elif extensao in [".xlsx", ".xls", ".xlsb"]:
+            df = pd.read_excel(caminho_completo, dtype=str)
+        else:
+            return pd.DataFrame()
+
+        # Rename unificado
+        mapeamento = {
+            "ï»¿CNPJ": "CNPJ", "APROVACAO_CREDITO": "APROVADO/NEGADO",
+            "LETRA_MOTIVO_NEGATIVA": "LETRAS_STATUS", "CREDITO_PREAPROVADO": "APROVADO/NEGADO",
+            "LETRA_MOTIVO_NEGACAO": "LETRAS_STATUS", "cnpj": "CNPJ",
+            "APROVADO": "APROVADO/NEGADO", "COD_MAILING": "LETRAS_STATUS"
+        }
+        df.rename(columns=mapeamento, inplace=True)
+
+        # Garantir campos e limpar CNPJ de forma vetorizada (Rápido)
+        df = df[df.columns.intersection(campos_obrigatorios)].copy()
+        if "CNPJ" in df.columns:
+            df["CNPJ"] = df["CNPJ"].str.replace(r'\D', '', regex=True).str.zfill(14)
+            df.dropna(subset=["CNPJ"], inplace=True)
+            df.drop_duplicates(subset=["CNPJ"], inplace=True)
+            
+        return df
+    except Exception:
+        return pd.DataFrame()
+
+def gera_e_atualiza_dados_credito_turbo(raiz="media"):
     relatorio = ""
     erros = []
-    CAMPOS = ["CNPJ","APROVADO/NEGADO", "LETRAS_STATUS"]
+    CAMPOS = ["CNPJ", "APROVADO/NEGADO", "LETRAS_STATUS"]
+    
     try:
-        PASTA_CREDITO = os.path.join(raiz, f"arquivos_credito")
+        PASTA_CREDITO = os.path.join(raiz, "arquivos_credito")
         os.makedirs(PASTA_CREDITO, exist_ok=True)
+        ARQUIVO_MASTER = os.path.join(PASTA_CREDITO, "credito.csv")
+
+        # 1. Carregar base atual
+        if os.path.exists(ARQUIVO_MASTER):
+            df_master = pd.read_csv(ARQUIVO_MASTER, sep=";", dtype=str)
+        else:
+            df_master = pd.DataFrame(columns=CAMPOS)
+
+        relatorio += f"Base atual: {len(df_master)} CNPJs.\n"
+
+        # 2. Identificar arquivos para processar
+        arquivos_para_processar = [
+            os.path.join(PASTA_CREDITO, f) for f in os.listdir(PASTA_CREDITO) 
+            if os.path.join(PASTA_CREDITO, f) != ARQUIVO_MASTER and os.path.isfile(os.path.join(PASTA_CREDITO, f))
+        ]
+
+        if not arquivos_para_processar:
+            return "Nenhum arquivo novo.", []
+
+        # 3. Processamento Paralelo (Uso intensivo de Cores/RAM)
+        # O max_workers padrão usa todos os núcleos lógicos da máquina
+        lista_dfs_novos = []
+        with ProcessPoolExecutor() as executor:
+            resultados = list(executor.map(processar_arquivo_individual, arquivos_para_processar, [CAMPOS]*len(arquivos_para_processar)))
+            lista_dfs_novos = [d for d in resultados if not d.empty]
+
+        # 4. Consolidação Final (Único ponto de escrita pesada em memória)
+        if lista_dfs_novos:
+            df_novos_total = pd.concat(lista_dfs_novos, ignore_index=True)
+            
+            # Ordem cronológica: Master antigo primeiro, novos depois. 
+            # O drop_duplicates com keep='last' garante que o dado novo vença.
+            df_final = pd.concat([df_master, df_novos_total], ignore_index=True)
+            df_final.drop_duplicates(subset=["CNPJ"], keep="last", inplace=True)
+            
+            # Salvar
+            df_final.to_csv(ARQUIVO_MASTER, sep=";", index=False)
+            
+            # Limpeza física dos arquivos processados
+            for f in arquivos_para_processar:
+                try: os.remove(f)
+                except: pass
+
+            relatorio += f"Processamento concluído. Base final: {len(df_final)} CNPJs.\n"
+            salva_dado(titulo="Total de empresas com crédito informado", quantidade=len(df_final), sistema="geral")
         
-        ARQUIVO_CREDITO = os.path.join(PASTA_CREDITO, "credito.csv")
-        if not os.path.exists(ARQUIVO_CREDITO):
-            pd.DataFrame([],columns=CAMPOS).to_csv(ARQUIVO_CREDITO, sep=";", index=False)
-
-        df_credito = pd.read_csv(ARQUIVO_CREDITO, sep=";", dtype=str)
-
-        
-        df_credito["CNPJ"] = df_credito["CNPJ"].apply(lambda x: re.sub(r'\D', '', x))
-        df_credito["CNPJ"] = df_credito["CNPJ"].str.zfill(14)
-
-        total_cnpjs = df_credito["CNPJ"].unique().tolist()
-        relatorio += f"Atualmente, a base de informações de crédito possui {len(total_cnpjs)} cnpjs mapeados.\n"
-
-        for file in list(sorted(os.listdir(PASTA_CREDITO))):
-            filename = os.path.join(PASTA_CREDITO, file)
-            extensao = os.path.splitext(filename)[1].lower()
-            if filename != ARQUIVO_CREDITO:
-                
-                if extensao in [".csv", ".txt"]:
-                    df_credito_novo = pd.read_csv(filename, sep=";", dtype=str, encoding=_detectar_encoding_csv(filename),on_bad_lines="skip")
-                elif extensao in [".xlsx", ".xls", ".xlsb"]:#[".xls", '.xlsx', ".xlsb"]
-                    df_credito_novo = pd.read_excel(
-                        filename,
-                        dtype=str,
-                    )
-                else:
-                    os.remove(file)
-                    continue
-
-                relatorio += f"Analisando arquivo {file}\n"
-
-                df_credito_novo.rename(columns={
-                    "ï»¿CNPJ": "CNPJ",
-                    "APROVACAO_CREDITO": "APROVADO/NEGADO",
-                    "LETRA_MOTIVO_NEGATIVA":"LETRAS_STATUS",
-                    "CREDITO_PREAPROVADO": "APROVADO/NEGADO",
-                    "LETRA_MOTIVO_NEGACAO": "LETRAS_STATUS",
-                    "cnpj": "CNPJ",
-                    "APROVADO":"APROVADO/NEGADO",
-                    "COD_MAILING": "LETRAS_STATUS"
-                },inplace=True)
-                
-                #remover cnpjs duplicados
-                df_credito_novo = df_credito_novo[CAMPOS]
-                df_credito_novo["CNPJ"] = df_credito_novo["CNPJ"].apply(lambda x: re.sub(r'\D', '', x))
-                df_credito_novo["CNPJ"] = df_credito_novo["CNPJ"].str.zfill(14)
-                df_credito_novo.drop_duplicates(subset=["CNPJ"], inplace=True)
-
-
-                
-                total_cnpjs_novos = df_credito_novo["CNPJ"].unique().tolist()
-                total_cnpjs_novos_verificados = df_credito_novo[~df_credito_novo["CNPJ"].isin(df_credito["CNPJ"].unique().tolist())].index
-                relatorio += f"Foram encontrados {len(total_cnpjs_novos)} cnpjs no arquivo, dos quais {len(total_cnpjs_novos_verificados)} são cnpjs novos.\n"
-                
-                total_cnpjs_novos = df_credito_novo["CNPJ"].unique().tolist()
-                total_cnpjs_novos_verificados = df_credito_novo[~df_credito_novo["CNPJ"].isin(df_credito["CNPJ"].unique().tolist())].index
-                relatorio += f"Após remover aqueles com letra 'K', foram encontrados {len(total_cnpjs_novos)} cnpjs no arquivo, dos quais {len(total_cnpjs_novos_verificados)} são cnpjs novos.\n"
-
-
-                #Concatenar com o df atual
-                df_credito = pd.concat([df_credito, df_credito_novo])
-                df_credito.drop_duplicates(subset=["CNPJ",], keep="last", inplace=True)
-
-
-                relatorio += f"A base final ficou com {len(df_credito['CNPJ'].unique().tolist())} cnpjs mapeados.\n"
-
-                os.remove(filename)
-
-        df_credito.to_csv(ARQUIVO_CREDITO, sep=";", index=False)
-
-        salva_dado(titulo="Total de empresas com crédito informado", quantidade=len(df_credito.index), sistema="geral")
-
         return relatorio, erros
+
     except Exception as e:
         erros.append(traceback.format_exc())
         return relatorio, erros
@@ -1095,7 +1104,7 @@ def verifica_arquivo(request, arquivo_original, caminho: str, nome_pasta: str, s
         }
 
         extensao = os.path.splitext(caminho)[1].lower()
-
+        nrows = 300 if nome_pasta != "arquivos_credito" else 50_000
         # ── 2. Carrega só as primeiras linhas, conforme a extensão ─────────────
         if extensao in (".csv", ".txt"):
             # pegamos só o primeiro chunk (até 300 linhas) para validar
@@ -1103,12 +1112,12 @@ def verifica_arquivo(request, arquivo_original, caminho: str, nome_pasta: str, s
                 caminho,
                 sep=_detectar_sep_csv(caminho),
                 dtype=str,
-                chunksize=300,
+                chunksize=nrows,
                 encoding=_detectar_encoding_csv(caminho),
             )
             df = next(chunks)  # primeiro pedaço
         elif extensao in (".xls", ".xlsx", ".xlsb"):
-            df = pd.read_excel(caminho, dtype=str, nrows=300)
+            df = pd.read_excel(caminho, dtype=str, nrows=nrows)
         else:
             os.remove(caminho)
             return False, f"Arquivo >{arquivo_original}< possui extensão não suportada: {extensao}"

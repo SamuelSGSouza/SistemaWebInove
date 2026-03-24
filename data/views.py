@@ -414,7 +414,7 @@ class AtualizaBases(LoginRequiredMixin, TemplateView):
                     erros.append(er)
 
         if PASTAS_RAIZ[base] == "arquivos_credito":
-            relatorio, erros_internos = gera_e_atualiza_dados_credito("media")
+            relatorio, erros_internos = gera_e_atualiza_dados_credito_turbo("media")
             relatorio = relatorio.split("\n")
 
             if erros_internos:
