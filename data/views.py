@@ -376,13 +376,13 @@ class AtualizaBases(LoginRequiredMixin, TemplateView):
         pasta_destino = os.path.join(os.getcwd(), pasta_media, PASTAS_RAIZ[base])
         os.makedirs(pasta_destino, exist_ok=True)
         
-        if base in ["BlackList", "Mailing Janeiro 2026"]:
-            for path in os.listdir(pasta_destino):
-                file = os.path.join(pasta_destino, path)
-                if os.path.isfile(file):
-                    os.remove(file)
-                elif os.path.isdir(file):
-                    shutil.rmtree(file)
+        # if base in ["BlackList", "Mailing Janeiro 2026"]:
+        #     for path in os.listdir(pasta_destino):
+        #         file = os.path.join(pasta_destino, path)
+        #         if os.path.isfile(file):
+        #             os.remove(file)
+        #         elif os.path.isdir(file):
+        #             shutil.rmtree(file)
 
         sucessos = []
         erros = []
@@ -392,17 +392,17 @@ class AtualizaBases(LoginRequiredMixin, TemplateView):
         sistema = self.request.session.get("sistema", "")
 
         total_arqs = 0
-        for arquivo in arquivos:
-            destino = os.path.join(pasta_destino, arquivo.name)
-            with open(destino, 'wb+') as dest:
-                for chunk in arquivo.chunks():
-                    dest.write(chunk)
-            total_arqs += 1
-            sucesso, mensagem = verifica_arquivo(request,arquivo, destino, PASTAS_RAIZ[base], sistema)
-            if sucesso:
-                sucessos.append(mensagem)
-            else:
-                erros.append(mensagem)
+        # for arquivo in arquivos:
+        #     destino = os.path.join(pasta_destino, arquivo.name)
+        #     with open(destino, 'wb+') as dest:
+        #         for chunk in arquivo.chunks():
+        #             dest.write(chunk)
+        #     total_arqs += 1
+        #     sucesso, mensagem = verifica_arquivo(request,arquivo, destino, PASTAS_RAIZ[base], sistema)
+        #     if sucesso:
+        #         sucessos.append(mensagem)
+        #     else:
+        #         erros.append(mensagem)
 
 
         if PASTAS_RAIZ[base] == "arquivos_quarentena":

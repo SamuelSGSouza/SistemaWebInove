@@ -723,7 +723,7 @@ def gera_e_atualiza_dados_credito_turbo(raiz="media"):
         # 3. Processamento Paralelo (Uso intensivo de Cores/RAM)
         # O max_workers padrão usa todos os núcleos lógicos da máquina
         lista_dfs_novos = []
-        with ProcessPoolExecutor(max_workers=8) as executor:
+        with ProcessPoolExecutor() as executor:
             resultados = list(executor.map(processar_arquivo_individual, arquivos_para_processar, [CAMPOS]*len(arquivos_para_processar)))
             lista_dfs_novos = [d for d in resultados if not d.empty]
 
