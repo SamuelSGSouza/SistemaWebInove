@@ -86,11 +86,12 @@ class Dashboard(LoginRequiredMixin,TemplateView):
     
     def get_context_data(self, **kwargs):
         verifica_atualizacao_receita()
+        sistema = "oi"
         ctx = super().get_context_data(**kwargs)
-        ctx["dados"] = DadoExtracao.objects.filter().order_by("-id")
-        if not DadoExtracao.objects.filter(titulo="Total Empresas Receita Federal").exists():
+        ctx["dados"] = DadoExtracao.objects.filter(sistema=sistema).order_by("-id")
+        if not DadoExtracao.objects.filter(titulo="Total Empresas Receita Federal",sistema=sistema).exists():
             DadoExtracao.objects.create(titulo="Total Empresas Receita Federal", quantidade=27924132)
-        ctx["total_empresas"] = DadoExtracao.objects.filter(titulo="Total Empresas Receita Federal").order_by("-id")[0]
+        ctx["total_empresas"] = DadoExtracao.objects.filter(titulo="Total Empresas Receita Federal",sistema=sistema).order_by("-id")[0]
         
         total_viabilidades = 0
         total_viabilidades_primarias = 0 
@@ -110,40 +111,40 @@ class Dashboard(LoginRequiredMixin,TemplateView):
         quantidade_credito_sem_info_mei = 0
 
         for estado in ESTADOS_BR:
-            dado = DadoExtracao.objects.filter(titulo__icontains=f"Quantidade de Empresas com Viabilidade Primaria no Estado {estado}").order_by("-id")[0]
+            dado = DadoExtracao.objects.filter(titulo__icontains=f"Quantidade de Empresas com Viabilidade Primaria no Estado {estado}",sistema=sistema).order_by("-id")[0]
             total_viabilidades += dado.quantidade
             total_viabilidades_primarias += dado.quantidade
 
-            dado = DadoExtracao.objects.filter(titulo__icontains=f"Quantidade de Empresas com Viabilidade Secundaria no Estado {estado}").order_by("-id")[0]
+            dado = DadoExtracao.objects.filter(titulo__icontains=f"Quantidade de Empresas com Viabilidade Secundaria no Estado {estado}",sistema=sistema).order_by("-id")[0]
             total_viabilidades += dado.quantidade
             total_viabilidades_secundarias += dado.quantidade
 
-            dado_NMEI_primario = DadoExtracao.objects.filter(titulo__icontains=f"Quantidade de cnpjs com viabilidade Primaria e crédito aprovado no estado {estado} - NAO MEI").order_by("-id")[0]
+            dado_NMEI_primario = DadoExtracao.objects.filter(titulo__icontains=f"Quantidade de cnpjs com viabilidade Primaria e crédito aprovado no estado {estado} - NAO MEI",sistema=sistema).order_by("-id")[0]
             quantidade_credito_aprovado_N_mei += dado_NMEI_primario.quantidade
-            dado_NMEI_secundaria = DadoExtracao.objects.filter(titulo__icontains=f"Quantidade de cnpjs com viabilidade Secundaria e crédito aprovado no estado {estado} - NAO MEI").order_by("-id")[0]
+            dado_NMEI_secundaria = DadoExtracao.objects.filter(titulo__icontains=f"Quantidade de cnpjs com viabilidade Secundaria e crédito aprovado no estado {estado} - NAO MEI",sistema=sistema).order_by("-id")[0]
             quantidade_credito_aprovado_N_mei += dado_NMEI_secundaria.quantidade
-            dado_MEI_primario = DadoExtracao.objects.filter(titulo__icontains=f"Quantidade de cnpjs com viabilidade Primaria e crédito aprovado no estado {estado} - MEI").order_by("-id")[0]
+            dado_MEI_primario = DadoExtracao.objects.filter(titulo__icontains=f"Quantidade de cnpjs com viabilidade Primaria e crédito aprovado no estado {estado} - MEI",sistema=sistema).order_by("-id")[0]
             quantidade_credito_aprovado_mei += dado_MEI_primario.quantidade
-            dado_MEI_secundaria = DadoExtracao.objects.filter(titulo__icontains=f"Quantidade de cnpjs com viabilidade Secundaria e crédito aprovado no estado {estado} - MEI").order_by("-id")[0]
+            dado_MEI_secundaria = DadoExtracao.objects.filter(titulo__icontains=f"Quantidade de cnpjs com viabilidade Secundaria e crédito aprovado no estado {estado} - MEI",sistema=sistema).order_by("-id")[0]
             quantidade_credito_aprovado_mei += dado_MEI_secundaria.quantidade
 
-            dado_MEI_secundaria_negado = DadoExtracao.objects.filter(titulo__icontains=f"Quantidade de cnpjs com viabilidade Secundaria e crédito negado no estado {estado} - MEI").order_by("-id")[0]
+            dado_MEI_secundaria_negado = DadoExtracao.objects.filter(titulo__icontains=f"Quantidade de cnpjs com viabilidade Secundaria e crédito negado no estado {estado} - MEI",sistema=sistema).order_by("-id")[0]
             quantidade_credito_negado_mei += dado_MEI_secundaria_negado.quantidade
-            dado_MEI_primario_negado = DadoExtracao.objects.filter(titulo__icontains=f"Quantidade de cnpjs com viabilidade Primaria e crédito negado no estado {estado} - MEI").order_by("-id")[0]
+            dado_MEI_primario_negado = DadoExtracao.objects.filter(titulo__icontains=f"Quantidade de cnpjs com viabilidade Primaria e crédito negado no estado {estado} - MEI",sistema=sistema).order_by("-id")[0]
             quantidade_credito_negado_mei += dado_MEI_primario_negado.quantidade
-            dado_NMEI_secundaria_negado = DadoExtracao.objects.filter(titulo__icontains=f"Quantidade de cnpjs com viabilidade Secundaria e crédito negado no estado {estado} - NAO MEI").order_by("-id")[0]
+            dado_NMEI_secundaria_negado = DadoExtracao.objects.filter(titulo__icontains=f"Quantidade de cnpjs com viabilidade Secundaria e crédito negado no estado {estado} - NAO MEI",sistema=sistema).order_by("-id")[0]
             quantidade_credito_negado_N_mei += dado_NMEI_secundaria_negado.quantidade
-            dado_NMEI_primario_negado = DadoExtracao.objects.filter(titulo__icontains=f"Quantidade de cnpjs com viabilidade Primaria e crédito negado no estado {estado} - NAO MEI").order_by("-id")[0]
+            dado_NMEI_primario_negado = DadoExtracao.objects.filter(titulo__icontains=f"Quantidade de cnpjs com viabilidade Primaria e crédito negado no estado {estado} - NAO MEI",sistema=sistema).order_by("-id")[0]
             quantidade_credito_negado_N_mei += dado_NMEI_primario_negado.quantidade
 
 
-            dado_MEI_secundaria_sem_infos = DadoExtracao.objects.filter(titulo__icontains=f"Quantidade de cnpjs com viabilidade Secundaria e sem infos de crédito no estado {estado} - MEI").order_by("-id")[0]
+            dado_MEI_secundaria_sem_infos = DadoExtracao.objects.filter(titulo__icontains=f"Quantidade de cnpjs com viabilidade Secundaria e sem infos de crédito no estado {estado} - MEI",sistema=sistema).order_by("-id")[0]
             quantidade_credito_sem_info_mei += dado_MEI_secundaria_sem_infos.quantidade
-            dado_MEI_primario_sem_info = DadoExtracao.objects.filter(titulo__icontains=f"Quantidade de cnpjs com viabilidade Primaria e sem infos de crédito no estado {estado} - MEI").order_by("-id")[0]
+            dado_MEI_primario_sem_info = DadoExtracao.objects.filter(titulo__icontains=f"Quantidade de cnpjs com viabilidade Primaria e sem infos de crédito no estado {estado} - MEI",sistema=sistema).order_by("-id")[0]
             quantidade_credito_sem_info_mei += dado_MEI_primario_sem_info.quantidade
-            dado_NMEI_secundaria_sem_info = DadoExtracao.objects.filter(titulo__icontains=f"Quantidade de cnpjs com viabilidade Secundaria e sem infos de crédito no estado {estado} - NAO MEI").order_by("-id")[0]
+            dado_NMEI_secundaria_sem_info = DadoExtracao.objects.filter(titulo__icontains=f"Quantidade de cnpjs com viabilidade Secundaria e sem infos de crédito no estado {estado} - NAO MEI",sistema=sistema).order_by("-id")[0]
             quantidade_credito_sem_info_N_mei += dado_NMEI_secundaria_sem_info.quantidade
-            dado_NMEI_primario_sem_info = DadoExtracao.objects.filter(titulo__icontains=f"Quantidade de cnpjs com viabilidade Primaria e sem infos de crédito no estado {estado} - NAO MEI").order_by("-id")[0]
+            dado_NMEI_primario_sem_info = DadoExtracao.objects.filter(titulo__icontains=f"Quantidade de cnpjs com viabilidade Primaria e sem infos de crédito no estado {estado} - NAO MEI",sistema=sistema).order_by("-id")[0]
             quantidade_credito_sem_info_N_mei += dado_NMEI_primario_sem_info.quantidade
         
         ctx["total_empresas_viabilidade"] = total_viabilidades
@@ -280,6 +281,7 @@ class TratamentosArquivosExternos(LoginRequiredMixin,TemplateView):
 
         dict_tipos = {
             "Limpeza de BlackList": "Envie aqui um arquivo para que sejam removidos os telefones que estão na BlackList e Quarentena",
+            "Enriquecimento de Dados": "Envie aqui um arquivo com coluna 'cnpj' e ele será enriquecido com dados do sistema",
         }
         context["descricao"] = dict_tipos[context["tipo_tratamento"]]
 
@@ -294,7 +296,7 @@ class TratamentosArquivosExternos(LoginRequiredMixin,TemplateView):
 
         pasta_usuario = os.path.join(os.getcwd(), "media", f"{request.user.username}")
         pasta_destino = os.path.join( pasta_usuario, "arquivos_externos",)
-        zip_path = os.path.join(pasta_usuario,"arquivos_filtragem.zip")
+        
         os.makedirs(pasta_destino, exist_ok=True)
 
         for path in os.listdir(pasta_destino):
@@ -325,7 +327,12 @@ class TratamentosArquivosExternos(LoginRequiredMixin,TemplateView):
         pasta_raiz = os.path.join(os.getcwd(), "media")
         tipo_tratamento = self.request.GET.get("tipo_tratamento")
         if tipo_tratamento == "Limpeza de BlackList":
+            zip_path = os.path.join(pasta_usuario,"arquivos_filtragem.zip")
             relatorio, erros_internos = filtra_arquivos(pasta_raiz, pasta_destino, pasta_usuario)
+        
+        if tipo_tratamento == "Enriquecimento de Dados":
+            zip_path = os.path.join(pasta_usuario,"arquivos_complementar.zip")
+            relatorio, erros_internos = complementa_arquivos(pasta_usuario,pasta_destino)
         
         
 

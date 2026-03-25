@@ -901,11 +901,11 @@ def filtra_arquivos(raiz, pasta_arquivos_para_filtrar, pasta_usuario) -> str:
         erros.append(traceback.format_exc())
         return relatorio, erros
 
-def complementa_arquivos(raiz) -> str:
+def complementa_arquivos(pasta_usuario, pasta_destino) -> str:
     relatorio = ""
     erros = []
     try:
-        PASTA_ARQUIVOS_COMPLEMENTAR = os.path.join(os.getcwd(), "media/arquivos_complementar")
+        PASTA_ARQUIVOS_COMPLEMENTAR = pasta_destino
         os.makedirs(PASTA_ARQUIVOS_COMPLEMENTAR, exist_ok=True)
 
         enriquecimento = os.path.join(os.getcwd(), 'media/arquivos_enriquecimento/enriquecimento.csv')
@@ -913,7 +913,7 @@ def complementa_arquivos(raiz) -> str:
         df_enriquecimento["DOCUMENTO"] = df_enriquecimento["DOCUMENTO"].astype("string")
         df_enriquecimento["DOCUMENTO"] = df_enriquecimento["DOCUMENTO"].apply(lambda x: re.sub(r'\D', '', x))
         df_enriquecimento["DOCUMENTO"] = df_enriquecimento["DOCUMENTO"].astype(str).str.zfill(14)
-        
+        print(f"Complementando os arquivos {os.listdir(PASTA_ARQUIVOS_COMPLEMENTAR)}")
         for arq in os.listdir(PASTA_ARQUIVOS_COMPLEMENTAR):
             file = os.path.join(PASTA_ARQUIVOS_COMPLEMENTAR, arq)
             extensao = os.path.splitext(file)[1].lower()
@@ -938,6 +938,8 @@ def complementa_arquivos(raiz) -> str:
             df_final = pd.merge(df, df_enriquecimento,how="left", left_on="cnpj", right_on="DOCUMENTO").fillna("")
             
             df_final.drop(columns=["DOCUMENTO"], axis=1, inplace=True)
+            
+            print(f"Tamanho final do arquivo: {len(df.index)}")
 
             if extensao in [".csv", ".txt"]:
                 df_final.to_csv(file,sep=sep, index=False)
@@ -951,10 +953,10 @@ def complementa_arquivos(raiz) -> str:
 
         del df_enriquecimento
 
-        zip_folder(PASTA_ARQUIVOS_COMPLEMENTAR, "media/arquivos_complementar.zip")
-        for arq in os.listdir(PASTA_ARQUIVOS_COMPLEMENTAR):
-            file = os.path.join(PASTA_ARQUIVOS_COMPLEMENTAR, arq)
-            os.remove(file)
+        zip_folder(PASTA_ARQUIVOS_COMPLEMENTAR, os.path.join(pasta_usuario, "arquivos_complementar.zip"))
+        # for arq in os.listdir(PASTA_ARQUIVOS_COMPLEMENTAR):
+        #     file = os.path.join(PASTA_ARQUIVOS_COMPLEMENTAR, arq)
+        #     os.remove(file)
         return relatorio,erros
     
     except Exception as e:
