@@ -83,10 +83,11 @@ def fase_3_define_credito(nova_execucao:Status_Execucoe_DB, sistema):
         return True
 
 def verificador_fase_3(sistema, nova_execucao:Status_Execucoe_DB):
+    if sistema=="giga_mais":
+        return True
     #verificar todos os estados foram atualizados na data atual
     sistemas_dict = {
         "oi": "media",
-        "giga_mais": "media_giga_mais",
         "janeiro_2026": "media_janeiro_2026"
     }
 

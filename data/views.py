@@ -183,6 +183,8 @@ class Status_Execucao(LoginRequiredMixin,TemplateView):
         context["sistema"] = sistema
         if sistema == "janeiro_2026":
             context["is_janeiro"] = True
+        if sistema == "giga_mais":
+            context["is_giga_mais"] = True
         context['titulo'] = titulos[sistema]
         self.request.session["sistema"] = sistema
 
@@ -365,7 +367,8 @@ class AtualizaBases(LoginRequiredMixin, TemplateView):
             "BlackList": "Base de telefones em BlackList que NUNCA devem ser utilizados",
             "Quarentena": "Base de telefones que ficarão em quarentena por determinado período até poderem ser utilizados.",
             "Credito": "Base de crédito a ser verificado no mailing",
-            "Mailing Janeiro 2026": "Envie aqui os arquivos de mailing restrito para iniciar a geração de um novo mailing."
+            "Mailing Janeiro 2026": "Envie aqui os arquivos de mailing restrito para iniciar a geração de um novo mailing.",
+            "Giga Mais": "Envie aqui os arquivos de mailing para iniciar a geração de um novo mailing da Giga +."
         }
         context["descricao"] = dict_tipos[context["base"]]
         return context
@@ -377,13 +380,19 @@ class AtualizaBases(LoginRequiredMixin, TemplateView):
             "BlackList": "arquivos_blacklist",
             "Quarentena": "arquivos_quarentena",
             "Mailing Janeiro 2026": "arquivos_dfv",
+            "Giga Mais": "arquivos_dfv",
             "Credito": "arquivos_credito",
         }
-        pasta_media = "media_janeiro_2026" if base == "Mailing Janeiro 2026" else "media"
+        if base == "Mailing Janeiro 2026":
+            pasta_media = "media_janeiro_2026"  
+        elif base ==  "Giga Mais":
+            pasta_media = "media_giga_mais"  
+        else: 
+            pasta_media = "media"
         pasta_destino = os.path.join(os.getcwd(), pasta_media, PASTAS_RAIZ[base])
         os.makedirs(pasta_destino, exist_ok=True)
         
-        if base in ["BlackList", "Mailing Janeiro 2026"]:
+        if base in ["BlackList", "Mailing Janeiro 2026", "Giga Mais"]:
             for path in os.listdir(pasta_destino):
                 file = os.path.join(pasta_destino, path)
                 if os.path.isfile(file):
@@ -429,9 +438,13 @@ class AtualizaBases(LoginRequiredMixin, TemplateView):
                     erros.append(er)
 
         if PASTAS_RAIZ[base] == "arquivos_dfv":
-            processo = threading.Thread(target=inicia_gerador_mailing_2026, args=("janeiro_2026",))
+            tipos ={
+                "Mailing Janeiro 2026": "janeiro_2026",
+                "Giga Mais": "giga_mais"
+            }
+            processo = threading.Thread(target=inicia_gerador_mailing_2026, args=(tipos[base],))
             processo.start()
-            relatorio.append("Sistema Mailing Janeiro 2026 iniciado com sucesso!")
+            relatorio.append(f"Sistema {base} iniciado com sucesso!")
 
         ctx = self.get_context_data()
         ctx["show_modal"] = True
@@ -449,7 +462,8 @@ def filtra_mailing_view(request):
         'resultados': None,
         'qtd_resultados': 0,
         'colunas': [],
-        'cnaes': get_cnaes()
+        'cnaes': get_cnaes(),
+        'sistema': request.session["sistema"]
     }
     nome_padrao_arquivo = ""
     PASTAS_RAIZ = {
@@ -458,7 +472,8 @@ def filtra_mailing_view(request):
             "giga_mais": os.path.join(os.getcwd(), "media_giga_mais"),
             "janeiro_2026": os.path.join(os.getcwd(), "media_janeiro_2026")
         }
-    pasta_raiz = PASTAS_RAIZ[request.session["sistema"]]
+    sistema = request.session["sistema"]
+    pasta_raiz = PASTAS_RAIZ[sistema]
 
     filepath_csv = os.path.join(os.getcwd(), f"{pasta_raiz}/{request.user.username}_arquivos_mailing_filtrados")
     os.makedirs(filepath_csv, exist_ok=True)
@@ -543,9 +558,10 @@ def filtra_mailing_view(request):
                 context['colunas'] = df.columns.tolist()
                 context['qtd_resultados'] = len(df.index)
 
-                return render(request, 'filtros_mailing.html', context)
+                return render(request, 'filtra_mailing.html', context)
 
-            filtros["credito"] = tipos_credito
+            if sistema != "giga_mais":
+                filtros["credito"] = tipos_credito
             print("FILTROS: ", filtros)
             pasta_dados = os.path.join(pasta_raiz, "viabilidades_credito_enriquecido")
             df = get_dados_mailing(filtros, tipos_credito=tipos_credito, formato_saida=formato_saida, conjunto_telefones=conjunto_telefones, tipos_telefone= tipos_telefone, tipoMailing=tipoMailing, filtro_telefone_blacklist=filtro_telefone_blacklist, pasta_dados=pasta_dados)

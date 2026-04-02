@@ -913,7 +913,7 @@ def complementa_arquivos(pasta_usuario, pasta_destino) -> str:
         df_enriquecimento["DOCUMENTO"] = df_enriquecimento["DOCUMENTO"].astype("string")
         df_enriquecimento["DOCUMENTO"] = df_enriquecimento["DOCUMENTO"].apply(lambda x: re.sub(r'\D', '', x))
         df_enriquecimento["DOCUMENTO"] = df_enriquecimento["DOCUMENTO"].astype(str).str.zfill(14)
-        print(f"Complementando os arquivos {os.listdir(PASTA_ARQUIVOS_COMPLEMENTAR)}")
+
         for arq in os.listdir(PASTA_ARQUIVOS_COMPLEMENTAR):
             file = os.path.join(PASTA_ARQUIVOS_COMPLEMENTAR, arq)
             extensao = os.path.splitext(file)[1].lower()
@@ -931,6 +931,9 @@ def complementa_arquivos(pasta_usuario, pasta_destino) -> str:
                 )
 
             df = padronizacao(df, separator=sep)
+            df.rename(columns={
+                "CNPJ": "cnpj",
+            },inplace=True)
             df["cnpj"] = df["cnpj"].apply(lambda x: re.sub(r'\D', '', x))
             permitidos = df["cnpj"].unique().tolist()
             df_enriquecimento = df_enriquecimento[df_enriquecimento["DOCUMENTO"].isin(permitidos)]

@@ -120,6 +120,8 @@
     </h2>
     {% if is_janeiro %}
     <a href="{% url 'atualizacao_bases' %}?base=Mailing Janeiro 2026"class="btn status-badge-2" id="ModalForm">Gerar Novo Mailing</a>
+    {% elif is_giga_mais %}
+    <a href="{% url 'atualizacao_bases' %}?base=Giga Mais"class="btn status-badge-2" id="ModalForm">Gerar Novo Mailing</a>
     
     {% endif %}
     <a href="{% url 'filtra_mailing' %}"class="btn status-badge" id="currentStatusBadge">Filtrar/Baixar</a>

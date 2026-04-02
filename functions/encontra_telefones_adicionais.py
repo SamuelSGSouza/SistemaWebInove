@@ -8,10 +8,15 @@ from datetime import datetime, timedelta
 import traceback
 
 def fase_4_enriquecer(sistema, nova_execucao):
+    
     try:
         raiz = os.path.join(os.getcwd(), PASTAS_RAIZ[sistema])
-        viabilidades_credito_path = os.path.join(raiz, "viabilidades_credito")
+        if sistema != "giga_mais":
+            viabilidades_credito_path = os.path.join(raiz, "viabilidades_credito")
+        else:
+            viabilidades_credito_path = os.path.join(raiz, "viabilidades")
         viabilidades_credito_enriquecido_path = os.path.join(raiz, "viabilidades_credito_enriquecido")
+        os.makedirs(viabilidades_credito_enriquecido_path, exist_ok=True)
         for file in os.listdir(viabilidades_credito_enriquecido_path):
             os.remove(os.path.join(viabilidades_credito_enriquecido_path, file))
         enriquecimento_path = os.path.join(os.getcwd(), "media", "arquivos_enriquecimento", "enriquecimento.csv")
@@ -129,14 +134,20 @@ def verificador_fase_4(sistema, nova_execucao):
 
     root = os.path.join(os.getcwd(), sistemas_dict[sistema], "viabilidades_credito_enriquecido")
     cols_telefone = [f"Telefone_{i}" for i in range(1,21)]
-    colunas_esperadas = ["data_inicio_atividades", "natureza_juridica", "descricaonj", "cnae_fiscal", "cnae_fiscal_secundaria", "descricaocf", "cnpj", "razao_social", "nome_fantasia", "matriz_filial", "decisor", "situacao_cadastral", "correio_eletronico", "logradouro", "num_fachada", "complemento1", "bairro", "cep", "municipio", "uf", "CPF", "MEINAOMEI", "TEL1", "TEL2", "TEL3", "credito"] + cols_telefone
+    if sistema == "giga_mais":
+        colunas_esperadas = ["data_inicio_atividades", "natureza_juridica", "descricaonj", "cnae_fiscal", "cnae_fiscal_secundaria", "descricaocf", "cnpj", "razao_social", "nome_fantasia", "matriz_filial", "decisor", "situacao_cadastral", "correio_eletronico", "logradouro", "num_fachada", "complemento1", "bairro", "cep", "municipio", "uf", "CPF", "MEINAOMEI", "TEL1", "TEL2", "TEL3"] + cols_telefone
+    else:
+        colunas_esperadas = ["data_inicio_atividades", "natureza_juridica", "descricaonj", "cnae_fiscal", "cnae_fiscal_secundaria", "descricaocf", "cnpj", "razao_social", "nome_fantasia", "matriz_filial", "decisor", "situacao_cadastral", "correio_eletronico", "logradouro", "num_fachada", "complemento1", "bairro", "cep", "municipio", "uf", "CPF", "MEINAOMEI", "TEL1", "TEL2", "TEL3", "credito"] + cols_telefone
     cnpjs_encontrados = []
     telefones_encontrados = []
 
-    tipos_viabilidade = ["Primaria", "Secundaria"]
+    if sistema == "giga_mais":
+        tipos_viabilidade = ["Primaria_",]
+    else:
+        tipos_viabilidade = ["Primaria_", "Secundaria_"]
     for estado in ESTADOS_BR:
         for tipo in tipos_viabilidade:
-            file = f"Viabilidade_{tipo}_{estado}.csv"
+            file = f"Viabilidade_{tipo}{estado}.csv"
             filepath = os.path.join(root,file)
             if not os.path.exists(filepath):
                 salva_status(nova_execucao, titulo=f"Erro encontrar telefones para enriquecimento. Arquivo {file} não existe.",status="Erro")
@@ -188,13 +199,14 @@ def verificador_fase_4(sistema, nova_execucao):
             
             salva_status(nova_execucao, titulo=f"Total de telefones encontrados até o momento: {len(telefones_encontrados)}",status="Em Andamento")            
 
-            tipos_credito = df["credito"].unique().tolist()
-            if len(tipos_credito) != 3:
-                if "Secundaria" in file and nova_execucao.sistema == "janeiro_2026":
-                    pass
-                else:
-                    salva_status(nova_execucao, titulo=f"Erro verificar análise de crédito. Arquivo {file} possui tipos de crédito inválidos: {tipos_credito}",status="Erro")            
-                    return False
+            if sistema != "giga_mais":
+                tipos_credito = df["credito"].unique().tolist()
+                if len(tipos_credito) != 3:
+                    if "Secundaria" in file and nova_execucao.sistema == "janeiro_2026":
+                        pass
+                    else:
+                        salva_status(nova_execucao, titulo=f"Erro verificar análise de crédito. Arquivo {file} possui tipos de crédito inválidos: {tipos_credito}",status="Erro")            
+                        return False
 
             cnpjs_encontrados += df["cnpj"].unique().tolist()
             # colunas_telefone = ["TEL1", "TEL2", "TEL3"]

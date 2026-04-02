@@ -141,6 +141,46 @@ def fase_2_concatenador(sistema, nova_execucao:Status_Execucoe_DB):
             salva_status(nova_execucao, titulo=f"Erro ao Tratar Base da Receita: Arquivo {file} não possui as colunas esperadas",status="Erro")            
             return False
 
+    elif sistema == "giga_mais":
+        dtype={"CEP": "string"}
+        path_arquivos_dfv = os.path.join(os.getcwd(), "media_giga_mais", "arquivos_dfv")
+        path_viabilidades = os.path.join(os.getcwd(), "media_giga_mais", "viabilidades")
+
+        for file in os.listdir(path_viabilidades):
+            os.remove(os.path.join(path_viabilidades, file))
+
+        dfs_dfv = []
+        for file in os.listdir(path_arquivos_dfv):
+            df_dfv_estado = pd.read_excel(os.path.join(path_arquivos_dfv, file), dtype=dtype)
+            dfs_dfv.append(df_dfv_estado)
+        df_dfv = pd.concat(dfs_dfv)
+
+        df_dfv["cep_geral"] = df_dfv["CEP"].apply(lambda x: str(x).endswith("000"))
+        df_dfv = df_dfv[df_dfv["cep_geral"] != True]
+
+        ceps_permitidos = df_dfv["CEP"].unique().tolist()
+        for estado in ESTADOS_BR:        
+            salva_status(nova_execucao, f"Iniciando análise de viabilidades no estado {estado}", status="Em Andamento")
+
+            
+
+            df_receita = pd.read_csv(os.path.join(pasta_receita_federal, f"{estado}.csv"), sep=";", dtype=DTYPES_RECEITA_FEDERAL)
+            df_receita = gera_campos_cep(df_receita, "cep", "num_fachada", "logradouro")
+            df_receita["cnpj"] = df_receita["cnpj"].apply(lambda x: re.sub(r"\D+", "", str(x)).zfill(14))
+
+            df_receita.drop_duplicates(subset=["cnpj"], keep="first", inplace=True)
+
+            
+
+            
+
+            
+
+
+            df_receita_viaveis = df_receita[df_receita["cep"].isin(ceps_permitidos)]
+            df_receita_viaveis.to_csv(os.path.join(path_viabilidades, f"Viabilidade_Primaria_{estado}.csv"), sep=";", index=False)
+            salva_dado(f"Quantidade de Empresas com Viabilidade Primaria no Estado {estado}", len(df_receita_viaveis.index))
+
     elif sistema == "janeiro_2026":
         try:
             
@@ -224,14 +264,18 @@ def verificador_fase_2(sistema, nova_execucao):
     cnpjs_encontrados = []
     telefones_encontrados = []
 
-    tipos_viabilidade = ["Primaria", "Secundaria"]
+    if sistema == "giga_mais":
+        tipos_viabilidade = ["Primaria_",]
+    else:
+        tipos_viabilidade = ["Primaria_", "Secundaria_"]
+
     salva_status(nova_execucao, f"Iniciando validação dos dados de viabilidades",  status="Em Andamento")
 
     for estado in estados:
         salva_status(nova_execucao, f"Iniciando validação dos dados de viabilidades no estado {estado}",  status="Em Andamento")
 
         for tipo in tipos_viabilidade:
-            file = f"Viabilidade_{tipo}_{estado}.csv"
+            file = f"Viabilidade_{tipo}{estado}.csv"
             filepath = os.path.join(root,file)
             arquivo = Path(filepath)
             timestamp = arquivo.stat().st_ctime
