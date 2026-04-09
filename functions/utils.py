@@ -825,6 +825,8 @@ def filtra_arquivos(raiz, pasta_arquivos_para_filtrar, pasta_usuario) -> str:
             for col in df.columns:
                 if "ddd" in str(col).lower():
                     formato_com_ddd = True
+                    relatorio +=  f"Indentificou o formato como DDD + TEL. \n"
+
                     break
             
             if formato_com_ddd:
@@ -833,9 +835,13 @@ def filtra_arquivos(raiz, pasta_arquivos_para_filtrar, pasta_usuario) -> str:
 
             
             
-            for col in df.columns:
-                if "tel" in str(col).lower():
-                    colunas_telefone.append(col)
+                for col in df.columns:
+                    if "telefone_" in str(col).lower():
+                        colunas_telefone.append(col)
+            else:
+                for col in df.columns:
+                    if "tel" in str(col).lower():
+                        colunas_telefone.append(col)
                 
             total_antes = sum(df[col].nunique() for col in colunas_telefone)
             relatorio +=  f"Antes de filtrar, o arquivo {arq} possuía {total_antes} telefones. \n"
@@ -867,17 +873,22 @@ def filtra_arquivos(raiz, pasta_arquivos_para_filtrar, pasta_usuario) -> str:
 
             coluna_telefone = colunas_telefone[0]
             if formato_com_ddd:
-                for i in range(1,7):
-                    df[f"DDD{i}"] = df[f"telefone_{i}"].apply(lambda x: str(x)[:2] if str(x).strip() != "" else "")
-                    df[f"TEL{i}"] = df[f"telefone_{i}"].apply(lambda x: str(x)[2:] if str(x).strip() != "" else "")
-                    df = df.drop(f"telefone_{i}", axis=1)
+                for i in range(1,9):
+                    if i < 7:
+                        df[f"DDD{i}"] = df[f"telefone_{i}"].apply(lambda x: str(x)[:2] if str(x).strip() != "" else "")
+                        df[f"TEL{i}"] = df[f"telefone_{i}"].apply(lambda x: str(x)[2:] if str(x).strip() != "" else "")
+                        df = df.drop(f"telefone_{i}", axis=1)
+                    else:
+                        df = df.drop(f"TEL{i}", axis=1)
+                        df = df.drop(f"DDD{i}", axis=1)
                 coluna_telefone = "TEL1"
 
+            df.replace("NAO ENCONTRADO", "", inplace=True)
                 
             df_vazios = df[df[coluna_telefone] == ""]
             df = df[df[coluna_telefone] != ""]
 
-            df.replace("NAO ENCONTRADO", "", inplace=True)
+            
 
             if extensao in [".csv", ".txt"]:
                 df.to_csv(file,sep=sep, index=False)
