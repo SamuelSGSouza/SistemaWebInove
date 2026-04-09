@@ -864,7 +864,7 @@ def filtra_arquivos(raiz, pasta_arquivos_para_filtrar, pasta_usuario) -> str:
             phones_matrix = df[colunas_telefone].values
             filtered_phones = []
             for row in phones_matrix:
-                valid_phones = [str(phone) for phone in list(set(row)) if str(phone).strip() and phone not in blacklist_set]
+                valid_phones = [str(phone) for phone in list(set(row)) if clean_phone_number(str(phone).strip()) and phone not in blacklist_set]
                 blacklist_set.update(set(valid_phones))
                 filtered_phones.append(valid_phones + [''] * (len(colunas_telefone)- len(valid_phones)))
 
@@ -888,6 +888,7 @@ def filtra_arquivos(raiz, pasta_arquivos_para_filtrar, pasta_usuario) -> str:
                 coluna_telefone = "TEL1"
 
             df.replace("NAO ENCONTRADO", "", inplace=True)
+            df.replace(";", ",", inplace=True)
                 
             df_vazios = df[df[coluna_telefone] == ""]
             df = df[df[coluna_telefone] != ""]
