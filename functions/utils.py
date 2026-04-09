@@ -838,10 +838,12 @@ def filtra_arquivos(raiz, pasta_arquivos_para_filtrar, pasta_usuario) -> str:
                 for col in df.columns:
                     if "telefone_" in str(col).lower():
                         colunas_telefone.append(col)
+                        df[col] = df[col].apply(lambda x: clean_phone_number(x))
             else:
                 for col in df.columns:
                     if "tel" in str(col).lower():
                         colunas_telefone.append(col)
+                        df[col] = df[col].apply(lambda x: clean_phone_number(x))
                 
             total_antes = sum(df[col].nunique() for col in colunas_telefone)
             relatorio +=  f"Antes de filtrar, o arquivo {arq} possuía {total_antes} telefones. \n"
@@ -852,11 +854,13 @@ def filtra_arquivos(raiz, pasta_arquivos_para_filtrar, pasta_usuario) -> str:
                     ~df[col].isin(blacklist_set), 
                     ""
                 )
+
             for col in colunas_telefone:
                 df[col] = df[col].mask(
                     df[col] == "NAO ENCONTRADO",
                     ""                                # ou pd.NA / np.nan
                 )
+                
             phones_matrix = df[colunas_telefone].values
             filtered_phones = []
             for row in phones_matrix:
