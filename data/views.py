@@ -618,6 +618,7 @@ def filtra_mailing_view(request):
     return render(request, 'filtra_mailing.html', context)
 
 def inicia_gerador_view(request):
+    
     # if request.method != 'POST':
     #     return JsonResponse({'status': 'error', 'sucessos': [], "erros":['Método inválido.',], "links": [], "relatorio": []})
 
