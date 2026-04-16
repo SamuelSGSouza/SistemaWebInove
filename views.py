@@ -307,7 +307,7 @@ class AcompanhaGerador(LoginRequiredMixin,TemplateView):
             'oi': "Mailing Original",
             'geral': "Mailing Original",
             'giga_mais': "Mailing Giga +",
-            'janeiro_2026': "Mailing Janeiro 2026"
+            'janeiro_2026': "Mailing Restrito"
         }
         context["sistema"] = sistema
         context['titulo'] = titulos[sistema]

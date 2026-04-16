@@ -202,11 +202,8 @@ def verificador_fase_4(sistema, nova_execucao):
             if sistema != "giga_mais":
                 tipos_credito = df["credito"].unique().tolist()
                 if len(tipos_credito) != 3:
-                    if "Secundaria" in file and nova_execucao.sistema == "janeiro_2026":
-                        pass
-                    else:
-                        salva_status(nova_execucao, titulo=f"Erro verificar análise de crédito. Arquivo {file} possui tipos de crédito inválidos: {tipos_credito}",status="Erro")            
-                        return False
+                    salva_status(nova_execucao, titulo=f"Erro verificar análise de crédito. Arquivo {file} possui tipos de crédito inválidos: {tipos_credito}",status="Erro")            
+                    return False
 
             cnpjs_encontrados += df["cnpj"].unique().tolist()
             # colunas_telefone = ["TEL1", "TEL2", "TEL3"]

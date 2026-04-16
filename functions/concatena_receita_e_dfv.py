@@ -195,7 +195,7 @@ def fase_2_concatenador(sistema, nova_execucao:Status_Execucoe_DB):
                 cnpjs_ja_coletados+= cnpjs
 
             # COLUNAS_DFV=["UF","MUNICIPIO","LOCALIDADE","BAIRRO","LOGRADOURO","CEP","CELULA","TIPO_CDO","COMPLEMENTO2","COMPLEMENTO3","CODIGO_LOGRADOURO","NO_FACHADA","COMPLEMENTO1","VIABILIDADE_ATUAL","HP_TOTAL","HP_LIVRE","OPB_CEL","DT_ATUALIZACAO"]
-            dtype={"CNPJ": "string", "POSSE_FIBRA_CPF": "string", "SOCIO_COM_FIBRA_NO_ENDERECO": "string"}
+            dtype={"CNPJ": "string", "POSSE_FIBRA_CPF": "string", "SOCIO_COM_FIBRA_NO_ENDERECO": "string", "CEP": "string", "FACHADA": "string", "ENDERECO":"string"}
             path_arquivos_dfv = os.path.join(os.getcwd(), "media_janeiro_2026", "arquivos_dfv")
             path_viabilidades = os.path.join(os.getcwd(), "media_janeiro_2026", "viabilidades")
 
@@ -206,8 +206,8 @@ def fase_2_concatenador(sistema, nova_execucao:Status_Execucoe_DB):
                 salva_status(nova_execucao, f"Iniciando análise de viabilidades no estado {estado}", status="Em Andamento")
     
                 df_receita = pd.read_csv(os.path.join(pasta_receita_federal, f"{estado}.csv"), sep=";", dtype=DTYPES_RECEITA_FEDERAL)
-                df_receita = gera_campos_cep(df_receita, "cep", "num_fachada", "logradouro")
                 df_receita["cnpj"] = df_receita["cnpj"].apply(lambda x: re.sub(r"\D+", "", str(x)).zfill(14))
+                df_receita = gera_campos_cep(df_receita, "cep", "num_fachada", "logradouro")
 
                 df_receita.drop_duplicates(subset=["cnpj"], keep="first", inplace=True)
 
@@ -222,20 +222,43 @@ def fase_2_concatenador(sistema, nova_execucao:Status_Execucoe_DB):
 
                 df_dfv = df_dfv[df_dfv["POSSE_FIBRA_CPF"] != "SIM"]
                 df_dfv = df_dfv[df_dfv["SOCIO_COM_FIBRA_NO_ENDERECO"] != "SIM"]
-                df_dfv["CNPJ"] = df_dfv["CNPJ"].apply(lambda x: re.sub(r"\D+", "", str(x)).zfill(14))
+                df_dfv = gera_campos_cep(df_dfv, "CEP", "FACHADA", "ENDERECO")
+
+                chaves_especificas_dfv = df_dfv[~df_dfv["CEP"].astype(str).str.endswith("000")]["CHAVE_ESPECIFICA"].unique().tolist()
+                chaves_especificas_dfv = [c for c in chaves_especificas_dfv if len(c)>4]
+
+                chaves_geral_dfv = df_dfv[df_dfv["CEP"].astype(str).str.endswith("000")]["CHAVE_GERAL"].unique().tolist()
+                chaves_geral_dfv = [c for c in chaves_geral_dfv if len(c)>4]
+
+                df_receita_cep_especifico = df_receita[df_receita["CHAVE_ESPECIFICA"].isin(chaves_especificas_dfv)]
+                df_receita_cep_geral = df_receita[df_receita["CHAVE_GERAL"].isin(chaves_geral_dfv)]
+
+
+                df_receita_viaveis:pd.DataFrame = pd.concat([df_receita_cep_especifico, df_receita_cep_geral])
+
+                df_receita_viaveis.drop_duplicates(subset=["cnpj"], keep="first", inplace=True)
+                df_receita_viaveis.to_csv(os.path.join(path_viabilidades, f"Viabilidade_Primaria_{estado}.csv"), sep=";", index=False)
+                salva_dado(f"Quantidade de Empresas com Viabilidade Primaria no Estado {estado}", len(df_receita_viaveis.index))
+
+                ceps_especificos_dfv = df_dfv[~df_dfv["CEP"].astype(str).str.endswith("000")]["CEP"].unique().tolist()
+
+                df_receita_nao_coletados = df_receita[~df_receita["cnpj"].isin(df_receita_viaveis["cnpj"].unique().tolist())]
+
+                df_receita_mailing_secundario = df_receita_nao_coletados[df_receita_nao_coletados["cep"].isin(ceps_especificos_dfv)]
+                padrao = r'\b(apto|apartamento|sala|bloco)\b'
+
+                df_receita_mailing_secundario = df_receita_mailing_secundario[
+                    ~df_receita_mailing_secundario['complemento1']
+                    .fillna('')
+                    .str.contains(padrao, case=False, regex=True)
+                ]
                 
-                print(df_dfv["SOCIO_COM_FIBRA_NO_ENDERECO"].unique().tolist())
-                df_dfv = df_dfv[~df_dfv["CNPJ"].isin(cnpjs_ja_coletados)]
+                df_receita_mailing_secundario.to_csv(os.path.join(path_viabilidades, f"Viabilidade_Secundaria_{estado}.csv"), sep=";", index=False)
 
-                cnpjs_viaveis = df_dfv["CNPJ"].unique().tolist()
 
-                df_receita = df_receita[df_receita["cnpj"].isin(cnpjs_viaveis)]
-                df_receita.to_csv(os.path.join(path_viabilidades, f"Viabilidade_Primaria_{estado}.csv"), sep=";", index=False)
-                salva_dado(f"Quantidade de Empresas com Viabilidade Primaria no Estado {estado}", len(df_receita.index), 'janeiro_2026')
-                pd.DataFrame(columns=df_receita.columns).to_csv(os.path.join(path_viabilidades, f"Viabilidade_Secundaria_{estado}.csv"), sep=";", index=False)
 
-                salva_dado(f"Quantidade de Empresas com Viabilidade Secundaria no Estado {estado}", 0, 'janeiro_2026')
 
+                salva_dado(f"Quantidade de Empresas com Viabilidade Secundaria no Estado {estado}", len(df_receita_mailing_secundario.index))
             
                     
 

@@ -178,7 +178,7 @@ class Status_Execucao(LoginRequiredMixin,TemplateView):
             'oi': "Mailing Original",
             'geral': "Mailing Original",
             'giga_mais': "Mailing Giga +",
-            'janeiro_2026': "Mailing Janeiro 2026"
+            'janeiro_2026': "Mailing Restrito"
         }
         context["sistema"] = sistema
         if sistema == "janeiro_2026":
@@ -238,7 +238,7 @@ class Status_Execucao(LoginRequiredMixin,TemplateView):
         sistema="janeiro_2026"
         context["sistema"] = sistema
         context["is_janeiro"] = True
-        context["titulo"] = "Mailing Janeiro 2026"
+        context["titulo"] = "Mailing Restrito"
         self.request.session["sistema"] = sistema
 
         context["acompanhar_gerador_activate"] = "active"
@@ -367,7 +367,7 @@ class AtualizaBases(LoginRequiredMixin, TemplateView):
             "BlackList": "Base de telefones em BlackList que NUNCA devem ser utilizados",
             "Quarentena": "Base de telefones que ficarão em quarentena por determinado período até poderem ser utilizados.",
             "Credito": "Base de crédito a ser verificado no mailing",
-            "Mailing Janeiro 2026": "Envie aqui os arquivos de mailing restrito para iniciar a geração de um novo mailing.",
+            "Mailing Restrito": "Envie aqui os arquivos de mailing restrito para iniciar a geração de um novo mailing.",
             "Giga Mais": "Envie aqui os arquivos de mailing para iniciar a geração de um novo mailing da Giga +."
         }
         context["descricao"] = dict_tipos[context["base"]]
@@ -379,11 +379,11 @@ class AtualizaBases(LoginRequiredMixin, TemplateView):
         PASTAS_RAIZ = {
             "BlackList": "arquivos_blacklist",
             "Quarentena": "arquivos_quarentena",
-            "Mailing Janeiro 2026": "arquivos_dfv",
+            "Mailing Restrito": "arquivos_dfv",
             "Giga Mais": "arquivos_dfv",
             "Credito": "arquivos_credito",
         }
-        if base == "Mailing Janeiro 2026":
+        if base == "Mailing Restrito":
             pasta_media = "media_janeiro_2026"  
         elif base ==  "Giga Mais":
             pasta_media = "media_giga_mais"  
@@ -392,7 +392,7 @@ class AtualizaBases(LoginRequiredMixin, TemplateView):
         pasta_destino = os.path.join(os.getcwd(), pasta_media, PASTAS_RAIZ[base])
         os.makedirs(pasta_destino, exist_ok=True)
         
-        if base in ["BlackList", "Mailing Janeiro 2026", "Giga Mais"]:
+        if base in ["BlackList", "Mailing Restrito", "Giga Mais"]:
             for path in os.listdir(pasta_destino):
                 file = os.path.join(pasta_destino, path)
                 if os.path.isfile(file):
@@ -439,7 +439,7 @@ class AtualizaBases(LoginRequiredMixin, TemplateView):
 
         if PASTAS_RAIZ[base] == "arquivos_dfv":
             tipos ={
-                "Mailing Janeiro 2026": "janeiro_2026",
+                "Mailing Restrito": "janeiro_2026",
                 "Giga Mais": "giga_mais"
             }
             processo = threading.Thread(target=inicia_gerador_mailing_2026, args=(tipos[base],))
