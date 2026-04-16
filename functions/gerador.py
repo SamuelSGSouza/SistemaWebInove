@@ -7,12 +7,12 @@ from data.models import Status_Execucoe_DB
 def inicia_gerador(sistema="oi"):
     # fase_1_ok = fase_1_gerador()
     # if fase_1_ok:
-        nova_execucao = Status_Execucoe_DB.objects.create(sistema=sistema)
-        fase_2_ok = fase_2_concatenador(sistema=sistema, nova_execucao=nova_execucao)
-        if fase_2_ok:
-            fase_3_ok = fase_3_define_credito(sistema=sistema, nova_execucao=nova_execucao)
-            if fase_3_ok:
-                fase_4_enriquecer(sistema=sistema, nova_execucao=nova_execucao)
+        nova_execucao = Status_Execucoe_DB.objects.filter(sistema=sistema).order_by("-momento_inicializacao")[0]
+        # fase_2_ok = fase_2_concatenador(sistema=sistema, nova_execucao=nova_execucao)
+        # if fase_2_ok:
+        fase_3_ok = fase_3_define_credito(sistema=sistema, nova_execucao=nova_execucao)
+        if fase_3_ok:
+            fase_4_enriquecer(sistema=sistema, nova_execucao=nova_execucao)
 
 def inicia_gerador_mailing_2026(sistema="mailing_2026"):
     nova_execucao = Status_Execucoe_DB.objects.create(sistema=sistema)
