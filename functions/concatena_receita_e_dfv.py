@@ -195,7 +195,7 @@ def fase_2_concatenador(sistema, nova_execucao:Status_Execucoe_DB):
                 cnpjs_ja_coletados+= cnpjs
 
             # COLUNAS_DFV=["UF","MUNICIPIO","LOCALIDADE","BAIRRO","LOGRADOURO","CEP","CELULA","TIPO_CDO","COMPLEMENTO2","COMPLEMENTO3","CODIGO_LOGRADOURO","NO_FACHADA","COMPLEMENTO1","VIABILIDADE_ATUAL","HP_TOTAL","HP_LIVRE","OPB_CEL","DT_ATUALIZACAO"]
-            dtype={"CNPJ": "string", "POSSE_FIBRA_CPF": "string", "SOCIO_COM_FIBRA_NO_ENDERECO": "string", "CEP": "string", "FACHADA": "string", "ENDERECO":"string"}
+            dtype={"CEP": "string", "FACHADA": "string", "ENDERECO":"string"}
             path_arquivos_dfv = os.path.join(os.getcwd(), "media_janeiro_2026", "arquivos_dfv")
             path_viabilidades = os.path.join(os.getcwd(), "media_janeiro_2026", "viabilidades")
 
@@ -220,8 +220,6 @@ def fase_2_concatenador(sistema, nova_execucao:Status_Execucoe_DB):
 
                 df_dfv = pd.concat(dfs_dfv)
 
-                df_dfv = df_dfv[df_dfv["POSSE_FIBRA_CPF"] != "SIM"]
-                df_dfv = df_dfv[df_dfv["SOCIO_COM_FIBRA_NO_ENDERECO"] != "SIM"]
                 df_dfv = gera_campos_cep(df_dfv, "CEP", "FACHADA", "ENDERECO")
 
                 chaves_especificas_dfv = df_dfv[~df_dfv["CEP"].astype(str).str.endswith("000")]["CHAVE_ESPECIFICA"].unique().tolist()
