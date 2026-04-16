@@ -217,6 +217,10 @@ def fase_2_concatenador(sistema, nova_execucao:Status_Execucoe_DB):
 
                         df_dfv_estado = pd.read_excel(os.path.join(path_arquivos_dfv, file), dtype=dtype)
                         dfs_dfv.append(df_dfv_estado)
+                
+                if len(dfs_dfv) < 1:
+                    salva_status(nova_execucao, f"Nenhum dfv encontrado para o estado {estado}", status="Erro")
+                    return False
 
                 df_dfv = pd.concat(dfs_dfv)
 
