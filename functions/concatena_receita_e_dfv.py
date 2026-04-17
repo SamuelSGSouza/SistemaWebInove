@@ -130,6 +130,13 @@ def fase_2_concatenador(sistema, nova_execucao:Status_Execucoe_DB):
                 df_receita_nao_coletados = df_receita[~df_receita["cnpj"].isin(df_receita_viaveis["cnpj"].unique().tolist())]
 
                 df_receita_mailing_secundario = df_receita_nao_coletados[df_receita_nao_coletados["cep"].isin(ceps_especificos_dfv)]
+                padrao = r'\b(apto|apartamento|sala|bloco)\b'
+                df_receita_mailing_secundario = df_receita_mailing_secundario[
+                    ~df_receita_mailing_secundario['complemento1']
+                    .fillna('')
+                    .str.contains(padrao, case=False, regex=True)
+                ]
+                
                 df_receita_mailing_secundario.to_csv(os.path.join(path_viabilidades, f"Viabilidade_Secundaria_{estado}.csv"), sep=";", index=False)
 
                 salva_dado(f"Quantidade de Empresas com Viabilidade Secundaria no Estado {estado}", len(df_receita_mailing_secundario.index))
@@ -178,6 +185,12 @@ def fase_2_concatenador(sistema, nova_execucao:Status_Execucoe_DB):
 
 
             df_receita_viaveis = df_receita[df_receita["cep"].isin(ceps_permitidos)]
+            padrao = r'\b(apto|apartamento|sala|bloco)\b'
+            df_receita_viaveis = df_receita_viaveis[
+                    ~df_receita_viaveis['complemento1']
+                    .fillna('')
+                    .str.contains(padrao, case=False, regex=True)
+                ]
             df_receita_viaveis.to_csv(os.path.join(path_viabilidades, f"Viabilidade_Primaria_{estado}.csv"), sep=";", index=False)
             salva_dado(f"Quantidade de Empresas com Viabilidade Primaria no Estado {estado}", len(df_receita_viaveis.index))
 

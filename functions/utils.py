@@ -185,7 +185,7 @@ def remove_fixos(df: pd.DataFrame, colunas_telefone: list = ["TEL1", "TEL2", "TE
     df[colunas_telefone] = df.apply(shift_phones, axis=1)
     return df
 
-def clean_phone_number(phone, apenas_celular:bool=False) -> str:
+def clean_phone_number(phone, apenas_celular:bool=False, apenas_fixos:bool=False) -> str:
     """Função para limpar e validar números de telefone"""
     if pd.isna(phone) or str(phone).strip() == '':
         return ''
@@ -210,6 +210,8 @@ def clean_phone_number(phone, apenas_celular:bool=False) -> str:
         return ""
 
     if len(telefone) == 9: #É celular
+        if apenas_fixos:
+            return ""
 
         if str(telefone[0]) == "9": #celular com 9 na frente
             return cleaned
@@ -584,7 +586,7 @@ def gera_e_atualiza_enriquecimento():
             doc_col = next((c for c in df.columns
                             if any(tok in c.lower() for tok in ("cpf", "cnpj"))), None)
             fone_cols = [c for c in df.columns
-                           if any(tok in c.lower() for tok in ("tel", "cel", "fixo"))]
+                           if any(tok in c.lower() for tok in ("tel", "celular", "fixo"))]
             
             relatorio += f"Foram encontradas as seguintes colunas de telefone que serão consideradas: {fone_cols}\n"
             if not (doc_col and fone_cols):
@@ -643,15 +645,12 @@ def gera_e_atualiza_enriquecimento():
             total_telefones_arquivo = len(list(set(telefones_arquivo)))
             relatorio += f"Após cadastrar o arquivo, Base de Enriquecimento ficou com um total de {len(wide['DOCUMENTO'].unique().tolist())} empresas e {total_telefones_arquivo} telefones cadastrados.\n"
 
-            blacks = BaseEnriquecimento.objects.filter()[0]
-            blacks.total_dados = total_telefones_arquivo
-            blacks.save()
+            salva_dado("Total de telefones na base de enriquecimento", total_telefones_arquivo)
         
         for file in sorted(os.listdir(PASTA)):
             filename = os.path.join(PASTA, file)
             if filename != CSV_ATUAL:
                 os.remove(filename)
-        salva_log("Finalizando Atualização do enriquecimento", "oi")
         return relatorio, erros
     
         
@@ -1174,10 +1173,10 @@ def verifica_base_enriquecimento(request, extensao, arquivo_original, caminho_fi
         os.remove(caminho_final)
         return False, f"Arquivo {arquivo_original.name} Não considerado por não possuir ao menos uma coluna 'cnpj' ou 'cpf'"
 
-    fone_cols = [c for c in df.columns if any(tok in c.lower() for tok in ("tel", "cel", "fixo"))]
+    fone_cols = [c for c in df.columns if any(tok in c.lower() for tok in ("tel", "celular", "fixo"))]
     if not fone_cols:
         os.remove(caminho_final)
-        return False, f"Arquivo {arquivo_original.name} Não considerado por não possuir ao menos uma coluna com termos de telefone, como: 'tel', 'cel' ou 'fixo'"
+        return False, f"Arquivo {arquivo_original.name} Não considerado por não possuir ao menos uma coluna com termos de telefone, como: 'tel', 'celular' ou 'fixo'"
     
     
     return True, f"Arquivo {arquivo_original.name} Cadastrado com sucesso!"
@@ -1538,11 +1537,14 @@ def get_dados_mailing(colunas_filtro:dict, campos_retorno:list=[], tipos_credito
     df[colunas_telefone] = df[colunas_telefone].applymap(
         lambda x: clean_phone_number(x, apenas_celular=apenas_celular)
     )
+    apenas_fixos = tipos_telefone == "apenas_fixos"
+    df[colunas_telefone] = df[colunas_telefone].applymap(
+        lambda x: clean_phone_number(x, apenas_fixos=apenas_fixos)
+    )
     
     ini = time.time()
     #garantindo que telefones sempre fiquem à esquerda
-    df = compacta_colunas(df, ["TEL1", "TEL2", "TEL3"])
-    df = compacta_colunas(df, [f"Telefone_{i}" for i in range(1,21)])
+    df = compacta_colunas(df, ["TEL1", "TEL2", "TEL3"] + [f"Telefone_{i}" for i in range(1,21)])
     
     ini = time.time()
     if formato_saida == "IPBOX":

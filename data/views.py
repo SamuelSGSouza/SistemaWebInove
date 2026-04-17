@@ -175,7 +175,7 @@ class Status_Execucao(LoginRequiredMixin,TemplateView):
         if not sistema:
             sistema = self.request.GET.get("sistema", "geral")
         titulos = {
-            'oi': "Mailing Original",
+            'oi': "Mailing Original (Nio)",
             'geral': "Mailing Original",
             'giga_mais': "Mailing Giga +",
             'janeiro_2026': "Mailing Restrito"
@@ -367,6 +367,7 @@ class AtualizaBases(LoginRequiredMixin, TemplateView):
             "BlackList": "Base de telefones em BlackList que NUNCA devem ser utilizados",
             "Quarentena": "Base de telefones que ficarão em quarentena por determinado período até poderem ser utilizados.",
             "Credito": "Base de crédito a ser verificado no mailing",
+            "Telefone": "Base de telefones a serem usados no enriquecimento",
             "Mailing Restrito": "Envie aqui os arquivos de mailing restrito para iniciar a geração de um novo mailing.",
             "Giga Mais": "Envie aqui os arquivos de mailing para iniciar a geração de um novo mailing da Giga +."
         }
@@ -382,6 +383,7 @@ class AtualizaBases(LoginRequiredMixin, TemplateView):
             "Mailing Restrito": "arquivos_dfv",
             "Giga Mais": "arquivos_dfv",
             "Credito": "arquivos_credito",
+            "Telefone": "arquivos_enriquecimento",
         }
         if base == "Mailing Restrito":
             pasta_media = "media_janeiro_2026"  
@@ -423,6 +425,14 @@ class AtualizaBases(LoginRequiredMixin, TemplateView):
 
         if PASTAS_RAIZ[base] == "arquivos_quarentena":
             relatorio, erros_internos = gera_e_atualiza_quarentena(os.path.join(os.getcwd(), "media"), "")
+            relatorio = relatorio.split("\n")
+
+            if erros_internos:
+                for er in erros_internos:
+                    erros.append(er)
+
+        if PASTAS_RAIZ[base] == "arquivos_enriquecimento":
+            relatorio, erros_internos = gera_e_atualiza_enriquecimento()
             relatorio = relatorio.split("\n")
 
             if erros_internos:
@@ -562,7 +572,8 @@ def filtra_mailing_view(request):
 
             if sistema != "giga_mais":
                 filtros["credito"] = tipos_credito
-            print("FILTROS: ", filtros)
+            
+            
             pasta_dados = os.path.join(pasta_raiz, "viabilidades_credito_enriquecido")
             df = get_dados_mailing(filtros, tipos_credito=tipos_credito, formato_saida=formato_saida, conjunto_telefones=conjunto_telefones, tipos_telefone= tipos_telefone, tipoMailing=tipoMailing, filtro_telefone_blacklist=filtro_telefone_blacklist, pasta_dados=pasta_dados)
             dfs.append(df)
