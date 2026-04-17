@@ -1271,7 +1271,7 @@ def verifica_base_credito(request, extensao, arquivo_original,caminho_final, df:
             i+=1
 
         lista_status = df["APROVADO/NEGADO"].unique().tolist()
-        if "N" not in lista_status or "S" not in lista_status:
+        if "N" not in lista_status and "S" not in lista_status:
             os.remove(caminho_final)
             return False, f"Arquivo {arquivo_original.name} Não considerado pois a coluna de status deve possuir os termos 'S' para os aprovados e 'N' para os negados." 
 
