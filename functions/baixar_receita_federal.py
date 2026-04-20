@@ -822,7 +822,6 @@ def fase_1_gerador():
         if verificador_fase_1(nova_execucao):
 
             
-
             global total_dados
             global total_dados_receita_Mei
             salva_dado("Total Empresas Receita Federal", total_dados)
