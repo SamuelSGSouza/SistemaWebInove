@@ -126,6 +126,162 @@
         </div>
       </div>
     </div> -->
+    
+
+    <div style="width: 100%;margin: 0 auto;">
+        <select id="filtroEstado" class="form-control">
+              <option value="">Todos os estados</option>
+              
+              <option value="AC">AC - Acre</option>
+              <option value="AL">AL - Alagoas</option>
+              <option value="AP">AP - Amapá</option>
+              <option value="AM">AM - Amazonas</option>
+              <option value="BA">BA - Bahia</option>
+              <option value="CE">CE - Ceará</option>
+              <option value="DF">DF - Distrito Federal</option>
+              <option value="ES">ES - Espírito Santo</option>
+              <option value="GO">GO - Goiás</option>
+              <option value="MA">MA - Maranhão</option>
+              <option value="MT">MT - Mato Grosso</option>
+              <option value="MS">MS - Mato Grosso do Sul</option>
+              <option value="MG">MG - Minas Gerais</option>
+              <option value="PA">PA - Pará</option>
+              <option value="PB">PB - Paraíba</option>
+              <option value="PR">PR - Paraná</option>
+              <option value="PE">PE - Pernambuco</option>
+              <option value="PI">PI - Piauí</option>
+              <option value="RJ">RJ - Rio de Janeiro</option>
+              <option value="RN">RN - Rio Grande do Norte</option>
+              <option value="RS">RS - Rio Grande do Sul</option>
+              <option value="RO">RO - Rondônia</option>
+              <option value="RR">RR - Roraima</option>
+              <option value="SC">SC - Santa Catarina</option>
+              <option value="SP">SP - São Paulo</option>
+              <option value="SE">SE - Sergipe</option>
+              <option value="TO">TO - Tocantins</option>
+          </select>
+        <canvas id="graficoCnpjs"></canvas>
+    </div>
+
+    <div style="width: 100%;  margin: 40px auto;">
+        <canvas id="graficoTempo"></canvas>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <script>
+      let chart;
+      let chartTempo;
+      async function carregarGrafico(estado = "") {
+          const url = estado 
+              ? `{% url 'dados_dashboard' %}?estado=${estado}` 
+              : `{% url 'dados_dashboard' %}`;
+
+          const response = await fetch(url);
+          const data = await response.json();
+
+          const ctx = document.getElementById("graficoCnpjs").getContext("2d");
+
+          if (chart) {
+              chart.destroy(); // evita sobreposição
+          }
+
+          chart = new Chart(ctx, {
+              type: "bar",
+              data: {
+                  labels: data.labels,
+                  datasets: [{
+                      data: data.valores,
+                      borderWidth: 1
+                  }]
+              },
+              options: {
+                  responsive: true,
+                  plugins: {
+                      legend: { display: false }
+                  },
+                  ticks: {
+                      callback: function(value) {
+                          const label = this.getLabelForValue(value);
+                          return label.length > 25 ? label.substring(0, 25) + '...' : label;
+                      }
+                  },
+                  plugins: {
+                      tooltip: {
+                          callbacks: {
+                              title: function(context) {
+                                  return context[0].label; // mostra completo no hover
+                              }
+                          }
+                      }
+                  }
+              }
+          });
+      }
+
+      async function carregarGraficoTempo(estado = "") {
+        const url = estado 
+            ? `{% url "dados_tempo" %}?estado=${estado}` 
+            : `{% url "dados_tempo" %}`;
+
+        const response = await fetch(url);
+        const data = await response.json();
+
+        const ctx = document.getElementById("graficoTempo").getContext("2d");
+
+            // 👇 ESSA LINHA resolve o erro
+        if (chartTempo) {
+            chartTempo.destroy();
+        }
+
+        chartTempo = new Chart(ctx, {
+            type: "line",
+            data: {
+                labels: data.labels,
+                datasets: data.datasets.map(ds => ({
+                    ...ds,
+                    fill: false,
+                    tension: 0.3
+                }))
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'top'
+                    }
+                },
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: "Data"
+                        }
+                    },
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    }
+
+
+
+// carregar inicial
+carregarGrafico();
+carregarGraficoTempo();
+
+
+// evento do filtro
+document.getElementById("filtroEstado").addEventListener("change", function() {
+    carregarGrafico(this.value);
+    carregarGraficoTempo(this.value);
+});
+    </script>
+
+
+
 
     <!-- Tabela de pedidos -->
     <div class="chart-placeholder">

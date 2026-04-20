@@ -23,6 +23,8 @@ import traceback, shutil
 from django.http import FileResponse, Http404
 from django.conf import settings
 import re
+from django.db.models import Sum
+from django.db.models.functions import TruncDate
 
 from django.db.models import Count
 from django.core.paginator import Paginator
@@ -80,7 +82,7 @@ from functions.gerador import inicia_gerador, inicia_gerador_mailing_2026
 
 
 
-
+DadoExtracao.objects.delete()
 
 class Dashboard(LoginRequiredMixin,TemplateView):
     template_name = "dashboard.html"
@@ -166,6 +168,68 @@ class Dashboard(LoginRequiredMixin,TemplateView):
 
         return ctx
     
+def dados_tempo(request):
+    estado = request.GET.get("estado")
+
+    qs = DadoExtracao.objects.all()
+
+    if estado:
+        qs = qs.filter(titulo__icontains=f"{estado}")
+
+    dados = (
+        qs.annotate(data=TruncDate("momento_criacao"))
+        .values("data", "titulo")
+        .annotate(total=Sum("quantidade"))
+        .order_by("data")
+    )
+
+    # organizar no formato que o Chart.js entende
+    resultado = {}
+
+    for item in dados:
+        titulo = item["titulo"]
+        data = item["data"].strftime("%Y-%m-%d")
+
+        if titulo not in resultado:
+            resultado[titulo] = {}
+
+        resultado[titulo][data] = item["total"]
+
+    # pegar todas as datas únicas
+    datas = sorted({d["data"].strftime("%Y-%m-%d") for d in dados})
+
+    datasets = []
+
+    for titulo, valores in list(resultado.items())[:5]:  # limita top 5
+        datasets.append({
+            "label": titulo,
+            "data": [valores.get(data, 0) for data in datas]
+        })
+
+    return JsonResponse({
+        "labels": datas,
+        "datasets": datasets
+    })
+
+def dados_dashboard(request):
+    estado = request.GET.get("estado")
+
+    qs = DadoExtracao.objects.all()
+
+    if estado:
+        qs = qs.filter(titulo__icontains=f"estado {estado}")
+
+    dados = (
+        qs.values("titulo")
+        .annotate(total=Sum("quantidade"))
+        .order_by("-total")[:10]
+    )
+
+    return JsonResponse({
+        "labels": [d["titulo"] for d in dados],
+        "valores": [d["total"] for d in dados]
+    })
+
 
 class Status_Execucao(LoginRequiredMixin,TemplateView):
     template_name = "status_execucao.html"

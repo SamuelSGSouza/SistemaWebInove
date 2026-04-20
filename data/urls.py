@@ -9,4 +9,6 @@ urlpatterns = [
     path('download_arquivo', download_arquivo_view, name="download_arquivo"),
     path('atualizacao_bases', AtualizaBases.as_view(), name="atualizacao_bases"),
     path('tratamento_arquivos_externos', TratamentosArquivosExternos.as_view(), name="tratamento_arquivos_externos"),
+    path("dashboard/dados/", dados_dashboard, name="dados_dashboard"),
+    path("dashboard/dados_tempo/", dados_tempo, name="dados_tempo"),
 ]

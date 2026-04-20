@@ -123,7 +123,7 @@ def fase_2_concatenador(sistema, nova_execucao:Status_Execucoe_DB):
 
                 df_receita_viaveis.drop_duplicates(subset=["cnpj"], keep="first", inplace=True)
                 df_receita_viaveis.to_csv(os.path.join(path_viabilidades, f"Viabilidade_Primaria_{estado}.csv"), sep=";", index=False)
-                salva_dado(f"Quantidade de Empresas com Viabilidade Primaria no Estado {estado}", len(df_receita_viaveis.index))
+                salva_dado(f"Quantidade de Empresas com Viabilidade Primaria no Estado {estado}", len(df_receita_viaveis.index), )
 
                 ceps_especificos_dfv = df_dfv[~df_dfv["CEP"].astype(str).str.endswith("000")]["CEP"].unique().tolist()
 
@@ -192,7 +192,7 @@ def fase_2_concatenador(sistema, nova_execucao:Status_Execucoe_DB):
                     .str.contains(padrao, case=False, regex=True)
                 ]
             df_receita_viaveis.to_csv(os.path.join(path_viabilidades, f"Viabilidade_Primaria_{estado}.csv"), sep=";", index=False)
-            salva_dado(f"Quantidade de Empresas com Viabilidade Primaria no Estado {estado}", len(df_receita_viaveis.index))
+            salva_dado(f"Quantidade de Empresas com Viabilidade Primaria no Estado {estado} - Giga Mais", len(df_receita_viaveis.index), sistema="giga_mais")
 
     elif sistema == "janeiro_2026":
         try:
@@ -253,7 +253,7 @@ def fase_2_concatenador(sistema, nova_execucao:Status_Execucoe_DB):
 
                 df_receita_viaveis.drop_duplicates(subset=["cnpj"], keep="first", inplace=True)
                 df_receita_viaveis.to_csv(os.path.join(path_viabilidades, f"Viabilidade_Primaria_{estado}.csv"), sep=";", index=False)
-                salva_dado(f"Quantidade de Empresas com Viabilidade Primaria no Estado {estado}", len(df_receita_viaveis.index))
+                salva_dado(f"Quantidade de Empresas com Viabilidade Primaria no Estado {estado}", len(df_receita_viaveis.index), sistema="janeiro_2026")
 
                 ceps_especificos_dfv = df_dfv[~df_dfv["CEP"].astype(str).str.endswith("000")]["CEP"].unique().tolist()
 
@@ -273,7 +273,7 @@ def fase_2_concatenador(sistema, nova_execucao:Status_Execucoe_DB):
 
 
 
-                salva_dado(f"Quantidade de Empresas com Viabilidade Secundaria no Estado {estado}", len(df_receita_mailing_secundario.index))
+                salva_dado(f"Quantidade de Empresas com Viabilidade Secundaria no Estado {estado}", len(df_receita_mailing_secundario.index), sistema="janeiro_2026")
             
                     
 
@@ -344,6 +344,12 @@ def verificador_fase_2(sistema, nova_execucao):
 
                 return False
             
+            #verificando se menos empresas foram encontradas:
+            encontradasAntes = DadoExtracao.objects.filter(titulo=f"Quantidade de Empresas com Viabilidade Primaria no Estado {estado}", sistema=sistema).order_by("-momento_criacao")[1].quantidade
+            encontradasAgora = DadoExtracao.objects.filter(titulo=f"Quantidade de Empresas com Viabilidade Primaria no Estado {estado}", sistema=sistema).order_by("-momento_criacao")[0].quantidade
+            if encontradasAntes > encontradasAgora:
+                salva_status(nova_execucao, titulo=f"Erro verificar cnpjs com viabilidade. Arquivo {file} possui menos cnpj's viáveis que a versão anterior")
+
             cnpjs_encontrados += df["cnpj"].unique().tolist()
 
             # colunas_telefone = ["TEL1", "TEL2", "TEL3"]
