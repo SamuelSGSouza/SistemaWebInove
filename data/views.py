@@ -34,54 +34,54 @@ from functions.gerador import inicia_gerador, inicia_gerador_mailing_2026
 
 
 
-DadoExtracao.objects.filter().delete()
+# DadoExtracao.objects.filter().delete()
 
-# Create your views here.
-for file in os.listdir("media/viabilidades"):
-    filepath = os.path.join("media/viabilidades", file)
-    estado = filepath.split(".")[0].split("_")[-1]
-    tipo_viabilidade = filepath.split(".")[0].split("_")[-2]
+# # Create your views here.
+# for file in os.listdir("media/viabilidades"):
+#     filepath = os.path.join("media/viabilidades", file)
+#     estado = filepath.split(".")[0].split("_")[-1]
+#     tipo_viabilidade = filepath.split(".")[0].split("_")[-2]
 
-    quantidade = len(pd.read_csv(filepath, sep=";", dtype=DTYPES_RECEITA_FEDERAL).index)
-    salva_dado(f"Quantidade de Empresas com Viabilidade {tipo_viabilidade} no Estado {estado}", quantidade)
+#     quantidade = len(pd.read_csv(filepath, sep=";", dtype=DTYPES_RECEITA_FEDERAL).index)
+#     salva_dado(f"Quantidade de Empresas com Viabilidade {tipo_viabilidade} no Estado {estado}", quantidade)
 
-for file in os.listdir("media/viabilidades_credito"):
-    filepath = os.path.join("media/viabilidades_credito", file)
-    estado = filepath.split(".")[0].split("_")[-1]
-    tipo_viabilidade = filepath.split(".")[0].split("_")[-2]
+# for file in os.listdir("media/viabilidades_credito"):
+#     filepath = os.path.join("media/viabilidades_credito", file)
+#     estado = filepath.split(".")[0].split("_")[-1]
+#     tipo_viabilidade = filepath.split(".")[0].split("_")[-2]
 
-    df_viabilidade = pd.read_csv(filepath, sep=";", dtype=DTYPES_RECEITA_FEDERAL)
+#     df_viabilidade = pd.read_csv(filepath, sep=";", dtype=DTYPES_RECEITA_FEDERAL)
 
-    df_meis = df_viabilidade[df_viabilidade["MEINAOMEI"] == "S"]
-    df_N_meis = df_viabilidade[df_viabilidade["MEINAOMEI"] != "S"]
-    salva_dado(
-        f"Quantidade de cnpjs com viabilidade {tipo_viabilidade} e crédito aprovado no estado {estado} - MEI", 
-        len(df_meis[df_meis["credito"] == "Aprovado"]["cnpj"].unique().tolist())
-    )
-    salva_dado(
-            f"Quantidade de cnpjs com viabilidade {tipo_viabilidade} e crédito aprovado no estado {estado} - NAO MEI", 
-            len(df_N_meis[df_N_meis["credito"] == "Aprovado"]["cnpj"].unique().tolist())
-        )
+#     df_meis = df_viabilidade[df_viabilidade["MEINAOMEI"] == "S"]
+#     df_N_meis = df_viabilidade[df_viabilidade["MEINAOMEI"] != "S"]
+#     salva_dado(
+#         f"Quantidade de cnpjs com viabilidade {tipo_viabilidade} e crédito aprovado no estado {estado} - MEI", 
+#         len(df_meis[df_meis["credito"] == "Aprovado"]["cnpj"].unique().tolist())
+#     )
+#     salva_dado(
+#             f"Quantidade de cnpjs com viabilidade {tipo_viabilidade} e crédito aprovado no estado {estado} - NAO MEI", 
+#             len(df_N_meis[df_N_meis["credito"] == "Aprovado"]["cnpj"].unique().tolist())
+#         )
 
-    salva_dado(
-            f"Quantidade de cnpjs com viabilidade {tipo_viabilidade} e crédito negado no estado {estado} - MEI", 
-            len(df_meis[df_meis["credito"] == "Negado"]["cnpj"].unique().tolist())
-        )
-    salva_dado(
-        f"Quantidade de cnpjs com viabilidade {tipo_viabilidade} e crédito negado no estado {estado} - NAO MEI", 
-        len(df_N_meis[df_N_meis["credito"] == "Negado"]["cnpj"].unique().tolist())
-    )
-    salva_dado(
-            f"Quantidade de cnpjs com viabilidade {tipo_viabilidade} e sem infos de crédito no estado {estado} - NAO MEI", 
-            len(df_N_meis[df_N_meis["credito"] == "Sem Infos"]["cnpj"].unique().tolist())
-        )
+#     salva_dado(
+#             f"Quantidade de cnpjs com viabilidade {tipo_viabilidade} e crédito negado no estado {estado} - MEI", 
+#             len(df_meis[df_meis["credito"] == "Negado"]["cnpj"].unique().tolist())
+#         )
+#     salva_dado(
+#         f"Quantidade de cnpjs com viabilidade {tipo_viabilidade} e crédito negado no estado {estado} - NAO MEI", 
+#         len(df_N_meis[df_N_meis["credito"] == "Negado"]["cnpj"].unique().tolist())
+#     )
+#     salva_dado(
+#             f"Quantidade de cnpjs com viabilidade {tipo_viabilidade} e sem infos de crédito no estado {estado} - NAO MEI", 
+#             len(df_N_meis[df_N_meis["credito"] == "Sem Infos"]["cnpj"].unique().tolist())
+#         )
 
-    salva_dado(
-            f"Quantidade de cnpjs com viabilidade {tipo_viabilidade} e sem infos de crédito no estado {estado} - MEI", 
-            len(df_meis[df_meis["credito"] == "Sem Infos"]["cnpj"].unique().tolist())
-        )
+#     salva_dado(
+#             f"Quantidade de cnpjs com viabilidade {tipo_viabilidade} e sem infos de crédito no estado {estado} - MEI", 
+#             len(df_meis[df_meis["credito"] == "Sem Infos"]["cnpj"].unique().tolist())
+#         )
     
-salva_dado("Total Empresas Receita Federal", 27924132)
+# salva_dado("Total Empresas Receita Federal", 27924132)
 
 
 
