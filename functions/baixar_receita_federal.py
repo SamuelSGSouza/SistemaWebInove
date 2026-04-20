@@ -6,7 +6,7 @@ from pathlib import Path
 from unidecode import unidecode
 from data.models import *
 from functions.utils import *
-import tracemalloc
+import tracemalloc, traceback
 from functions.contantes import *
 
 
@@ -796,28 +796,28 @@ def realiza_limpeza():
 @fecha_conexoes
 def fase_1_gerador():
 
-    nova_execucao = Status_Execucoe_DB.objects.create(sistema="geral")
+    nova_execucao = Status_Execucoe_DB.objects.filter(sistema="geral").order_by("-momento_inicializacao")[0]
     try:
-        Log.objects.filter().delete()
+        # Log.objects.filter().delete()
 
-        salva_log_geral("Iniciou Sistema de Geração de Mailings")
+        # salva_log_geral("Iniciou Sistema de Geração de Mailings")
         
-        salva_status(nova_execucao, titulo="Iniciando Download Arquivos da Receita Federal",status="Em Andamento")
-        baixa_arquivos_receita()
+        # salva_status(nova_execucao, titulo="Iniciando Download Arquivos da Receita Federal",status="Em Andamento")
+        # baixa_arquivos_receita()
         
-        salva_status(nova_execucao, titulo="Iniciando Extração dos Arquivos da Receita Federal",status="Em Andamento")
+        # salva_status(nova_execucao, titulo="Iniciando Extração dos Arquivos da Receita Federal",status="Em Andamento")
 
 
 
-        extrair_zip_e_renomear()
+        # extrair_zip_e_renomear()
 
-        salva_status(nova_execucao, titulo="Iniciando Unificação e limpeza dos Arquivos da Receita Federal",status="Em Andamento")
+        # salva_status(nova_execucao, titulo="Iniciando Unificação e limpeza dos Arquivos da Receita Federal",status="Em Andamento")
 
 
-        unifica_dados(nova_execucao)
-        realiza_limpeza()
-        salva_status(nova_execucao, titulo="Finalização dos Dados da Receita Federal",status="Concluido")
-        print("Começando a verificar")
+        # unifica_dados(nova_execucao)
+        # realiza_limpeza()
+        # salva_status(nova_execucao, titulo="Finalização dos Dados da Receita Federal",status="Concluido")
+        # print("Começando a verificar")
 
         if verificador_fase_1(nova_execucao):
 
@@ -832,7 +832,7 @@ def fase_1_gerador():
             return True
 
     except Exception as e:
-        salva_status(nova_execucao, titulo=f"Falha ao Tratar dados da Receita Federal {e}",status="Erro")
+        salva_status(nova_execucao, titulo=f"Falha ao Tratar dados da Receita Federal {traceback.format_exc()}",status="Erro")
 
         return False
     finally:
