@@ -202,7 +202,7 @@ def dados_tempo(request):
 
     datasets = []
 
-    for titulo, valores in list(resultado.items())[:5]:  # limita top 5
+    for titulo, valores in list(resultado.items()):  # limita top 5
         datasets.append({
             "label": titulo,
             "data": [valores.get(data, 0) for data in datas]
