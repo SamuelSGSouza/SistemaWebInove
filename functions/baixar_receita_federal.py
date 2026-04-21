@@ -816,7 +816,7 @@ def fase_1_gerador():
 
         # unifica_dados(nova_execucao)
         # realiza_limpeza()
-        # salva_status(nova_execucao, titulo="Finalização dos Dados da Receita Federal",status="Concluido")
+        salva_status(nova_execucao, titulo="Finalização dos Dados da Receita Federal",status="Concluido")
         # print("Começando a verificar")
 
         if verificador_fase_1(nova_execucao):
