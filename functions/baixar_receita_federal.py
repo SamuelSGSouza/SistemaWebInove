@@ -796,7 +796,7 @@ def realiza_limpeza():
 @fecha_conexoes
 def fase_1_gerador():
 
-    nova_execucao = Status_Execucoe_DB.objects.filter(sistema="geral").order_by("-momento_inicializacao")[0]
+    nova_execucao = Status_Execucoe_DB.objects.create(sistema="geral")
     try:
         # Log.objects.filter().delete()
 
@@ -822,6 +822,7 @@ def fase_1_gerador():
         if verificador_fase_1(nova_execucao):
 
             
+
             global total_dados
             global total_dados_receita_Mei
             salva_dado("Total Empresas Receita Federal", total_dados)
