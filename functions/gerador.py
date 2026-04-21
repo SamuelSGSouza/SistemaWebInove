@@ -6,7 +6,7 @@ from data.models import Status_Execucoe_DB
 
 def inicia_gerador(sistema="oi"):
     fase_1_ok = fase_1_gerador()
-    if fase_1_ok:
+    if fase_1_ok == True:
         nova_execucao = Status_Execucoe_DB.objects.create(sistema=sistema)
         fase_2_ok = fase_2_concatenador(sistema=sistema, nova_execucao=nova_execucao)
         if fase_2_ok:

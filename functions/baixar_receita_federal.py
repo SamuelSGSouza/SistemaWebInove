@@ -6,7 +6,7 @@ from pathlib import Path
 from unidecode import unidecode
 from data.models import *
 from functions.utils import *
-import tracemalloc, traceback
+import tracemalloc
 from functions.contantes import *
 
 
@@ -798,26 +798,26 @@ def fase_1_gerador():
 
     nova_execucao = Status_Execucoe_DB.objects.create(sistema="geral")
     try:
-        # Log.objects.filter().delete()
+        Log.objects.filter().delete()
 
-        # salva_log_geral("Iniciou Sistema de Geração de Mailings")
+        salva_log_geral("Iniciou Sistema de Geração de Mailings")
         
-        # salva_status(nova_execucao, titulo="Iniciando Download Arquivos da Receita Federal",status="Em Andamento")
-        # baixa_arquivos_receita()
+        salva_status(nova_execucao, titulo="Iniciando Download Arquivos da Receita Federal",status="Em Andamento")
+        baixa_arquivos_receita()
         
-        # salva_status(nova_execucao, titulo="Iniciando Extração dos Arquivos da Receita Federal",status="Em Andamento")
+        salva_status(nova_execucao, titulo="Iniciando Extração dos Arquivos da Receita Federal",status="Em Andamento")
 
 
 
-        # extrair_zip_e_renomear()
+        extrair_zip_e_renomear()
 
-        # salva_status(nova_execucao, titulo="Iniciando Unificação e limpeza dos Arquivos da Receita Federal",status="Em Andamento")
+        salva_status(nova_execucao, titulo="Iniciando Unificação e limpeza dos Arquivos da Receita Federal",status="Em Andamento")
 
 
-        # unifica_dados(nova_execucao)
-        # realiza_limpeza()
+        unifica_dados(nova_execucao)
+        realiza_limpeza()
         salva_status(nova_execucao, titulo="Finalização dos Dados da Receita Federal",status="Concluido")
-        # print("Começando a verificar")
+        print("Começando a verificar")
 
         if verificador_fase_1(nova_execucao):
 
