@@ -176,7 +176,7 @@ def dados_tempo(request):
     qs = DadoExtracao.objects.all()
 
     if estado:
-        qs = qs.filter(titulo__icontains=f"{estado}")
+        qs = qs.filter(titulo__contains=f"{estado}")
 
     dados = (
         qs.annotate(data=TruncDate("momento_criacao"))
