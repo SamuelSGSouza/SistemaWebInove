@@ -8,6 +8,8 @@ from .contantes import *
 import traceback
 
 def fase_3_define_credito(nova_execucao:Status_Execucoe_DB, sistema):
+    salva_status(nova_execucao, f"Iniciando sistema de análise de crédito", status="Em Andamento")
+
     raiz = os.path.join(os.getcwd(), PASTAS_RAIZ[sistema])
     viabilidades_path = os.path.join(raiz, "viabilidades")
     viabilidades_credito_path = os.path.join(raiz, "viabilidades_credito")
