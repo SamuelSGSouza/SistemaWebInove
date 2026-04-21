@@ -21,7 +21,7 @@ class Status_Execucoe_DB(models.Model):
 
 class Fase_Execucao_DB(models.Model):
     status_execucao = models.ForeignKey(Status_Execucoe_DB,on_delete=models.CASCADE)
-    titulo = models.CharField(max_length=255)
+    titulo = models.TextField()
     status = models.CharField(choices=(
         ("Pendente", "Pendente"),
         ("Concluido", "Concluido"),
