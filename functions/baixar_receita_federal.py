@@ -720,7 +720,6 @@ def unifica_dados(nova_execucao):
             df = pd.read_csv(os.path.join(pasta_destino,file), sep=";", dtype=DTYPES_RECEITA_FEDERAL)
             df.drop_duplicates(subset=["cnpj",], inplace=True)
             estado = pasta_destino.split(".")[0].split("_")[-1]
-            salva_dado(f"Total Empresas ATIVAS no estado {estado}", len(df.index))
 
             df.to_csv(os.path.join(pasta_destino,file), sep=";",index=False)
             for uf, df_uf in df.groupby("uf"):
@@ -825,9 +824,6 @@ def fase_1_gerador():
 
             global total_dados
             global total_dados_receita_Mei
-            salva_dado("Total Empresas Receita Federal", total_dados)
-            salva_dado("Total Empresas MEI na Receita Federal", total_dados_receita_Mei)
-            salva_dado("Total Empresas NMEI na Receita Federal", total_dados-total_dados_receita_Mei)
             salva_status(nova_execucao, titulo="Dados da Receita Salvos com sucesso.",status="Concluido")
             return True
 
