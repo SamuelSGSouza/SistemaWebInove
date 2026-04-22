@@ -34,7 +34,7 @@ from functions.gerador import inicia_gerador, inicia_gerador_mailing_2026
 
 
 
-DadoExtracao.objects.filter().delete()
+# DadoExtracao.objects.filter().delete()
 
 
 
