@@ -46,9 +46,8 @@ class Dashboard(LoginRequiredMixin,TemplateView):
         sistema = "oi"
         ctx = super().get_context_data(**kwargs)
         ctx["dados"] = DadoExtracao.objects.filter(sistema=sistema).order_by("-id")
-        if not DadoExtracao.objects.filter(titulo="Total Empresas Receita Federal",sistema=sistema).exists():
-            DadoExtracao.objects.create(titulo="Total Empresas Receita Federal", quantidade=27924132)
-        ctx["total_empresas"] = DadoExtracao.objects.filter(titulo="Total Empresas Receita Federal",sistema=sistema).order_by("-id")[0]
+        DadoExtracao.objects.filter(titulo="Total Empresas Receita Federal",sistema=sistema).delete()
+        ctx["total_empresas"] = DadoExtracao.objects.filter(titulo="Total de Empresas ATIVAS somantos TODOS os estados",sistema=sistema).order_by("-id")[0]
         
         total_viabilidades = 0
         total_viabilidades_primarias = 0 
