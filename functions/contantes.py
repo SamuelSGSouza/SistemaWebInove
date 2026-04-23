@@ -9,7 +9,8 @@ PASTAS_RAIZ = {
     "oi": "media",
     "giga_mais": "media_giga_mais",
     "janeiro_2026": "media_janeiro_2026",
-    "mailing_2026": "media_janeiro_2026"
+    "mailing_2026": "media_janeiro_2026",
+    "mailing_cpfs":  "media_mailing_cpf",
 }
 
 DICT_ESTADOS_MUNICIPIOS = {

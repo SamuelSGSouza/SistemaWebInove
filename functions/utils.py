@@ -1121,6 +1121,7 @@ def verifica_arquivo(request, arquivo_original, caminho: str, nome_pasta: str, s
             "arquivos_filtragem": verifica_arquivos_filtragem,
             "arquivos_complementar": verifica_arquivos_complementar,
             "arquivos_blacklist": verifica_arquivos_blacklist,
+            "arquivos_cpf_externo": verifica_arquivos_cpf,
         }
 
         extensao = os.path.splitext(caminho)[1].lower()
@@ -1361,16 +1362,45 @@ def verifica_arquivos_blacklist(request, extensao, arquivo_original, caminho_fin
         telefones_blacklist = list(set(telefones_blacklist))
 
 
-        blacks = BaseBlackList.objects.filter()[0]
-        blacks.total_dados = len(telefones_blacklist)
-        blacks.save()
-
-
-
         return True, f"Arquivo {arquivo_original.name} Cadastrado com sucesso! Novo total de telefones na base de blacklist: {len(telefones_blacklist)}"
 
     except Exception as e:
         return True, f"Arquivo {arquivo_original.name} não considerado pois {traceback.format_exc()}"
+
+def verifica_arquivos_cpf(request, extensao, arquivo_original, caminho_final, df:pd.DataFrame,sistema:str) -> list:
+    COLUNAS_CPF=["cpf", "nome", "endereco", "numero", "complemento","cep", "bairro","cidade", "uf", "fixo_1", "fixo_2", "fixo_3", "celular_1", "celular_2", "celular_3", "renda_presumida"]
+    df.columns = df.columns.str.lower()
+    df.rename(columns={
+            "tel_fixo1": "fixo_1",
+            "fixo1": "fixo_1",
+            "tel_fixo2": "fixo_2",
+            "fixo2": "fixo_2",
+            "tel_fixo3": "fixo_3",
+            "fixo3": "fixo_3",
+            "celular1": "celular_1",
+            "celular2": "celular_2",
+            "celular3": "celular_3",
+            "celular3": "celular_3",
+            "renda pressumida": "renda_pressumida",
+
+        }, inplace=True)
+
+
+    extensoes_permitidas = [".csv"]
+    if extensao not in extensoes_permitidas:
+        os.remove(caminho_final)
+        return False, f"Arquivo {arquivo_original.name} Não considerado por ter extensão inválida! Extensões válidas: {extensoes_permitidas}"
+    
+
+    colunas_df_padronizadas = [col.lower() for col in df.columns.to_list()]
+    for coluna in COLUNAS_CPF:
+        if coluna.lower() not in colunas_df_padronizadas:
+            os.remove(caminho_final)
+            return False,f"Arquivo {arquivo_original.name} Não considerado por não possuir as coluna >>{coluna}<<"
+    
+    
+    
+    return True, f"Arquivo {arquivo_original.name} Cadastrado com sucesso!"
 
 def verifica_arquivos_complementar(request, extensao, arquivo_original, caminho_final, df:pd.DataFrame,sistema:str) -> list:
     if "cnpj" not in df.columns.tolist():

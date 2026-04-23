@@ -8,10 +8,17 @@ from datetime import datetime, timedelta
 import traceback
 
 def fase_4_enriquecer(sistema, nova_execucao):
-    
+    campo_referencia_documento = "cnpj"
+    quantidade_caracteres = 14
+    cols_telefone_originais = ["TEL1", "TEL2", "TEL3"]
     try:
         raiz = os.path.join(os.getcwd(), PASTAS_RAIZ[sistema])
-        if sistema != "giga_mais":
+        if sistema == "mailing_cpfs":
+            viabilidades_credito_path = os.path.join(raiz, "viabilidades")
+            campo_referencia_documento = "cpf"
+            quantidade_caracteres = 11
+            cols_telefone_originais = ["fixo_1", "fixo_2", "fixo_3", "celular_1", "celular_2", "celular_3"]
+        elif sistema != "giga_mais":
             viabilidades_credito_path = os.path.join(raiz, "viabilidades_credito")
         else:
             viabilidades_credito_path = os.path.join(raiz, "viabilidades")
@@ -22,7 +29,7 @@ def fase_4_enriquecer(sistema, nova_execucao):
         enriquecimento_path = os.path.join(os.getcwd(), "media", "arquivos_enriquecimento", "enriquecimento.csv")
 
         df_enriquecimento = pd.read_csv(enriquecimento_path, sep=";", dtype=str,)
-        df_enriquecimento["DOCUMENTO"] = df_enriquecimento["DOCUMENTO"].apply(lambda x: re.sub(r"\D+", "", str(x)).zfill(14))
+        df_enriquecimento["DOCUMENTO"] = df_enriquecimento["DOCUMENTO"].apply(lambda x: re.sub(r"\D+", "", str(x)))
         
         cols_tel = [f"Telefone_{i}" for i in range(1, 21)]
 
@@ -66,25 +73,26 @@ def fase_4_enriquecer(sistema, nova_execucao):
         
         todos_telefones = set()
         for file in os.listdir(viabilidades_credito_path):
+
             filepath = os.path.join(viabilidades_credito_path, file)
             
             estado = filepath.split(".")[0].split("_")[-1]
             tipo_viabilidade = filepath.split(".")[0].split("_")[-2]
-            salva_status(nova_execucao, titulo=f"Encontrando telefones adicionais para os cnpjs do tipo {tipo_viabilidade} no estado {estado} ",status="Em Andamento")            
+            salva_status(nova_execucao, titulo=f"Encontrando telefones adicionais para os {campo_referencia_documento} do tipo {tipo_viabilidade} no estado {estado} ",status="Em Andamento")            
 
             df_viabilidades_credito = pd.read_csv(filepath, sep=";", dtype=DTYPES_RECEITA_FEDERAL)
-            df_viabilidades_credito["cnpj"] = df_viabilidades_credito["cnpj"].apply(lambda x: re.sub(r"\D+", "", str(x)).zfill(14))
+            df_viabilidades_credito[campo_referencia_documento] = df_viabilidades_credito[campo_referencia_documento].apply(lambda x: re.sub(r"\D+", "", str(x)).zfill(quantidade_caracteres))
             
 
             cols_telefone = [f"Telefone_{i}" for i in range(1,21)]
 
             df_viabilidades_credito = df_viabilidades_credito.merge(
                 df_enriquecimento[["DOCUMENTO"] + cols_telefone],
-                left_on="cnpj",
+                left_on=campo_referencia_documento,
                 right_on="DOCUMENTO",
                 how="left"
             )
-            cols_grupo1 = ["TEL1", "TEL2", "TEL3"]
+            cols_grupo1 = cols_telefone_originais
             cols_grupo2 = cols_telefone
 
             cols_telefones = cols_grupo1 + cols_grupo2
@@ -110,18 +118,79 @@ def fase_4_enriquecer(sistema, nova_execucao):
 
             df_viabilidades_credito.drop(columns=["DOCUMENTO", "CHAVE_ESPECIFICA", "CHAVE_GERAL"], inplace=True)
 
-            if df_viabilidades_credito["cnpj"].duplicated().sum() > 0:
-                salva_status(nova_execucao, titulo=f"Erro encontrar telefones para enriquecimento. Viabilidade do tipo {tipo_viabilidade} no estado {estado} ficou com cnpjs repetidos",status="Erro")            
-                return
+            if campo_referencia_documento == "cnpj":
+                if df_viabilidades_credito["cnpj"].duplicated().sum() > 0:
+                    salva_status(nova_execucao, titulo=f"Erro encontrar telefones para enriquecimento. Viabilidade do tipo {tipo_viabilidade} no estado {estado} ficou com cnpjs repetidos",status="Erro")            
+                    return
+
+            for col in cols_telefone:
+                if col not in df_viabilidades_credito.columns.to_list():
+                    df_viabilidades_credito[col] = ""
 
             df_viabilidades_credito.to_csv(os.path.join(viabilidades_credito_enriquecido_path, file), sep=";", index=False)
         
-        if verificador_fase_4(sistema, nova_execucao):
+        verificador = verificador_fase_4
+        if campo_referencia_documento == "cpf":
+            verificador = verificador_fase_4_cpfs
+
+        if verificador(sistema, nova_execucao):
             salva_status(nova_execucao, "Enriquecimento de telefones concluído.", status="Concluido")
             return True
     except Exception as e:
         salva_status(nova_execucao, f"Erro ao enriquecer dados {traceback.format_exc()}", status="Erro")
 
+
+def verificador_fase_4_cpfs(sistema, nova_execucao):
+    root = os.path.join(os.getcwd(), "media_mailing_cpf", "viabilidades_credito_enriquecido")
+    cols_telefone = []
+    colunas_esperadas = ["cpf", "nome", "endereco", "numero", "complemento","cep", "bairro","cidade", "uf", "fixo_1", "fixo_2", "fixo_3", "celular_1", "celular_2", "celular_3", "renda_presumida", "pasta"] + cols_telefone
+    tipos_viabilidade = ["Primaria_", "Secundaria_"]
+    telefones_encontrados = []
+    for estado in ESTADOS_BR:
+        for tipo in tipos_viabilidade:
+            file = f"Viabilidade_{tipo}{estado}.csv"
+            filepath = os.path.join(root,file)
+            if not os.path.exists(filepath):
+                salva_status(nova_execucao, titulo=f"Erro encontrar telefones para enriquecimento. Arquivo {file} não existe.",status="Erro")
+                return False
+            arquivo = Path(filepath)
+            timestamp = arquivo.stat().st_ctime
+            data_criacao = datetime.fromtimestamp(timestamp)
+
+            agora = datetime.now()
+
+            if agora - data_criacao > timedelta(hours=24):
+                # arquivo não foi criado nas últimas 24h
+                salva_status(
+                    nova_execucao,
+                    titulo=f"Erro encontrar telefones para enriquecimento. Arquivo {file} não foi criado nas últimas 24h.",
+                    status="Erro"
+                )
+                return False
+            
+            #verificar se todos os estados possuem as colunas esperadas
+            df = pd.read_csv(filepath, sep=";")
+            if not all([col in df.columns.tolist() for col in colunas_esperadas]):
+                salva_status(nova_execucao, titulo=f"Erro encontrar telefones para enriquecimento. Arquivo {file} não possui as colunas esperadas. Esperadas: {colunas_esperadas}.Encontradas: {df.columns.to_list()}",status="Erro")            
+                return False
+            
+            
+            
+
+            for col_tel in cols_telefone:
+                df_repetidos = df[df[col_tel].isin(telefones_encontrados)]
+                if len(df_repetidos.index) > 1:
+                    salva_status(nova_execucao, titulo=f"Erro encontrar telefones para enriquecimento. Arquivo {file} possui telefones repetidos com outro arquivo",status="Erro")            
+
+                    return False
+                df_tels = df[df[col_tel].astype(str).str.len() > 3]
+                teles = df_tels[col_tel].unique().tolist()
+
+                telefones_encontrados += teles
+            
+            salva_status(nova_execucao, titulo=f"Total de telefones encontrados até o momento: {len(telefones_encontrados)}",status="Em Andamento")            
+
+    return True
 
 
 def verificador_fase_4(sistema, nova_execucao):

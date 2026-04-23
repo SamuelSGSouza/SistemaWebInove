@@ -30,12 +30,8 @@ from django.db.models import Count
 from django.core.paginator import Paginator
 import json
 from functions.contantes import *
-from functions.gerador import inicia_gerador, inicia_gerador_mailing_2026
-
-
-
-# DadoExtracao.objects.filter().delete()
-
+from functions.gerador import inicia_gerador, inicia_gerador_mailing_2026, inicia_gerador_arquivos_cpf
+from functions.finaliza_analise_de_dados import conta_dados
 
 
 class Dashboard(LoginRequiredMixin,TemplateView):
@@ -196,7 +192,8 @@ class Status_Execucao(LoginRequiredMixin,TemplateView):
             'oi': "Mailing Original (Nio)",
             'geral': "Mailing Original",
             'giga_mais': "Mailing Giga +",
-            'janeiro_2026': "Mailing Restrito"
+            'janeiro_2026': "Mailing Restrito",
+            'mailing_cpfs': "Mailing CPF",
         }
         context["sistema"] = sistema
         if sistema == "janeiro_2026":
@@ -387,7 +384,8 @@ class AtualizaBases(LoginRequiredMixin, TemplateView):
             "Credito": "Base de crédito a ser verificado no mailing",
             "Telefone": "Base de telefones a serem usados no enriquecimento",
             "Mailing Restrito": "Envie aqui os arquivos de mailing restrito para iniciar a geração de um novo mailing.",
-            "Giga Mais": "Envie aqui os arquivos de mailing para iniciar a geração de um novo mailing da Giga +."
+            "Giga Mais": "Envie aqui os arquivos de mailing para iniciar a geração de um novo mailing da Giga +.",
+            "CPF Externo": "Base de dados de cpf's coletados externamente para serem usados no mailing de cpf"
         }
         context["descricao"] = dict_tipos[context["base"]]
         return context
@@ -402,19 +400,27 @@ class AtualizaBases(LoginRequiredMixin, TemplateView):
             "Giga Mais": "arquivos_dfv",
             "Credito": "arquivos_credito",
             "Telefone": "arquivos_enriquecimento",
+            "CPF Externo": "arquivos_cpf_externo",
         }
         if base == "Mailing Restrito":
             pasta_media = "media_janeiro_2026"  
         elif base ==  "Giga Mais":
             pasta_media = "media_giga_mais"  
+        elif base ==  "CPF Externo":
+            pasta_media = "media_mailing_cpf"  
         else: 
             pasta_media = "media"
+        
+        print(f"Base {base}")
+        print(f"Arquivos {arquivos}")
         pasta_destino = os.path.join(os.getcwd(), pasta_media, PASTAS_RAIZ[base])
         os.makedirs(pasta_destino, exist_ok=True)
         
         if base in ["BlackList", "Mailing Restrito", "Giga Mais"]:
             for path in os.listdir(pasta_destino):
+                
                 file = os.path.join(pasta_destino, path)
+                print(f"Analisando: {file}")
                 if os.path.isfile(file):
                     os.remove(file)
                 elif os.path.isdir(file):
@@ -471,6 +477,12 @@ class AtualizaBases(LoginRequiredMixin, TemplateView):
                 "Giga Mais": "giga_mais"
             }
             processo = threading.Thread(target=inicia_gerador_mailing_2026, args=(tipos[base],))
+            processo.start()
+            relatorio.append(f"Sistema {base} iniciado com sucesso!")
+
+        if PASTAS_RAIZ[base] == "arquivos_cpf_externo":
+            
+            processo = threading.Thread(target=inicia_gerador_arquivos_cpf)
             processo.start()
             relatorio.append(f"Sistema {base} iniciado com sucesso!")
 
