@@ -30,6 +30,6 @@ def inicia_gerador_mailing_2026(sistema="mailing_2026"):
 
 def inicia_gerador_arquivos_cpf(sistema="mailing_cpfs"):
     nova_execucao = Status_Execucoe_DB.objects.create(sistema=sistema)
-    # fase_2_ok = fase_2_concatenador(sistema=sistema, nova_execucao=nova_execucao)
-    # if fase_2_ok:
-    fase_4_enriquecer(sistema=sistema, nova_execucao=nova_execucao)
+    fase_2_ok = fase_2_concatenador(sistema=sistema, nova_execucao=nova_execucao)
+    if fase_2_ok:
+        fase_4_enriquecer(sistema=sistema, nova_execucao=nova_execucao)
