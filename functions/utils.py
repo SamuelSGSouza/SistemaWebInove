@@ -752,7 +752,7 @@ def gera_e_atualiza_dados_credito_turbo(raiz="media"):
         erros.append(traceback.format_exc())
         return relatorio, erros
 
-def filtra_mailing(df:pd.DataFrame) -> pd.DataFrame:
+def filtra_mailing(df:pd.DataFrame, cols_tels_originais:list=["TEL1", "TEL2", "TEL3"]) -> pd.DataFrame:
     if len(df.index) == 0:
         return df
     ini = time.time()
@@ -764,7 +764,7 @@ def filtra_mailing(df:pd.DataFrame) -> pd.DataFrame:
     blacklist_set = set(telefones_blacklist + quarentena)
 
     tipos_colunas_telefone = [
-        ["TEL1", "TEL2", "TEL3"],
+        cols_tels_originais,
         [f"Telefone_{i}" for i in range(1, 21)]
     ]
 
@@ -1368,18 +1368,11 @@ def verifica_arquivos_blacklist(request, extensao, arquivo_original, caminho_fin
         return True, f"Arquivo {arquivo_original.name} não considerado pois {traceback.format_exc()}"
 
 def verifica_arquivos_cpf(request, extensao, arquivo_original, caminho_final, df:pd.DataFrame,sistema:str) -> list:
-    COLUNAS_CPF=["cpf", "nome", "endereco", "numero", "complemento","cep", "bairro","cidade", "uf", "fixo_1", "fixo_2", "fixo_3", "celular_1", "celular_2", "celular_3", "renda_presumida"]
+    COLUNAS_CPF=["cpf", "nome", "endereco", "numero", "complemento","cep", "bairro","cidade", "uf", "celular_1", "celular_2", "celular_3", "renda_presumida"]
     df.columns = df.columns.str.lower()
     df.rename(columns={
-            "tel_fixo1": "fixo_1",
-            "fixo1": "fixo_1",
-            "tel_fixo2": "fixo_2",
-            "fixo2": "fixo_2",
-            "tel_fixo3": "fixo_3",
-            "fixo3": "fixo_3",
             "celular1": "celular_1",
             "celular2": "celular_2",
-            "celular3": "celular_3",
             "celular3": "celular_3",
             "renda pressumida": "renda_pressumida",
 
@@ -1616,6 +1609,122 @@ def get_dados_mailing(colunas_filtro:dict, campos_retorno:list=[], tipos_credito
         df = df[colunas_vonix]
 
     
+    return df
+
+
+def get_dados_mailing_cpf(colunas_filtro:dict, campos_retorno:list=[], tipos_credito:list=[], formato_saida:str="padrao", conjunto_telefones:str="todos", tipos_telefone:str="todos", tipoMailing:str="ambos", filtro_telefone_blacklist:str="apenas_filtrados", pasta_dados:str="") -> pd.DataFrame:
+    
+    arquivos_para_ler = []
+    colunas_ip_box = ["cpf", "nome", "logradouro", "num_fachada", "complemento1", "bairro", "cep", "municipio", "uf", "DDD1", "TEL1", "DDD2", "TEL2", "DDD3", "TEL3", "DDD4", "TEL4", "DDD5", "TEL5", "DDD6", "TEL6", "DDD7", "TEL7", "DDD8", "TEL8", ]
+    for f in os.listdir(pasta_dados):
+        df_path = os.path.join(pasta_dados, f)
+        coletar = False
+        for col in colunas_filtro["uf"]:
+            if col in f and f.endswith(".csv"):
+                if tipoMailing != "ambos":
+                    if tipoMailing == "primario" and  "Secundaria" not in f:
+                        coletar = True
+                    if tipoMailing == "secundario" and  "Secundaria" in f:
+                        coletar = True
+                
+                else:
+                    coletar = True
+        if coletar:
+            arquivos_para_ler.append(df_path)
+
+
+    def processa_arquivo(df_path:str,) -> pd.DataFrame:
+        cols_telefone = [f"Telefone_{i}" for i in range(1,21)]
+        colunas_padrao = ["cpf", "nome", "endereco", "numero", "complemento","cep", "bairro","cidade", "uf", "celular_1", "celular_2", "celular_3", "renda_presumida", "pasta"] + cols_telefone        
+        dtypes = {"cpf":"string", "nome": "string", "endereco":"string", "numero":"string", "complemento":"string", "bairro":"category", "cidade":"category", "uf":"category", "celular_1":"string", "celular_2":"string", "celular_3":"string", }
+        
+        colunas_enriquecimento = []
+        
+        for i in range(1,21):
+            dtypes[f"Telefone_{i}"] = "string"
+            colunas_enriquecimento.append(f"Telefone_{i}")
+        dfs = []
+        total = 0
+        chunk_i = 0
+        for chunk in pd.read_csv(df_path, sep=";", chunksize=1_000_000, dtype=dtypes):
+            ini_time = time.time()
+            total += len(chunk.index)
+            mask = pd.Series(True, index=chunk.index)
+
+            for coluna, valores in colunas_filtro.items():
+                mask &= chunk[coluna].astype(str).isin(valores)
+            
+            chunk = chunk[mask]
+
+            if conjunto_telefones == "apenas_original":
+                chunk[colunas_enriquecimento] = ""
+
+            # chunk["MEINAOMEI"] = chunk["MEINAOMEI"].apply(lambda x: "S" if str(x).strip().lower()=="s" else "N" )  
+            if not chunk.empty:
+                dfs.append(chunk)
+
+            chunk_i+=1
+        if dfs:
+            df = pd.concat(dfs)
+        else:
+            df = pd.DataFrame([],columns= colunas_padrao)
+
+
+        df.replace("NAO ENCONTRADO", "", inplace=True)
+        return df
+    
+    ini = time.time()
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        dfs = list(executor.map(processa_arquivo, arquivos_para_ler))
+    if dfs:
+        df = pd.concat(dfs)
+    else:
+        df = pd.DataFrame([],columns= colunas_padrao)
+    
+    ini = time.time()
+
+    df.reset_index(drop=True, inplace=True)
+
+    if filtro_telefone_blacklist == "apenas_filtrados":
+        df = filtra_mailing(df, cols_tels_originais=["celular_1", "celular_2", "celular_3"])
+    
+    colunas_telefone = ["celular_1", "celular_2", "celular_3"] + [f"Telefone_{i}" for i in range(1,21)]
+    cols = df.columns.tolist()
+
+    ini = time.time()
+    for col_tel in colunas_telefone:
+        if col_tel not in cols:
+            df[col_tel] = ""
+
+    apenas_celular = tipos_telefone == "apenas_movel"
+    df[colunas_telefone] = df[colunas_telefone].applymap(
+        lambda x: clean_phone_number(x, apenas_celular=apenas_celular)
+    )
+    apenas_fixos = tipos_telefone == "apenas_fixos"
+    df[colunas_telefone] = df[colunas_telefone].applymap(
+        lambda x: clean_phone_number(x, apenas_fixos=apenas_fixos)
+    )
+    
+    ini = time.time()
+    #garantindo que telefones sempre fiquem à esquerda
+    df = compacta_colunas(df, ["celular_1", "celular_2", "celular_3"] + [f"Telefone_{i}" for i in range(1,21)])
+    
+    ini = time.time()
+
+    df = df[["cpf", "nome", "endereco", "numero", "complemento", "cep", "bairro", "cidade", "uf", "celular_1", "celular_2", "celular_3",  "Telefone_1", "Telefone_2", "Telefone_3", "Telefone_4", "Telefone_5", "Telefone_6", "Telefone_7", "Telefone_8", "Telefone_9", "Telefone_10", "Telefone_11", "Telefone_12", "Telefone_13", "Telefone_14", "Telefone_15", "Telefone_16", "Telefone_17", "Telefone_18", "Telefone_19", "Telefone_20", "renda_presumida", "pasta",]]
+
+    if formato_saida == "IPBOX":
+        colunas_telefone = ["celular_1", "celular_2", "celular_3"] + [f"Telefone_{i}" for i in range(1,6)]
+
+        i = 1
+        for ct in colunas_telefone:
+            df[f'DDD{i}'] = df[ct].str[:2]
+            df[f"TEL{i}"] = df[ct].str[2:]
+            i+=1
+
+        df = df[colunas_ip_box]
+
+    print(df.head())
     return df
 
 

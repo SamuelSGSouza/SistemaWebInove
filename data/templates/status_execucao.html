@@ -124,7 +124,12 @@
     <a href="{% url 'atualizacao_bases' %}?base=Giga Mais"class="btn status-badge-2" id="ModalForm">Gerar Novo Mailing</a>
     
     {% endif %}
-    <a href="{% url 'filtra_mailing' %}"class="btn status-badge" id="currentStatusBadge">Filtrar/Baixar</a>
+    {% if is_mailing_cpfs %}
+      <a href="{% url 'filtra_mailing_cpfs' %}"class="btn status-badge" id="currentStatusBadge">Filtrar/Baixar</a>
+    {% else %}
+      <a href="{% url 'filtra_mailing' %}"class="btn status-badge" id="currentStatusBadge">Filtrar/Baixar</a>
+    {% endif %}
+
   </div>
 
   <!-- Cards de timestamps -->

@@ -200,6 +200,8 @@ class Status_Execucao(LoginRequiredMixin,TemplateView):
             context["is_janeiro"] = True
         if sistema == "giga_mais":
             context["is_giga_mais"] = True
+        if sistema == "mailing_cpfs":
+            context["is_mailing_cpfs"] = True
         context['titulo'] = titulos[sistema]
         self.request.session["sistema"] = sistema
 
@@ -548,15 +550,10 @@ def filtra_mailing_cpfs_view(request):
             checkbox_sem_info_credito = request.POST.get("checkbox_sem_info_credito", "")
 
             # Obter dados do CSV
-            dfs = []
             
             
             pasta_dados = os.path.join(pasta_raiz, "viabilidades_credito_enriquecido")
-            df = get_dados_mailing(filtros, conjunto_telefones=conjunto_telefones, tipos_telefone= tipos_telefone, tipoMailing=tipoMailing, filtro_telefone_blacklist=filtro_telefone_blacklist, pasta_dados=pasta_dados)
-            dfs.append(df)
-
-            df = pd.concat(dfs)
-            df.drop_duplicates(subset=["cnpj"], keep="first",inplace=True)
+            df = get_dados_mailing_cpf(filtros, conjunto_telefones=conjunto_telefones, tipos_telefone= tipos_telefone, tipoMailing=tipoMailing, filtro_telefone_blacklist=filtro_telefone_blacklist, pasta_dados=pasta_dados,)
             
 
             meses = {
@@ -578,32 +575,31 @@ def filtra_mailing_cpfs_view(request):
             data_atual = f'{dia}-{meses[str(datetime.datetime.now().month)]}'
             nome_padrao_arquivo += data_atual
             # Preparar dados para exibição
-            if not df.empty:
-                
-                max_linhas = 200_000
+            
+            max_linhas = 200_000
 
-                if len(df.index) > max_linhas:
-                    # Divide em pedaços de 200k
-                    f = 0
-                    for i in range(0, len(df), max_linhas):
-                        nome_arquivo = nome_padrao_arquivo + f"_parte_{f}" + ".csv"
-                        df.iloc[i:i + max_linhas].to_csv(os.path.join(filepath_csv, nome_arquivo),sep=";", index=False)
-                        f+=1
-                else:
-                    df.to_csv(os.path.join(filepath_csv, f"{nome_padrao_arquivo}.csv"), sep=";", index=False)
+            if len(df.index) > max_linhas:
+                # Divide em pedaços de 200k
+                f = 0
+                for i in range(0, len(df), max_linhas):
+                    nome_arquivo = nome_padrao_arquivo + f"_parte_{f}" + ".csv"
+                    df.iloc[i:i + max_linhas].to_csv(os.path.join(filepath_csv, nome_arquivo),sep=";", index=False)
+                    f+=1
+            else:
+                df.to_csv(os.path.join(filepath_csv, f"{nome_padrao_arquivo}.csv"), sep=";", index=False)
 
-                zip_folder(filepath_csv, f"{pasta_raiz}/{request.user.username}_filtrados_mailing.zip")
+            zip_folder(filepath_csv, f"{pasta_raiz}/{request.user.username}_filtrados_mailing.zip")
 
-                context['resultados'] = df.replace({pd.NA: ''}).head(50).values.tolist()
-                context['colunas'] = df.columns.tolist()
-                context['qtd_resultados'] = len(df.index)
+            context['resultados'] = df.replace({pd.NA: ''}).head(50).values.tolist()
+            context['colunas'] = df.columns.tolist()
+            context['qtd_resultados'] = len(df.index)
 
-                response = FileResponse(open(f"{pasta_raiz}/{request.user.username}_filtrados_mailing.zip", 'rb'), as_attachment=True, filename='dados_filtrados.zip')
-                return response
+            response = FileResponse(open(f"{pasta_raiz}/{request.user.username}_filtrados_mailing.zip", 'rb'), as_attachment=True, filename='dados_filtrados.zip')
+            return response
         except Exception as e:
             return JsonResponse({"error": traceback.format_exc()})
 
-    return render(request, 'filtra_mailing.html', context)
+    return render(request, 'filtra_mailing_cpfs.html', context)
 
 def filtra_mailing_view(request):    
 

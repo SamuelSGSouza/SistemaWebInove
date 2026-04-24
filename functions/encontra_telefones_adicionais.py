@@ -17,7 +17,7 @@ def fase_4_enriquecer(sistema, nova_execucao):
             viabilidades_credito_path = os.path.join(raiz, "viabilidades")
             campo_referencia_documento = "cpf"
             quantidade_caracteres = 11
-            cols_telefone_originais = ["fixo_1", "fixo_2", "fixo_3", "celular_1", "celular_2", "celular_3"]
+            cols_telefone_originais = [ "celular_1", "celular_2", "celular_3"]
         elif sistema != "giga_mais":
             viabilidades_credito_path = os.path.join(raiz, "viabilidades_credito")
         else:
@@ -56,7 +56,6 @@ def fase_4_enriquecer(sistema, nova_execucao):
             df_group["telefone"].tolist(),
             columns=[f"Telefone_{i}" for i in range(1, 21)]
         )
-
 
         df_enriquecimento.insert(0, "DOCUMENTO", df_group["DOCUMENTO"])
 
@@ -143,8 +142,8 @@ def fase_4_enriquecer(sistema, nova_execucao):
 
 def verificador_fase_4_cpfs(sistema, nova_execucao):
     root = os.path.join(os.getcwd(), "media_mailing_cpf", "viabilidades_credito_enriquecido")
-    cols_telefone = []
-    colunas_esperadas = ["cpf", "nome", "endereco", "numero", "complemento","cep", "bairro","cidade", "uf", "fixo_1", "fixo_2", "fixo_3", "celular_1", "celular_2", "celular_3", "renda_presumida", "pasta"] + cols_telefone
+    cols_telefone = [f"Telefone_{i}" for i in range(1,21)]
+    colunas_esperadas = ["cpf", "nome", "endereco", "numero", "complemento","cep", "bairro","cidade", "uf", "celular_1", "celular_2", "celular_3", "renda_presumida", "pasta"] + cols_telefone
     tipos_viabilidade = ["Primaria_", "Secundaria_"]
     telefones_encontrados = []
     for estado in ESTADOS_BR:

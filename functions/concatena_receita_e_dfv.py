@@ -278,7 +278,7 @@ def fase_2_concatenador(sistema, nova_execucao:Status_Execucoe_DB):
             return False
 
     elif sistema == "mailing_cpfs":
-        COLUNAS_CPF=["cpf", "nome", "endereco", "numero", "complemento","cep", "bairro","cidade", "uf", "fixo_1", "fixo_2", "fixo_3", "celular_1", "celular_2", "celular_3", "renda_presumida"]
+        COLUNAS_CPF=["cpf", "nome", "endereco", "numero", "complemento","cep", "bairro","cidade", "uf", "celular_1", "celular_2", "celular_3", "renda_presumida"]
         paths_arquivos_cpf = [
             os.path.join(os.getcwd(), "media_mailing_cpf", "arquivos_cpf_externo"),
         ]
@@ -319,12 +319,6 @@ def fase_2_concatenador(sistema, nova_execucao:Status_Execucoe_DB):
                         for df_cpf in chunks:
                             df_cpf.columns = df_cpf.columns.str.lower()
                             df_cpf.rename(columns={
-                                    "tel_fixo1": "fixo_1",
-                                    "fixo1": "fixo_1",
-                                    "tel_fixo2": "fixo_2",
-                                    "fixo2": "fixo_2",
-                                    "tel_fixo3": "fixo_3",
-                                    "fixo3": "fixo_3",
                                     "celular1": "celular_1",
                                     "celular2": "celular_2",
                                     "celular3": "celular_3",
@@ -395,7 +389,7 @@ def verificador_fase_2_cpf(sistema, nova_execucao):
     estados = [ 'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 
             'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 
             'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO']
-    COLUNAS_CPF=["cpf", "nome", "endereco", "numero", "complemento","cep", "bairro","cidade", "uf", "fixo_1", "fixo_2", "fixo_3", "celular_1", "celular_2", "celular_3", "renda_presumida", "CHAVE_ESPECIFICA", "CHAVE_GERAL", "pasta"]
+    COLUNAS_CPF=["cpf", "nome", "endereco", "numero", "complemento","cep", "bairro","cidade", "uf", "celular_1", "celular_2", "celular_3", "renda_presumida", "CHAVE_ESPECIFICA", "CHAVE_GERAL", "pasta"]
 
     root = os.path.join(os.getcwd(), "media_mailing_cpf", "viabilidades")
     tipos_viabilidade = ["Primaria_", "Secundaria_"]
