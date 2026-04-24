@@ -679,6 +679,7 @@ def unifica_dados(nova_execucao):
                 df_uf.to_csv(nome_arquivo_uf, mode="a", header=write_header, index=False, sep=";", encoding="utf-8")
                 del df_uf
                 
+                
             i += 1
             global total_dados
             total_dados += len(df_unificado.index)

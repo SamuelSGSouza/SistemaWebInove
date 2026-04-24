@@ -493,6 +493,118 @@ class AtualizaBases(LoginRequiredMixin, TemplateView):
         # ctx["download_url"] = ""
         return render(request, self.template_name, ctx)
 
+def filtra_mailing_cpfs_view(request):    
+
+
+    context = {
+        'estados': ESTADOS_BR,
+        'resultados': None,
+        'qtd_resultados': 0,
+        'colunas': [],
+        'sistema': "mailing_cpfs"
+    }
+    nome_padrao_arquivo = ""
+    pasta_raiz =  os.path.join(os.getcwd(), "media_mailing_cpf")
+
+    sistema = "mailing_cpfs"
+
+    filepath_csv = os.path.join(os.getcwd(), f"{pasta_raiz}/{request.user.username}_arquivos_mailing_filtrados")
+    os.makedirs(filepath_csv, exist_ok=True)
+
+    
+    for file in os.listdir(filepath_csv):
+        os.remove(os.path.join(filepath_csv, file))
+
+    if request.method == 'POST':
+        try:
+            # Processar filtros
+            filtros = {}            
+
+            # Estados (múltiplos valores via checkbox)
+            estados = request.POST.getlist('estado', [])
+            print("ESTADOS: ", estados)
+            if estados != []:
+                estados = estados
+            else:
+                estados = [ 'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 
+            'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 
+            'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO']
+            if estados:
+                filtros['uf'] = estados
+                
+
+            tipo_base = request.POST.get("tipoBase", "")
+            if tipo_base and tipo_base != "Ambos":
+                filtros["pasta"] = tipo_base
+
+
+            conjunto_telefones = request.POST.get("conjuntoTelefone", "")
+            tipos_telefone = request.POST.get("tipoTelefone", "")
+            tipoMailing = request.POST.get("tipoMailing", "")
+            filtro_telefone_blacklist = request.POST.get("filtro_telefone_blacklist", "")
+
+            checkbox_credito_preaprovado = request.POST.get("checkbox_credito_preaprovado", "")
+            checkbox_pre_negado = request.POST.get("checkbox_pre_negado", "")
+            checkbox_sem_info_credito = request.POST.get("checkbox_sem_info_credito", "")
+
+            # Obter dados do CSV
+            dfs = []
+            
+            
+            pasta_dados = os.path.join(pasta_raiz, "viabilidades_credito_enriquecido")
+            df = get_dados_mailing(filtros, conjunto_telefones=conjunto_telefones, tipos_telefone= tipos_telefone, tipoMailing=tipoMailing, filtro_telefone_blacklist=filtro_telefone_blacklist, pasta_dados=pasta_dados)
+            dfs.append(df)
+
+            df = pd.concat(dfs)
+            df.drop_duplicates(subset=["cnpj"], keep="first",inplace=True)
+            
+
+            meses = {
+                "1": "Janeiro",
+                "2": "Fevereiro",
+                "3": "Março",
+                "4": "Abril",
+                "5": "Maio",
+                "6": "Junho",
+                "7": "Julho",
+                "8": "Agosto",
+                "9": "Setembro",
+                "10": "Outubro",
+                "11": "Novembro",
+                "12": "Dezembro"
+            }
+            dia = datetime.datetime.now().day 
+            dia = str(dia) if dia > 9 else "0"+ str(dia)
+            data_atual = f'{dia}-{meses[str(datetime.datetime.now().month)]}'
+            nome_padrao_arquivo += data_atual
+            # Preparar dados para exibição
+            if not df.empty:
+                
+                max_linhas = 200_000
+
+                if len(df.index) > max_linhas:
+                    # Divide em pedaços de 200k
+                    f = 0
+                    for i in range(0, len(df), max_linhas):
+                        nome_arquivo = nome_padrao_arquivo + f"_parte_{f}" + ".csv"
+                        df.iloc[i:i + max_linhas].to_csv(os.path.join(filepath_csv, nome_arquivo),sep=";", index=False)
+                        f+=1
+                else:
+                    df.to_csv(os.path.join(filepath_csv, f"{nome_padrao_arquivo}.csv"), sep=";", index=False)
+
+                zip_folder(filepath_csv, f"{pasta_raiz}/{request.user.username}_filtrados_mailing.zip")
+
+                context['resultados'] = df.replace({pd.NA: ''}).head(50).values.tolist()
+                context['colunas'] = df.columns.tolist()
+                context['qtd_resultados'] = len(df.index)
+
+                response = FileResponse(open(f"{pasta_raiz}/{request.user.username}_filtrados_mailing.zip", 'rb'), as_attachment=True, filename='dados_filtrados.zip')
+                return response
+        except Exception as e:
+            return JsonResponse({"error": traceback.format_exc()})
+
+    return render(request, 'filtra_mailing.html', context)
+
 def filtra_mailing_view(request):    
 
 
@@ -510,7 +622,8 @@ def filtra_mailing_view(request):
             "oi": os.path.join(os.getcwd(), "media"),
             "geral": os.path.join(os.getcwd(), "media"),
             "giga_mais": os.path.join(os.getcwd(), "media_giga_mais"),
-            "janeiro_2026": os.path.join(os.getcwd(), "media_janeiro_2026")
+            "janeiro_2026": os.path.join(os.getcwd(), "media_janeiro_2026"),
+            "mailing_cpfs": os.path.join(os.getcwd(), "media_mailing_cpf")
         }
     sistema = request.session["sistema"]
     pasta_raiz = PASTAS_RAIZ[sistema]
