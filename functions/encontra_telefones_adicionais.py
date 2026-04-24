@@ -57,6 +57,7 @@ def fase_4_enriquecer(sistema, nova_execucao):
             columns=[f"Telefone_{i}" for i in range(1, 21)]
         )
 
+
         df_enriquecimento.insert(0, "DOCUMENTO", df_group["DOCUMENTO"])
 
         if df_enriquecimento["DOCUMENTO"].duplicated().sum() > 0:
