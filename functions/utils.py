@@ -1696,13 +1696,8 @@ def get_dados_mailing_cpf(colunas_filtro:dict, campos_retorno:list=[], tipos_cre
         if col_tel not in cols:
             df[col_tel] = ""
 
-    apenas_celular = tipos_telefone == "apenas_movel"
     df[colunas_telefone] = df[colunas_telefone].applymap(
-        lambda x: clean_phone_number(x, apenas_celular=apenas_celular)
-    )
-    apenas_fixos = tipos_telefone == "apenas_fixos"
-    df[colunas_telefone] = df[colunas_telefone].applymap(
-        lambda x: clean_phone_number(x, apenas_fixos=apenas_fixos)
+        lambda x: clean_phone_number(x, apenas_celular=True)
     )
     
     ini = time.time()
