@@ -8,6 +8,8 @@ from datetime import datetime, timedelta
 import traceback
 
 def fase_4_enriquecer(sistema, nova_execucao):
+    salva_status(nova_execucao, titulo=f"Iniciando coleta de enriquecimento de telefones",status="Em Andamento")            
+
     campo_referencia_documento = "cnpj"
     quantidade_caracteres = 14
     cols_telefone_originais = ["TEL1", "TEL2", "TEL3"]
