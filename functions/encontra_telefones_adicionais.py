@@ -75,6 +75,9 @@ def fase_4_enriquecer(sistema, nova_execucao):
         
         todos_telefones = set()
         for file in os.listdir(viabilidades_credito_path):
+            estado = str(file).split("_")[-1].split(".")[0].split()
+
+            salva_status(nova_execucao, titulo=f"Iniciando análise no estado {estado}",status="Em Andamento")            
 
             filepath = os.path.join(viabilidades_credito_path, file)
             
