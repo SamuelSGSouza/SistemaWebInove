@@ -13,6 +13,7 @@ def fase_4_enriquecer(sistema, nova_execucao):
     campo_referencia_documento = "cnpj"
     quantidade_caracteres = 14
     cols_telefone_originais = ["TEL1", "TEL2", "TEL3"]
+    dtypes_especifico = DTYPES_RECEITA_FEDERAL
     try:
         raiz = os.path.join(os.getcwd(), PASTAS_RAIZ[sistema])
         if sistema == "mailing_cpfs":
@@ -20,6 +21,8 @@ def fase_4_enriquecer(sistema, nova_execucao):
             campo_referencia_documento = "cpf"
             quantidade_caracteres = 11
             cols_telefone_originais = [ "celular_1", "celular_2", "celular_3"]
+            dtypes_especifico = str
+
         elif sistema != "giga_mais":
             viabilidades_credito_path = os.path.join(raiz, "viabilidades_credito")
         else:
@@ -79,16 +82,18 @@ def fase_4_enriquecer(sistema, nova_execucao):
 
             salva_status(nova_execucao, titulo=f"Iniciando análise no estado {estado}",status="Em Andamento")            
 
+            
             filepath = os.path.join(viabilidades_credito_path, file)
             
             estado = filepath.split(".")[0].split("_")[-1]
             tipo_viabilidade = filepath.split(".")[0].split("_")[-2]
             salva_status(nova_execucao, titulo=f"Encontrando telefones adicionais para os {campo_referencia_documento} do tipo {tipo_viabilidade} no estado {estado} ",status="Em Andamento")            
 
-            df_viabilidades_credito = pd.read_csv(filepath, sep=";", dtype=DTYPES_RECEITA_FEDERAL)
+            df_viabilidades_credito = pd.read_csv(filepath, sep=";", dtype=dtypes_especifico)
             df_viabilidades_credito[campo_referencia_documento] = df_viabilidades_credito[campo_referencia_documento].apply(lambda x: re.sub(r"\D+", "", str(x)).zfill(quantidade_caracteres))
             
-
+            print(f"Total de telefones 1 no ponto 1: {len(df_viabilidades_credito['celular_1'].unique().tolist())}")
+            print(df_viabilidades_credito['celular_1'].unique().tolist()[:3])
             cols_telefone = [f"Telefone_{i}" for i in range(1,21)]
 
             df_viabilidades_credito = df_viabilidades_credito.merge(
@@ -105,6 +110,8 @@ def fase_4_enriquecer(sistema, nova_execucao):
             df_viabilidades_credito[cols_telefones] = (
                 df_viabilidades_credito[cols_telefones].apply(lambda col: col.map(clean_phone_number))
             )
+            print(f"Total de telefones 1 no ponto 2: {len(df_viabilidades_credito['celular_1'].unique().tolist())}")
+
 
             def ordenar_telefones(row, cols):
                 tels = list(set([t for t in row[cols] if t and t not in todos_telefones]))   # mantém só telefones válidos
@@ -116,10 +123,14 @@ def fase_4_enriquecer(sistema, nova_execucao):
             df_viabilidades_credito = df_viabilidades_credito.apply(
                 ordenar_telefones, axis=1, cols=cols_grupo1
             )
+            print(f"Total de telefones 1 no ponto 3: {len(df_viabilidades_credito['celular_1'].unique().tolist())}")
+
 
             df_viabilidades_credito = df_viabilidades_credito.apply(
                 ordenar_telefones, axis=1, cols=cols_grupo2
             )
+            print(f"Total de telefones 1 no ponto 4: {len(df_viabilidades_credito['celular_1'].unique().tolist())}")
+
 
             df_viabilidades_credito.drop(columns=["DOCUMENTO", "CHAVE_ESPECIFICA", "CHAVE_GERAL"], inplace=True)
 
@@ -131,6 +142,9 @@ def fase_4_enriquecer(sistema, nova_execucao):
             for col in cols_telefone:
                 if col not in df_viabilidades_credito.columns.to_list():
                     df_viabilidades_credito[col] = ""
+
+            print(f"Total de telefones 1 no ponto 5: {len(df_viabilidades_credito['celular_1'].unique().tolist())}")
+
 
             df_viabilidades_credito.to_csv(os.path.join(viabilidades_credito_enriquecido_path, file), sep=";", index=False)
         
