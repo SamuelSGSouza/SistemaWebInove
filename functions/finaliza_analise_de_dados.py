@@ -12,6 +12,7 @@ def conta_dados(sistema_original):
     sistema = sistemas[sistema_original]
     hj = datetime.today()
     DadoExtracao.objects.filter(momento_criacao__day=hj.day, momento_criacao__month=hj.month, momento_criacao__year=hj.year,sistema=sistema_original).delete()
+    DadoExtracao.objects.filter(momento_criacao__day=28, momento_criacao__month=hj.month, momento_criacao__year=hj.year,sistema=sistema_original).delete()
     total_empresas_receita = 0
     total_empresas_mei = 0
     total_empresas_nmei = 0
