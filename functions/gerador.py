@@ -7,7 +7,7 @@ from functions.finaliza_analise_de_dados import conta_dados
 def inicia_gerador(sistema="oi"):
     # fase_1_ok = fase_1_gerador()
     # if fase_1_ok == True:
-    nova_execucao = Status_Execucoe_DB.objects.create(sistema=sistema)
+    # nova_execucao = Status_Execucoe_DB.objects.create(sistema=sistema)
     # fase_2_ok = fase_2_concatenador(sistema=sistema, nova_execucao=nova_execucao)
     # if fase_2_ok:
     #     fase_3_ok = fase_3_define_credito(sistema=sistema, nova_execucao=nova_execucao)
