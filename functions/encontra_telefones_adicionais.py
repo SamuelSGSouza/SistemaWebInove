@@ -92,8 +92,6 @@ def fase_4_enriquecer(sistema, nova_execucao):
             df_viabilidades_credito = pd.read_csv(filepath, sep=";", dtype=dtypes_especifico)
             df_viabilidades_credito[campo_referencia_documento] = df_viabilidades_credito[campo_referencia_documento].apply(lambda x: re.sub(r"\D+", "", str(x)).zfill(quantidade_caracteres))
             
-            print(f"Total de telefones 1 no ponto 1: {len(df_viabilidades_credito['celular_1'].unique().tolist())}")
-            print(df_viabilidades_credito['celular_1'].unique().tolist()[:3])
             cols_telefone = [f"Telefone_{i}" for i in range(1,21)]
 
             df_viabilidades_credito = df_viabilidades_credito.merge(
@@ -110,7 +108,6 @@ def fase_4_enriquecer(sistema, nova_execucao):
             df_viabilidades_credito[cols_telefones] = (
                 df_viabilidades_credito[cols_telefones].apply(lambda col: col.map(clean_phone_number))
             )
-            print(f"Total de telefones 1 no ponto 2: {len(df_viabilidades_credito['celular_1'].unique().tolist())}")
 
 
             def ordenar_telefones(row, cols):
@@ -123,13 +120,11 @@ def fase_4_enriquecer(sistema, nova_execucao):
             df_viabilidades_credito = df_viabilidades_credito.apply(
                 ordenar_telefones, axis=1, cols=cols_grupo1
             )
-            print(f"Total de telefones 1 no ponto 3: {len(df_viabilidades_credito['celular_1'].unique().tolist())}")
 
 
             df_viabilidades_credito = df_viabilidades_credito.apply(
                 ordenar_telefones, axis=1, cols=cols_grupo2
             )
-            print(f"Total de telefones 1 no ponto 4: {len(df_viabilidades_credito['celular_1'].unique().tolist())}")
 
 
             df_viabilidades_credito.drop(columns=["DOCUMENTO", "CHAVE_ESPECIFICA", "CHAVE_GERAL"], inplace=True)
@@ -143,7 +138,6 @@ def fase_4_enriquecer(sistema, nova_execucao):
                 if col not in df_viabilidades_credito.columns.to_list():
                     df_viabilidades_credito[col] = ""
 
-            print(f"Total de telefones 1 no ponto 5: {len(df_viabilidades_credito['celular_1'].unique().tolist())}")
 
 
             df_viabilidades_credito.to_csv(os.path.join(viabilidades_credito_enriquecido_path, file), sep=";", index=False)

@@ -6,14 +6,15 @@ def conta_dados(sistema_original):
     sistemas = {
         "janeiro_2026": "media_janeiro_2026",
         "oi": "media",
-        "giga_mais": "media_giga_mais"
+        "giga_mais": "media_giga_mais",
+        "mailing_cpfs": "media_mailing_cpf"
     }
     sistema = sistemas[sistema_original]
     total_empresas_receita = 0
     total_empresas_mei = 0
     total_empresas_nmei = 0
-    for file in os.listdir(f"{sistema}/arquivos_receita_federal"):
-        filepath = os.path.join(f"{sistema}/arquivos_receita_federal", file)
+    for file in os.listdir(f"media/arquivos_receita_federal"):
+        filepath = os.path.join(f"media/arquivos_receita_federal", file)
         estado = filepath.split(".")[0].split("_")[-1]
         tipo_viabilidade = filepath.split(".")[0].split("_")[-2]
         
@@ -44,8 +45,8 @@ def conta_dados(sistema_original):
 
 
 
-    for file in os.listdir(f"{sistema}/viabilidades_credito"):
-        filepath = os.path.join(f"{sistema}/viabilidades_credito", file)
+    for file in os.listdir(f"{sistema}/viabilidades_credito_enriquecido"):
+        filepath = os.path.join(f"{sistema}/viabilidades_credito_enriquecido", file)
         estado = filepath.split(".")[0].split("_")[-1]
         tipo_viabilidade = filepath.split(".")[0].split("_")[-2]
 
