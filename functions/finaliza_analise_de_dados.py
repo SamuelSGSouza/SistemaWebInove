@@ -1,7 +1,7 @@
 import os, pandas as pd
 from .contantes import *
-from data.models import salva_dado
-
+from data.models import salva_dado, DadoExtracao
+from datetime import datetime
 def conta_dados(sistema_original):
     sistemas = {
         "janeiro_2026": "media_janeiro_2026",
@@ -10,6 +10,8 @@ def conta_dados(sistema_original):
         "mailing_cpfs": "media_mailing_cpf"
     }
     sistema = sistemas[sistema_original]
+    hj = datetime.today()
+    DadoExtracao.objects.filter(momento_criacao__day=hj.day, momento_criacao__month=hj.month, momento_criacao__year=hj.year,sistema=sistema_original).delete()
     total_empresas_receita = 0
     total_empresas_mei = 0
     total_empresas_nmei = 0

@@ -71,6 +71,7 @@ class DadoExtracao(models.Model):
     sistema = models.CharField(choices=(
         ('oi', 'oi'),
         ('janeiro_2026', 'janeiro_2026'),
+        ('mailing_cpfs', 'mailing_cpfs'),
     ), max_length=255, default="oi")
     titulo = models.CharField(max_length=255)
     quantidade = models.IntegerField()
