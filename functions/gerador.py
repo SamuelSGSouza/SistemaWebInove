@@ -12,7 +12,7 @@ def inicia_gerador(sistema="oi"):
     # if fase_2_ok:
     #     fase_3_ok = fase_3_define_credito(sistema=sistema, nova_execucao=nova_execucao)
     #     if fase_3_ok:
-    fase_4_enriquecer(sistema=sistema, nova_execucao=nova_execucao)
+    # fase_4_enriquecer(sistema=sistema, nova_execucao=nova_execucao)
     conta_dados(sistema)
 
     inicia_gerador_mailing_2026()
