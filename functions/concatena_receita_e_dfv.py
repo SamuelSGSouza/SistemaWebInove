@@ -56,7 +56,7 @@ def fase_2_concatenador(sistema, nova_execucao:Status_Execucoe_DB):
                 dfs_dfv = []
                 for file in os.listdir(path_arquivos_dfv):
                     if estado in file:
-
+                        print(f"ARQUIVO de DFV: {file}")
                         df_dfv_estado = pd.read_excel(os.path.join(path_arquivos_dfv, file), dtype=dtype)
                         dfs_dfv.append(df_dfv_estado)
 
