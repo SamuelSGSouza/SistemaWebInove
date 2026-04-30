@@ -4,7 +4,7 @@ import os, traceback, re
 from functions.contantes import *
 from pathlib import Path
 from datetime import datetime, timedelta
-
+from functions.utils import _detectar_encoding_csv, _detectar_sep_csv
 def gera_campos_cep(df:pd.DataFrame, campo_cep, campo_numero, campo_logradouro)-> pd.DataFrame:
     df[campo_numero] = df[campo_numero].apply(lambda x: re.sub(r'\D', '', str(x))) #tirando letras do número
 
@@ -315,8 +315,16 @@ def fase_2_concatenador(sistema, nova_execucao:Status_Execucoe_DB):
                 os.makedirs(pasta, exist_ok=True)
                 for file in os.listdir(pasta):
                     if estado in file:
+                        filename = os.path.join(pasta, file)
+                        ext = os.path.splitext(filename)[1].lower()
 
-                        chunks = pd.read_csv(os.path.join(pasta,file), sep=";", dtype=str, chunksize=1_000_000)
+                        if ext in (".csv", ".txt"):
+                            chunks = pd.read_csv(filename, sep=_detectar_sep_csv(filename), dtype=str, encoding=_detectar_encoding_csv(filename),on_bad_lines="skip", chunksize=1_000_000)
+                        elif ext in (".xls", ".xlsx", ".xlsb"):
+                            chunks = pd.read_excel(filename, dtype=str, chunksize=1_000_000)
+                        else:
+                            salva_status(nova_execucao, titulo=f"Erro analisar cnpjs com viabilidade. Arquivo {file} está num formato desconhecido",status="Erro")   
+                            return False    
                         for df_cpf in chunks:
                             df_cpf.columns = df_cpf.columns.str.lower()
                             df_cpf.rename(columns={
