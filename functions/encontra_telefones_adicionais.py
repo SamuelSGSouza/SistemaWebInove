@@ -90,7 +90,7 @@ def fase_4_enriquecer(sistema, nova_execucao):
             salva_status(nova_execucao, titulo=f"Encontrando telefones adicionais para os {campo_referencia_documento} do tipo {tipo_viabilidade} no estado {estado} ",status="Em Andamento")            
 
             df_viabilidades_credito = pd.read_csv(filepath, sep=";", dtype=dtypes_especifico)
-            if campo_referencia_documento not in df_viabilidades_credito.columns.tolis():
+            if campo_referencia_documento not in df_viabilidades_credito.columns.tolist():
                 #Arquivo está vazio então só salvo 
                 salva_status(nova_execucao, titulo=f"Erro! Campo de referencia >>{campo_referencia_documento}<< não existe no arquivo >>{filepath}<<",status="Erro")            
                 return
