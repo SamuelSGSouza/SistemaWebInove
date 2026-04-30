@@ -387,7 +387,8 @@ class AtualizaBases(LoginRequiredMixin, TemplateView):
             "Telefone": "Base de telefones a serem usados no enriquecimento",
             "Mailing Restrito": "Envie aqui os arquivos de mailing restrito para iniciar a geração de um novo mailing.",
             "Giga Mais": "Envie aqui os arquivos de mailing para iniciar a geração de um novo mailing da Giga +.",
-            "CPF Externo": "Base de dados de cpf's coletados externamente para serem usados no mailing de cpf"
+            "CPF Externo": "Base de dados de cpf's coletados externamente para serem usados no mailing de cpf",
+            "CPF CredLink": "Base de dados de cpf's coletados na credlink para serem usados no mailing de cpf",
         }
         context["descricao"] = dict_tipos[context["base"]]
         return context
@@ -403,12 +404,13 @@ class AtualizaBases(LoginRequiredMixin, TemplateView):
             "Credito": "arquivos_credito",
             "Telefone": "arquivos_enriquecimento",
             "CPF Externo": "arquivos_cpf_externo",
+            "CPF CredLink": "arquivos_cpf_credlink",
         }
         if base == "Mailing Restrito":
             pasta_media = "media_janeiro_2026"  
         elif base ==  "Giga Mais":
             pasta_media = "media_giga_mais"  
-        elif base ==  "CPF Externo":
+        elif base ==  "CPF Externo" or base == "CPF CredLink":
             pasta_media = "media_mailing_cpf"  
         else: 
             pasta_media = "media"

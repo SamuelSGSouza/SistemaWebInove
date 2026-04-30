@@ -281,6 +281,7 @@ def fase_2_concatenador(sistema, nova_execucao:Status_Execucoe_DB):
         COLUNAS_CPF=["cpf", "nome", "endereco", "numero", "complemento","cep", "bairro","cidade", "uf", "celular_1", "celular_2", "celular_3", "renda_presumida"]
         paths_arquivos_cpf = [
             os.path.join(os.getcwd(), "media_mailing_cpf", "arquivos_cpf_externo"),
+            os.path.join(os.getcwd(), "media_mailing_cpf", "arquivos_cpf_credlink"),
         ]
         path_arquivos_dfv = os.path.join(os.getcwd(), "media", "arquivos_dfv")
         path_viabilidades = os.path.join(os.getcwd(), "media_mailing_cpf", "viabilidades")
@@ -331,7 +332,7 @@ def fase_2_concatenador(sistema, nova_execucao:Status_Execucoe_DB):
                             df_cpf["cpf"] = df_cpf["cpf"].apply(lambda x: re.sub(r"\D+", "", str(x)).zfill(11))
                             df_cpf.drop_duplicates(subset=["cpf"], keep="first", inplace=True)
                             
-                            df_cpf["pasta"] = pasta
+                            df_cpf["pasta"] = str(pasta).split("/")[-1]
 
 
                             df_cpf_estado_cep_especifico = df_cpf[df_cpf["CHAVE_ESPECIFICA"].isin(chaves_especificas_dfv)]
