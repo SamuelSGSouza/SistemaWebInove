@@ -379,7 +379,8 @@ class AtualizaBases(LoginRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["base"] = self.request.GET.get("base")
-
+        if context["base"] == "Quarentena":
+            context["base_quarentena"] = True
         dict_tipos = {
             "BlackList": "Base de telefones em BlackList que NUNCA devem ser utilizados",
             "Quarentena": "Base de telefones que ficarão em quarentena por determinado período até poderem ser utilizados.",
@@ -396,6 +397,8 @@ class AtualizaBases(LoginRequiredMixin, TemplateView):
     def post(self,request,*args, **kwargs):
         arquivos = request.FILES.getlist('arquivo')
         base = self.request.GET.get("base")
+        excluir_anteriores = self.request.POST.get("excluir_anteriores")
+        print(f"Excluir Anteriores: {excluir_anteriores}")
         PASTAS_RAIZ = {
             "BlackList": "arquivos_blacklist",
             "Quarentena": "arquivos_quarentena",
@@ -420,7 +423,8 @@ class AtualizaBases(LoginRequiredMixin, TemplateView):
         pasta_destino = os.path.join(os.getcwd(), pasta_media, PASTAS_RAIZ[base])
         os.makedirs(pasta_destino, exist_ok=True)
         
-        if base in ["BlackList", "Mailing Restrito", "Giga Mais"]:
+        if base in ["BlackList", "Mailing Restrito", "Giga Mais"] or str(excluir_anteriores) == "on":
+            print("Excluindo anteriores")
             for path in os.listdir(pasta_destino):
                 
                 file = os.path.join(pasta_destino, path)
