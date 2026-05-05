@@ -168,10 +168,95 @@ def _detectar_encoding_csv(caminho, amostra=16000):
     # Latin-1 raramente falha na leitura, mas pode mascarar problemas
     return encoding
 
-def remove_fixos(df: pd.DataFrame, colunas_telefone: list = ["TEL1", "TEL2", "TEL3"]) -> pd.DataFrame:
-    # 1. Limpa todos os números (mantenha sua lógica)
+def remove_fixos(df: pd.DataFrame, colunas_telefone=["TEL1", "TEL2", "TEL3"]) -> pd.DataFrame:
+    VALID_DDDS = {
+        "11","12","13","14","15","16","17","18","19",
+        "21","22","24","27","28",
+        "31","32","33","34","35","37","38",
+        "41","42","43","44","45","46","47","48","49",
+        "51","53","54","55",
+        "61","62","63","64","65","66","67","68","69",
+        "71","73","74","75","77","79",
+        "81","82","83","84","85","86","87","88","89",
+        "91","92","93","94","95","96"
+    }
+
+    RE_REPETIDOS = re.compile(r'(\d)\1{5,}')
+
+    def clean_phone_series(
+        s: pd.Series,
+        apenas_celular: bool = False,
+        apenas_fixos: bool = False
+    ) -> pd.Series:
+
+        # transforma em string
+        s = s.fillna('').astype(str).str.strip()
+
+        # remove não numéricos
+        s = s.str.replace(r'\D', '', regex=True)
+
+        # remove 55 do começo
+        mask_55 = (s.str.len() > 12) & (s.str[:2] == '55')
+        s = s.where(~mask_55, s.str[2:])
+
+        ddd = s.str[:2]
+        telefone = s.str[2:]
+
+        # DDD válido
+        mask_ddd = ddd.isin(VALID_DDDS)
+
+        # remove repetidos
+        mask_repetidos = telefone.str.contains(RE_REPETIDOS, na=False)
+
+        tamanho = telefone.str.len()
+
+        # celular 9 dígitos
+        mask_cel_9 = (
+            (tamanho == 9) &
+            (telefone.str[0] == '9')
+        )
+
+        # celular 8 dígitos sem 9
+        mask_cel_8 = (
+            (tamanho == 8) &
+            (telefone.str[0].isin(list("6789")))
+        )
+
+        # fixo válido
+        mask_fixo = (
+            (tamanho == 8) &
+            (~telefone.str[0].isin(list("6789"))) &
+            (telefone.str[0] != "1")
+        )
+
+        # inicia vazio
+        resultado = pd.Series('', index=s.index)
+
+        # celular já válido
+        if not apenas_fixos:
+            resultado[mask_cel_9] = s[mask_cel_9]
+
+            # adiciona 9
+            mask_add_9 = mask_cel_8
+            resultado[mask_add_9] = (
+                ddd[mask_add_9] + '9' + telefone[mask_add_9]
+            )
+
+        # fixos
+        if not apenas_celular:
+            resultado[mask_fixo] = s[mask_fixo]
+
+        # invalida DDD ruim e repetidos
+        resultado[~mask_ddd] = ''
+        resultado[mask_repetidos] = ''
+
+        return resultado
+    
     for col in colunas_telefone:
-        df[col] = df[col].apply(lambda x: clean_phone_number(x, True))
+        df[col] = clean_phone_series(
+            df[col],
+            apenas_celular=True
+        )
     
     # 2. Reorganiza os números puxando para a esquerda
     def shift_phones(row):
@@ -1122,6 +1207,7 @@ def verifica_arquivo(request, arquivo_original, caminho: str, nome_pasta: str, s
             "arquivos_complementar": verifica_arquivos_complementar,
             "arquivos_blacklist": verifica_arquivos_blacklist,
             "arquivos_cpf_externo": verifica_arquivos_cpf,
+            "arquivos_cpf_credlink": verifica_arquivos_cpf,
         }
 
         extensao = os.path.splitext(caminho)[1].lower()
@@ -1371,6 +1457,7 @@ def verifica_arquivos_cpf(request, extensao, arquivo_original, caminho_final, df
     COLUNAS_CPF=["cpf", "nome", "endereco", "numero", "complemento","cep", "bairro","cidade", "uf", "celular_1", "celular_2", "celular_3", "renda_presumida"]
     df.columns = df.columns.str.lower()
     df.rename(columns={
+            "logradouro": "endereco",
             "celular1": "celular_1",
             "celular2": "celular_2",
             "celular3": "celular_3",
@@ -1378,7 +1465,11 @@ def verifica_arquivos_cpf(request, extensao, arquivo_original, caminho_final, df
 
         }, inplace=True)
 
-
+    if "ddd1" in df.columns.tolist():
+        df["celular_1"] = df["ddd1"] + df["tel1"]
+        df["celular_2"] = df["ddd2"] + df["tel2"]
+        df["celular_3"] = df["ddd3"] + df["tel3"]
+        df["renda_presumida"] = ""
     extensoes_permitidas = [".csv"]
     if extensao not in extensoes_permitidas:
         os.remove(caminho_final)
@@ -1820,7 +1911,7 @@ def get_dados_csv(colunas_filtro:dict, campos_retorno:list=[]) -> pd.DataFrame:
         campos_retorno = campos_retorno if campos_retorno!= [] else colunas_padrao
         dfs = []
         
-        for chunk in pd.read_csv(df_path, sep=";", names=colunas_padrao, chunksize=1_000_000, usecols=colunas_padrao, dtype=dtypes):
+        for chunk in pd.read_csv(df_path, sep=";", names=colunas_padrao, chunksize=4_000_000, usecols=colunas_padrao, dtype=dtypes):
             mask = pd.Series(True, index=chunk.index)
 
             for coluna, valores in colunas_filtro.items():

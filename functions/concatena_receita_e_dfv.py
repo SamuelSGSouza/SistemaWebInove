@@ -316,6 +316,7 @@ def fase_2_concatenador(sistema, nova_execucao:Status_Execucoe_DB):
                 for file in os.listdir(pasta):
                     if estado in file:
                         filename = os.path.join(pasta, file)
+                        print(f"USANDO ARQUIVO: {filename}")
                         ext = os.path.splitext(filename)[1].lower()
 
                         if ext in (".csv", ".txt"):
@@ -328,13 +329,19 @@ def fase_2_concatenador(sistema, nova_execucao:Status_Execucoe_DB):
                         for df_cpf in chunks:
                             df_cpf.columns = df_cpf.columns.str.lower()
                             df_cpf.rename(columns={
+                                    "logradouro": "endereco",
                                     "celular1": "celular_1",
                                     "celular2": "celular_2",
-                                    "celular3": "celular_3",
                                     "celular3": "celular_3",
                                     "renda pressumida": "renda_pressumida",
 
                                 }, inplace=True)
+
+                            if "ddd1" in df_cpf.columns.tolist():
+                                df_cpf["celular_1"] = df_cpf["ddd1"] + df_cpf["tel1"]
+                                df_cpf["celular_2"] = df_cpf["ddd2"] + df_cpf["tel2"]
+                                df_cpf["celular_3"] = df_cpf["ddd3"] + df_cpf["tel3"]
+                                df_cpf["renda_presumida"] = ""
                             df_cpf = df_cpf[COLUNAS_CPF]
                             df_cpf = gera_campos_cep(df_cpf, "cep", "numero", "endereco")
                             df_cpf["cpf"] = df_cpf["cpf"].apply(lambda x: re.sub(r"\D+", "", str(x)).zfill(11))

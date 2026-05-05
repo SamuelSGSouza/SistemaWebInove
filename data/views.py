@@ -389,7 +389,7 @@ class AtualizaBases(LoginRequiredMixin, TemplateView):
             "Mailing Restrito": "Envie aqui os arquivos de mailing restrito para iniciar a geração de um novo mailing.",
             "Giga Mais": "Envie aqui os arquivos de mailing para iniciar a geração de um novo mailing da Giga +.",
             "CPF Externo": "Base de dados de cpf's coletados externamente para serem usados no mailing de cpf",
-            "CPF CredLink": "Base de dados de cpf's coletados na credlink para serem usados no mailing de cpf",
+            "CPF CredLink": "Base de dados de cpf's coletados na credlink para serem usados no mailing de cpf. \n AVISO: Garanta que o nome de cada arquivo contenha a uf do respectivo estado, ex: RJ, SP, SC...",
         }
         context["descricao"] = dict_tipos[context["base"]]
         return context
@@ -423,7 +423,7 @@ class AtualizaBases(LoginRequiredMixin, TemplateView):
         pasta_destino = os.path.join(os.getcwd(), pasta_media, PASTAS_RAIZ[base])
         os.makedirs(pasta_destino, exist_ok=True)
         
-        if base in ["BlackList", "Mailing Restrito", "Giga Mais"] or str(excluir_anteriores) == "on":
+        if base in ["BlackList", "Mailing Restrito", "Giga Mais", "CPF CredLink", "CPF Externo"] or str(excluir_anteriores) == "on":
             print("Excluindo anteriores")
             for path in os.listdir(pasta_destino):
                 
@@ -797,6 +797,7 @@ def filtro_geral_view(request):
         os.remove(os.path.join(filepath_csv, file))
     if request.method == 'POST':
         try:
+            initial = time.time()
             # Processar filtros
             filtros = {}
 
@@ -836,13 +837,15 @@ def filtro_geral_view(request):
 
             if tipo_empresa:
                 filtros["MEINAOMEI"] = tipo_empresa
-
+            
+            print(f"Tempo até o momento de pegar os dados = {time.time() - initial}")
             # Obter dados do CSV
             df = get_dados_csv(filtros)
+            print(f"Tempo até o momento depois de pegar os dados = {time.time() - initial}")
             # Converter colunas categóricas para strings
             for col in df.select_dtypes(include=['category']).columns:
                 df[col] = df[col].astype(str)
-
+            print(f"Tempo até o momento depois de definir os types = {time.time() - initial}")
 
 
             tipoTelefone = request.POST.get('tipoTelefone', '')
@@ -850,6 +853,8 @@ def filtro_geral_view(request):
 
             if tipoTelefone == "apenas_movel":
                 df = remove_fixos(df) 
+
+            print(f"Tempo até remover os fixos = {time.time() - initial}")
 
             # Agora pode usar replace e fillna tranquilamente
             df["cnpj"] = df["cnpj"].apply(lambda x: re.sub(r'[^0-9]', '', x))
