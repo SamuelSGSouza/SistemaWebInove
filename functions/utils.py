@@ -250,6 +250,7 @@ def remove_fixos(df: pd.DataFrame, colunas_telefone=["TEL1", "TEL2", "TEL3"]) ->
         resultado[~mask_ddd] = ''
         resultado[mask_repetidos] = ''
 
+
         return resultado
     
     for col in colunas_telefone:
