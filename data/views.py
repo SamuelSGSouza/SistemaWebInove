@@ -824,10 +824,9 @@ def filtro_geral_view(request):
 
             # Município (múltiplos valores)
             municipios = request.POST.getlist('municipio', '')
-            print(f"MUNICIPIOS: {municipios}")
+            
             if municipios:
-                filtros['municipio'] = municipios
-
+                filtros['municipio'] = [m.split("|")[0] for m in municipios]
             # termos_chave = request.POST.get("termos_chave", "")
             # if termos_chave:
             #     filtros["termos_chave"] = termos_chave
