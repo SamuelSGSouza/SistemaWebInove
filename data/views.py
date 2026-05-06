@@ -827,6 +827,7 @@ def filtro_geral_view(request):
             
             if municipios:
                 filtros['municipio'] = [m.split("|")[0] for m in municipios]
+                
             # termos_chave = request.POST.get("termos_chave", "")
             # if termos_chave:
             #     filtros["termos_chave"] = termos_chave
