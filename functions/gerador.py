@@ -18,6 +18,7 @@ def inicia_gerador(sistema="oi"):
     # inicia_gerador_mailing_2026()
     # conta_dados("mailing_2026")
 
+
     inicia_gerador_arquivos_cpf()
     conta_dados("mailing_cpfs")
 
