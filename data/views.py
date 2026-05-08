@@ -423,7 +423,7 @@ class AtualizaBases(LoginRequiredMixin, TemplateView):
         pasta_destino = os.path.join(os.getcwd(), pasta_media, PASTAS_RAIZ[base])
         os.makedirs(pasta_destino, exist_ok=True)
         
-        if base in ["BlackList", "Mailing Restrito", "Giga Mais", "CPF CredLink", "CPF Externo"] or str(excluir_anteriores) == "on":
+        if base in ["BlackList", "Mailing Restrito", "Giga Mais", "CPF Externo"] or str(excluir_anteriores) == "on":
             print("Excluindo anteriores")
             for path in os.listdir(pasta_destino):
                 
