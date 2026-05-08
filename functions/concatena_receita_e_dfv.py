@@ -415,6 +415,8 @@ def verificador_fase_2_cpf(sistema, nova_execucao):
         for tipo in tipos_viabilidade:
             file = f"Viabilidade_{tipo}{estado}.csv"
             filepath = os.path.join(root,file)
+            if not os.path.exists(filepath):
+                continue
             arquivo = Path(filepath)
             timestamp = arquivo.stat().st_ctime
             data_criacao = datetime.fromtimestamp(timestamp)
