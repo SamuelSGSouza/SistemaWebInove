@@ -15,6 +15,7 @@ def inicia_gerador(sistema="oi"):
                 fase_4_enriquecer(sistema=sistema, nova_execucao=nova_execucao)
                 conta_dados(sistema)
 
+
     inicia_gerador_mailing_2026()
     conta_dados("mailing_2026")
 
