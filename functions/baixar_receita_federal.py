@@ -849,13 +849,6 @@ def verificador_fase_1(nova_execucao):
     cnpjs_encontrados = []
     telefones_encontrados = []
 
-    #verificando se a quantidade de empresas encontradas foi menor que na execução anterior
-    ultimo_save = DadoExtracao.objects.filter(titulo__icontains="Total de Empresas ATIVAS somantos TODOS os estados").order_by("-momento_criacao")[0].quantidade
-    global total_dados
-    if ultimo_save <= total_dados:
-        salva_status(nova_execucao, titulo=f"Extração anterior possuía mais empresas.",status="Erro")            
-        return False
-
     for estado in estados:
         salva_status(nova_execucao, titulo=f"Verificando integridade dos dados do estado {estado}",status="Em Andamento")
 
