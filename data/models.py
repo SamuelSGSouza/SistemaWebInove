@@ -6,6 +6,7 @@ OPCOES_SISTEMA = (
         ("geral", "geral"),
         ("giga_mais", "giga_mais"),
         ("janeiro_2026", "janeiro_2026"),
+        ("mailing_2026", "janeiro_2026"),
     )
 
 class DadosGerais(models.Model):
@@ -63,7 +64,7 @@ class ExecucaoSistema(models.Model):
     def __str__(self):
         return f"Execução — {self.mes_ano}"
     
-    
+
 def salva_status(execucao:Status_Execucoe_DB, titulo, status):
     dict_color={
         "Concluido": "success",
