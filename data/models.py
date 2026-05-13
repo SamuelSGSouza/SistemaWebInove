@@ -6,7 +6,7 @@ OPCOES_SISTEMA = (
         ("geral", "geral"),
         ("giga_mais", "giga_mais"),
         ("janeiro_2026", "janeiro_2026"),
-        ("mailing_2026", "janeiro_2026"),
+        ("mailing_2026", "janeiro_2026")
     )
 
 class DadosGerais(models.Model):
@@ -27,8 +27,20 @@ class Status_Execucoe_DB(models.Model):
 class Fase_Execucao_DB(models.Model):
     status_execucao = models.ForeignKey(Status_Execucoe_DB, on_delete=models.CASCADE)
     titulo = models.TextField()
-    status = models.CharField(choices=(...), default="Pendente", max_length=255)
-    color = models.CharField(choices=(...), default="primary", max_length=255)
+    status = models.CharField(choices=(
+        ("Pendente", "Pendente"),
+        ("Concluido", "Concluido"),
+        ("Em Andamento", "Em Andamento"),
+        ("Erro", "Erro"),
+    ),
+    
+    default="Pendente", max_length=255)
+    color = models.CharField(choices=(
+        ("primary","primary"),
+        ("danger","danger"),
+        ("secondary","secondary"),
+        ("success", "success"),
+    ),default="primary", max_length=255)
 
     def __str__(self):
         return f"{self.titulo} — {self.status}"
@@ -42,7 +54,7 @@ class Log(models.Model):
         return f"[{self.sistema}] {self.momento_criacao.strftime('%d/%m/%Y %H:%M')} — {self.log[:60]}"
 
 class DadoExtracao(models.Model):
-    sistema = models.CharField(choices=(...), max_length=255, default="oi")
+    sistema = models.CharField(choices=OPCOES_SISTEMA, max_length=255, default="oi")
     titulo = models.CharField(max_length=255)
     quantidade = models.IntegerField()
     momento_criacao = models.DateTimeField(auto_now=True)

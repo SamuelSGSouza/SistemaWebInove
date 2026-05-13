@@ -17,14 +17,14 @@ def inicia_gerador(sistema="oi"):
 
 
     inicia_gerador_mailing_2026()
-    conta_dados("mailing_2026")
+    conta_dados("janeiro_2026")
 
 
     # inicia_gerador_arquivos_cpf()
     # conta_dados("mailing_cpfs")
 
 
-def inicia_gerador_mailing_2026(sistema="mailing_2026"):
+def inicia_gerador_mailing_2026(sistema="janeiro_2026"):
     nova_execucao = Status_Execucoe_DB.objects.create(sistema=sistema)
     fase_2_ok = fase_2_concatenador(sistema=sistema, nova_execucao=nova_execucao)
     if fase_2_ok:
