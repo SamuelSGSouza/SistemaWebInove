@@ -8,35 +8,62 @@ OPCOES_SISTEMA = (
         ("janeiro_2026", "janeiro_2026"),
     )
 
-# Create your models here.
 class DadosGerais(models.Model):
     empresas_na_receita_federal = models.IntegerField()
     empresas_com_viabilidade = models.IntegerField()
     
+    def __str__(self):
+        return f"Empresas na Receita: {self.empresas_na_receita_federal} | Com Viabilidade: {self.empresas_com_viabilidade}"
+
 class Status_Execucoe_DB(models.Model):
-    sistema = models.CharField(choices=OPCOES_SISTEMA,default="geral", max_length=255)
+    sistema = models.CharField(choices=OPCOES_SISTEMA, default="geral", max_length=255)
     momento_inicializacao = models.DateTimeField(auto_now_add=True)
     momento_finalizacao = models.DateTimeField(auto_now=True)
 
+    def __str__(self):
+        return f"[{self.sistema}] Iniciado em {self.momento_inicializacao.strftime('%d/%m/%Y %H:%M')}"
 
 class Fase_Execucao_DB(models.Model):
-    status_execucao = models.ForeignKey(Status_Execucoe_DB,on_delete=models.CASCADE)
+    status_execucao = models.ForeignKey(Status_Execucoe_DB, on_delete=models.CASCADE)
     titulo = models.TextField()
-    status = models.CharField(choices=(
-        ("Pendente", "Pendente"),
-        ("Concluido", "Concluido"),
-        ("Em Andamento", "Em Andamento"),
-        ("Erro", "Erro"),
-    ),
-    
-    default="Pendente", max_length=255)
-    color = models.CharField(choices=(
-        ("primary","primary"),
-        ("danger","danger"),
-        ("secondary","secondary"),
-        ("success", "success"),
-    ),default="primary", max_length=255)
+    status = models.CharField(choices=(...), default="Pendente", max_length=255)
+    color = models.CharField(choices=(...), default="primary", max_length=255)
 
+    def __str__(self):
+        return f"{self.titulo} — {self.status}"
+
+class Log(models.Model):
+    sistema = models.CharField(choices=OPCOES_SISTEMA, default="geral", max_length=255)
+    log = models.TextField()
+    momento_criacao = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"[{self.sistema}] {self.momento_criacao.strftime('%d/%m/%Y %H:%M')} — {self.log[:60]}"
+
+class DadoExtracao(models.Model):
+    sistema = models.CharField(choices=(...), max_length=255, default="oi")
+    titulo = models.CharField(max_length=255)
+    quantidade = models.IntegerField()
+    momento_criacao = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"[{self.sistema}] {self.titulo}: {self.quantidade}"
+
+class IniciacaoSistema(models.Model):
+    mes_ano = models.CharField(max_length=255, unique=True)
+    momento_criacao = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Iniciação — {self.mes_ano}"
+
+class ExecucaoSistema(models.Model):
+    mes_ano = models.CharField(max_length=255, unique=True)
+    momento_criacao = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Execução — {self.mes_ano}"
+    
+    
 def salva_status(execucao:Status_Execucoe_DB, titulo, status):
     dict_color={
         "Concluido": "success",
@@ -56,26 +83,10 @@ def salva_status(execucao:Status_Execucoe_DB, titulo, status):
     
     print("status salvo com sucesso")
 
-class Log(models.Model):
-    sistema = models.CharField(choices=OPCOES_SISTEMA,default="geral", max_length=255)
-    log = models.TextField()
-    momento_criacao = models.DateTimeField(auto_now=True)
-    
-
 def salva_log(msg,sistema):
     print(msg, " ", sistema )
     Log.objects.create(log=msg, sistema=sistema)
 
-
-class DadoExtracao(models.Model):
-    sistema = models.CharField(choices=(
-        ('oi', 'oi'),
-        ('janeiro_2026', 'janeiro_2026'),
-        ('mailing_cpfs', 'mailing_cpfs'),
-    ), max_length=255, default="oi")
-    titulo = models.CharField(max_length=255)
-    quantidade = models.IntegerField()
-    momento_criacao = models.DateTimeField(auto_now=True)
 
 def salva_dado(titulo, quantidade, sistema="oi"):
     
@@ -84,15 +95,6 @@ def salva_dado(titulo, quantidade, sistema="oi"):
         quantidade=quantidade,
         sistema=sistema
     )
-
-
-class IniciacaoSistema(models.Model):
-    mes_ano = models.CharField(max_length=255,unique=True)
-    momento_criacao = models.DateTimeField(auto_now=True)
-
-class ExecucaoSistema(models.Model):
-    mes_ano = models.CharField(max_length=255,unique=True)
-    momento_criacao = models.DateTimeField(auto_now=True)
 
 def verifica_atualizacao_receita():
     mes = datetime.today().month
