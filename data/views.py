@@ -617,7 +617,8 @@ def filtra_mailing_view(request):
         'qtd_resultados': 0,
         'colunas': [],
         'cnaes': get_cnaes(),
-        'sistema': request.session["sistema"]
+        'sistema': request.session["sistema"],
+        'cidades':LISTA_ESTADOS_MUNICIPIOS
     }
     nome_padrao_arquivo = ""
     PASTAS_RAIZ = {
@@ -656,6 +657,13 @@ def filtra_mailing_view(request):
             if estados:
                 filtros['uf'] = estados
                 
+            cidades = request.POST.getlist("cidade_list",  [])
+            if cidades:
+                if "cpf" in sistema:
+                    filtros["cidade"] = cidades
+                else:
+                    filtros["municipio"] = cidades
+            print(f"CIDADES: ", cidades)
 
             # # CNAE (múltiplos valores)
             cnaes = request.POST.getlist('cnae_list', [])
@@ -705,6 +713,8 @@ def filtra_mailing_view(request):
             if checkbox_sem_info_credito:
                 tipos_credito.append("Sem Infos")
 
+
+            print("TIPOS DECRETO>> ", tipos_credito)
             if len(tipos_credito) == 0:
                 df = pd.DataFrame()
                 df.to_csv(os.path.join(filepath_csv, f"{nome_padrao_arquivo}.csv"), sep=";", index=False)
@@ -713,7 +723,7 @@ def filtra_mailing_view(request):
                 context['colunas'] = df.columns.tolist()
                 context['qtd_resultados'] = len(df.index)
 
-                return render(request, 'filtra_mailing.html', context)
+                return render(request, 'data_not_found.html', context)
 
             if sistema != "giga_mais":
                 filtros["credito"] = tipos_credito
@@ -768,6 +778,8 @@ def filtra_mailing_view(request):
 
                 response = FileResponse(open(f"{pasta_raiz}/{request.user.username}_filtrados_mailing.zip", 'rb'), as_attachment=True, filename='dados_filtrados.zip')
                 return response
+            return render(request, 'data_not_found.html', context)
+
         except Exception as e:
             return JsonResponse({"error": traceback.format_exc()})
 

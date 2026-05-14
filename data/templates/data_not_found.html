@@ -1,0 +1,274 @@
+{% extends 'base_data.html' %}
+
+{% block main_body %}
+<style>
+  /* Container principal com gradiente sutil */
+  .no-results-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 80vh;
+    background: linear-gradient(135deg, #f8f9fc 0%, #f0f2f7 100%);
+    padding: 2rem;
+  }
+
+  /* Card principal */
+  .no-results-card {
+    background: white;
+    border-radius: 1rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 0 8px 24px rgba(0, 0, 0, 0.05);
+    padding: 3rem 2rem;
+    max-width: 600px;
+    width: 100%;
+    text-align: center;
+    border: 1px solid #e9ecef;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+  }
+
+  .no-results-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12), 0 12px 32px rgba(0, 0, 0, 0.08);
+  }
+
+  /* Ícone animado */
+  .no-results-icon {
+    font-size: 4rem;
+    margin-bottom: 1.5rem;
+    opacity: 0.9;
+    animation: floatAnimation 3s ease-in-out infinite;
+  }
+
+  @keyframes floatAnimation {
+    0%, 100% {
+      transform: translateY(0px);
+    }
+    50% {
+      transform: translateY(-10px);
+    }
+  }
+
+  /* Título principal */
+  .no-results-title {
+    color: #1e3c72;
+    font-size: 1.75rem;
+    font-weight: 700;
+    margin-bottom: 0.75rem;
+    letter-spacing: -0.02em;
+  }
+
+  /* Subtítulo/descrição */
+  .no-results-subtitle {
+    color: #6c757d;
+    font-size: 1rem;
+    line-height: 1.6;
+    margin-bottom: 2rem;
+  }
+
+  /* Lista de sugestões */
+  .suggestions-list {
+    background-color: #f8f9fc;
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    margin: 2rem 0;
+    border-left: 4px solid #4a90e2;
+    text-align: left;
+  }
+
+  .suggestions-list h6 {
+    color: #1e3c72;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    font-size: 0.95rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .suggestions-list ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .suggestions-list li {
+    color: #495057;
+    padding: 0.5rem 0;
+    padding-left: 1.75rem;
+    position: relative;
+    font-size: 0.9rem;
+    line-height: 1.5;
+  }
+
+  .suggestions-list li::before {
+    content: "✓";
+    position: absolute;
+    left: 0;
+    color: #4a90e2;
+    font-weight: bold;
+    font-size: 1.1rem;
+  }
+
+  /* Botões de ação */
+  .action-buttons {
+    display: flex;
+    gap: 1rem;
+    margin-top: 2rem;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .btn-back {
+    background-color: #1e3c72;
+    border-color: #1a3460;
+    color: white;
+    font-weight: 600;
+    padding: 0.6rem 2rem;
+    border-radius: 2rem;
+    transition: all 0.2s;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .btn-back:hover {
+    background-color: #143157;
+    border-color: #10284a;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    color: white;
+    text-decoration: none;
+  }
+
+  .btn-new-search {
+    background-color: transparent;
+    border: 2px solid #1e3c72;
+    color: #1e3c72;
+    font-weight: 600;
+    padding: 0.5rem 1.9rem;
+    border-radius: 2rem;
+    transition: all 0.2s;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .btn-new-search:hover {
+    background-color: #f0f2f7;
+    border-color: #143157;
+    color: #143157;
+    transform: translateY(-1px);
+    text-decoration: none;
+  }
+
+  /* Animação de entrada */
+  .fade-in {
+    animation: fadeInUp 0.6s ease-out;
+  }
+
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Informações adicionais */
+  .additional-info {
+    margin-top: 2rem;
+    padding-top: 2rem;
+    border-top: 1px solid #dee2e6;
+    font-size: 0.85rem;
+    color: #6c757d;
+  }
+
+  /* Responsivo */
+  @media (max-width: 576px) {
+    .no-results-container {
+      min-height: 90vh;
+      padding: 1rem;
+    }
+
+    .no-results-card {
+      padding: 2rem 1.5rem;
+    }
+
+    .no-results-title {
+      font-size: 1.5rem;
+    }
+
+    .no-results-icon {
+      font-size: 3rem;
+    }
+
+    .action-buttons {
+      flex-direction: column;
+    }
+
+    .btn-back, .btn-new-search {
+      width: 100%;
+      justify-content: center;
+    }
+  }
+</style>
+
+<div class="no-results-container">
+  <div class="no-results-card fade-in">
+    <!-- Ícone -->
+    <div class="no-results-icon">🔍</div>
+
+    <!-- Título -->
+    <h2 class="no-results-title">Nenhum Resultado Encontrado</h2>
+
+    <!-- Subtítulo -->
+    <p class="no-results-subtitle">
+      Desculpe, sua busca não retornou nenhum resultado com os filtros aplicados. 
+      Tente ajustar os critérios de pesquisa.
+    </p>
+
+    <!-- Sugestões -->
+    <div class="suggestions-list">
+      <h6>💡 Sugestões para melhorar sua busca:</h6>
+      <ul>
+        <li>Verifique a seleção de <strong>Estados e Cidades</strong> — eles são obrigatórios</li>
+        <li>Tente expandir os <strong>CNAEs</strong> selecionados para categorias mais amplas</li>
+        <li>Altere o <strong>tipo de empresa</strong> ou <strong>telefone</strong> para ter mais opções</li>
+        <li>Remova os <strong>filtros de crédito</strong> para incluir mais registros</li>
+        <li>Verifique se o <strong>formato de saída</strong> está configurado corretamente</li>
+      </ul>
+    </div>
+
+
+    <!-- Informações adicionais -->
+    <div class="additional-info">
+      <p>
+        Se acredita que há um erro ou precisa de ajuda, 
+        <a href="#" style="color: #4a90e2; text-decoration: none; font-weight: 500;">
+          entre em contato com o suporte
+        </a>
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- Scripts para interatividade -->
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Animação suave de entrada
+    const card = document.querySelector('.no-results-card');
+    card.style.opacity = '0';
+    card.style.transform = 'translateY(20px)';
+    
+    setTimeout(() => {
+      card.style.transition = 'all 0.6s ease-out';
+      card.style.opacity = '1';
+      card.style.transform = 'translateY(0)';
+    }, 100);
+  });
+</script>
+
+{% endblock %}

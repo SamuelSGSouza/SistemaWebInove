@@ -111,6 +111,18 @@
     color: #6c757d;
     margin-top: 0.2rem;
   }
+
+  /* Aviso quando nenhuma cidade está disponível */
+  .cidade-unavailable {
+    color: #dc3545;
+    font-size: 0.85rem;
+    margin-top: 0.35rem;
+    display: none;
+  }
+
+  .cidade-unavailable.show {
+    display: block;
+  }
 </style>
 
 <!-- Inclusão dos estilos do Select2 (tema bootstrap 5) -->
@@ -158,7 +170,7 @@
       </div>
     </div>
 
-    <!-- Seção 2: Seleção de alvo (Estados e CNAEs) -->
+    <!-- Seção 2: Seleção de alvo (Estados, Cidades e CNAEs) -->
     <div class="form-section">
       <h5>🎯 Definição do Público</h5>
       <div class="row g-4">
@@ -194,6 +206,19 @@
             <option value="TO">Tocantins (TO)</option>
           </select>
           <div class="field-info">Pressione Ctrl (ou Cmd) para selecionar múltiplos estados</div>
+        </div>
+
+        <div class="col-12">
+          <label for="cidade" class="form-label">Cidades (selecione quantas desejar)</label>
+          <select class="form-select" id="cidade" name="cidade_list" multiple>
+            {% for cidade in cidades %}
+              <option value="{{ cidade.nome }}" data-estado="{{ cidade.estado }}">{{ cidade.nome }} ({{ cidade.estado }})</option>
+            {% endfor %}
+          </select>
+          <div class="field-info">As cidades são filtradas automaticamente de acordo com os estados selecionados</div>
+          <div class="cidade-unavailable alert alert-info" id="cidade-info">
+            ℹ️ Selecione estados para exibir cidades disponíveis
+          </div>
         </div>
 
         <div class="col-12">
@@ -329,10 +354,71 @@
 
 <script>
   $(document).ready(function() {
+    // Armazena todas as opções de cidade originalmente
+    var todasAsCidades = $('#cidade option').clone();
+
+    // Função para filtrar cidades com base nos estados selecionados
+    function filtrarCidades() {
+      var estadosSelecionados = $('#estado').val() || [];
+      
+      // Limpa as opções de cidade
+      $('#cidade').empty();
+
+      // Se nenhum estado está selecionado, mostra todas as cidades
+      if (estadosSelecionados.length === 0) {
+        $('#cidade').append(todasAsCidades.clone());
+        $('#cidade-info').addClass('show').html('ℹ️ Selecione estados para exibir cidades disponíveis');
+        $('#cidade').select2('destroy').select2({
+          theme: 'bootstrap-5',
+          placeholder: 'Selecione as cidades',
+          closeOnSelect: false,
+          width: '100%'
+        });
+        return;
+      }
+
+      // Filtra e exibe apenas as cidades dos estados selecionados
+      todasAsCidades.each(function() {
+        var estado = $(this).data('estado');
+        if (estadosSelecionados.includes(estado)) {
+          $('#cidade').append($(this).clone());
+        }
+      });
+
+      // Atualiza o mensaje de info
+      var numCidades = $('#cidade option').length;
+      $('#cidade-info').removeClass('show');
+
+      // Reinicializa o Select2
+      $('#cidade').select2('destroy').select2({
+        theme: 'bootstrap-5',
+        placeholder: 'Selecione as cidades',
+        closeOnSelect: false,
+        width: '100%'
+      });
+
+      // Remove as cidades anteriormente selecionadas que não estão mais disponíveis
+      var cidadesSelecionadas = $('#cidade').val() || [];
+      var cidadesValidas = [];
+      cidadesSelecionadas.forEach(function(cidade) {
+        if ($('#cidade option[value="' + cidade + '"]').length > 0) {
+          cidadesValidas.push(cidade);
+        }
+      });
+      $('#cidade').val(cidadesValidas).trigger('change');
+    }
+
     // Inicializa Select2 nos campos de múltipla escolha
     $('#estado').select2({
       theme: 'bootstrap-5',
       placeholder: 'Selecione os estados',
+      closeOnSelect: false,
+      width: '100%'
+    });
+
+    $('#cidade').select2({
+      theme: 'bootstrap-5',
+      placeholder: 'Selecione as cidades',
       closeOnSelect: false,
       width: '100%'
     });
@@ -342,6 +428,11 @@
       placeholder: 'Selecione os CNAEs',
       closeOnSelect: false,
       width: '100%'
+    });
+
+    // Evento para filtrar cidades quando estados mudam
+    $('#estado').on('change', function() {
+      filtrarCidades();
     });
 
     // Desabilita o submit se houver campos inválidos (apenas exemplo, não obrigatório)
@@ -364,7 +455,11 @@
       e.preventDefault();
       $('form')[0].reset();
       $('#estado').val(null).trigger('change');
+      $('#cidade').val(null).trigger('change');
       $('#cnae').val(null).trigger('change');
+      // Reseta as cidades para mostrar todas quando limpar
+      $('#cidade').val(null);
+      $('#cidade-info').addClass('show').html('ℹ️ Selecione estados para exibir cidades disponíveis');
     });
   });
 </script>
