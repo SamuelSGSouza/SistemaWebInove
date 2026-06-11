@@ -32,153 +32,213 @@ import json
 from functions.contantes import *
 from functions.gerador import inicia_gerador, inicia_gerador_mailing_2026, inicia_gerador_arquivos_cpf
 from functions.finaliza_analise_de_dados import conta_dados
+import json
+import re
+import unicodedata
+from collections import defaultdict
+
+from django.db.models import Max
+from django.views.generic import TemplateView
+from django.contrib.auth.mixins import LoginRequiredMixin
+
+titulos = {
+    'oi': "Mailing Original (Nio)",
+    'geral': "Mailing Original",
+    'giga_mais': "Mailing Giga +",
+    'janeiro_2026': "Mailing Restrito",
+    'mailing_cpfs': "Mailing CPF",
+}
 
 
-class Dashboard(LoginRequiredMixin,TemplateView):
+ESTADOS_NOMES = {
+    "AC": "Acre", "AL": "Alagoas", "AP": "Amapá", "AM": "Amazonas",
+    "BA": "Bahia", "CE": "Ceará", "DF": "Distrito Federal", "ES": "Espírito Santo",
+    "GO": "Goiás", "MA": "Maranhão", "MT": "Mato Grosso", "MS": "Mato Grosso do Sul",
+    "MG": "Minas Gerais", "PA": "Pará", "PB": "Paraíba", "PR": "Paraná",
+    "PE": "Pernambuco", "PI": "Piauí", "RJ": "Rio de Janeiro", "RN": "Rio Grande do Norte",
+    "RS": "Rio Grande do Sul", "RO": "Rondônia", "RR": "Roraima", "SC": "Santa Catarina",
+    "SP": "São Paulo", "SE": "Sergipe", "TO": "Tocantins",
+}
+
+
+def _normaliza(texto: str) -> str:
+    """Remove acentos e baixa a caixa para casar títulos de forma robusta."""
+    texto = unicodedata.normalize("NFKD", texto or "")
+    return texto.encode("ascii", "ignore").decode("ascii").lower()
+
+
+def _classifica_titulo(titulo: str):
+    """
+    Lê um título de DadoExtracao e devolve (estado, segmento, viabilidade, credito)
+    quando ele descreve uma contagem de CNPJs por status de crédito.
+    Devolve None para qualquer outra linha (totais, viabilidade agregada, etc).
+
+        segmento   -> 'mei' | 'nmei'
+        viabilidade-> 'primaria' | 'secundaria'
+        credito    -> 'aprovado' | 'negado' | 'sem_info'
+    """
+    t = _normaliza(titulo)
+
+    if "cnpjs com viabilidade" not in t:
+        return None
+
+    m_estado = re.search(r"estado\s+([a-z]{2})\b", t)
+    if not m_estado:
+        return None
+    estado = m_estado.group(1).upper()
+
+    if "nao mei" in t:          # precisa vir antes de "mei"
+        segmento = "nmei"
+    elif "mei" in t:
+        segmento = "mei"
+    else:
+        return None
+
+    if "primaria" in t:
+        viabilidade = "primaria"
+    elif "secundaria" in t:
+        viabilidade = "secundaria"
+    else:
+        return None
+
+    if "credito aprovado" in t:
+        credito = "aprovado"
+    elif "credito negado" in t:
+        credito = "negado"
+    elif "sem info" in t:       # "sem infos de credito"
+        credito = "sem_info"
+    else:
+        return None
+
+    return estado, segmento, viabilidade, credito
+
+
+def monta_payload_dashboard(registros):
+    """
+    Recebe a lista de DadoExtracao (mais recentes por título) e devolve a
+    estrutura consumida pelo front:
+
+        {
+          "mei":  {"estados": [ {uf, nome, primaria, secundaria,
+                                 aprovado, negado, sem_info, total,
+                                 viab_primaria, viab_secundaria}, ... ],
+                   "totais":  { ...mesmos campos do estado... }},
+          "nmei": { ... }
+        }
+    """
+    def _credito_zero():
+        return {"aprovado": 0, "negado": 0, "sem_info": 0}
+
+    bruto = {
+        "mei": defaultdict(lambda: {"primaria": _credito_zero(), "secundaria": _credito_zero()}),
+        "nmei": defaultdict(lambda: {"primaria": _credito_zero(), "secundaria": _credito_zero()}),
+    }
+
+    for reg in registros:
+        info = _classifica_titulo(reg.titulo)
+        if not info:
+            continue
+        estado, seg, viab, cred = info
+        bruto[seg][estado][viab][cred] += reg.quantidade or 0
+
+    payload = {}
+    for seg in ("mei", "nmei"):
+        estados_lista = []
+        tot_prim = _credito_zero()
+        tot_sec = _credito_zero()
+
+        for uf, dados_uf in bruto[seg].items():
+            prim, sec = dados_uf["primaria"], dados_uf["secundaria"]
+            for c in ("aprovado", "negado", "sem_info"):
+                tot_prim[c] += prim[c]
+                tot_sec[c] += sec[c]
+
+            aprovado = prim["aprovado"] + sec["aprovado"]
+            negado = prim["negado"] + sec["negado"]
+            sem_info = prim["sem_info"] + sec["sem_info"]
+            estados_lista.append({
+                "uf": uf,
+                "nome": ESTADOS_NOMES.get(uf, uf),
+                "primaria": prim,
+                "secundaria": sec,
+                "aprovado": aprovado,
+                "negado": negado,
+                "sem_info": sem_info,
+                "total": aprovado + negado + sem_info,
+                "viab_primaria": sum(prim.values()),
+                "viab_secundaria": sum(sec.values()),
+            })
+
+        estados_lista.sort(key=lambda x: x["total"], reverse=True)
+
+        aprovado = tot_prim["aprovado"] + tot_sec["aprovado"]
+        negado = tot_prim["negado"] + tot_sec["negado"]
+        sem_info = tot_prim["sem_info"] + tot_sec["sem_info"]
+        payload[seg] = {
+            "estados": estados_lista,
+            "totais": {
+                "uf": "",
+                "nome": "Todos os estados",
+                "primaria": tot_prim,
+                "secundaria": tot_sec,
+                "aprovado": aprovado,
+                "negado": negado,
+                "sem_info": sem_info,
+                "total": aprovado + negado + sem_info,
+                "viab_primaria": sum(tot_prim.values()),
+                "viab_secundaria": sum(tot_sec.values()),
+            },
+        }
+
+    return payload
+
+
+class Dashboard(LoginRequiredMixin, TemplateView):
     template_name = "dashboard.html"
-    
+
     def get_context_data(self, **kwargs):
         verifica_atualizacao_receita()
-        sistema = "oi"
         ctx = super().get_context_data(**kwargs)
-        ctx["dados"] = DadoExtracao.objects.filter(sistema=sistema).order_by("-id")
-        DadoExtracao.objects.filter(titulo="Total Empresas Receita Federal",sistema=sistema).delete()
-        ctx["total_empresas"] = DadoExtracao.objects.filter(titulo="Total de Empresas ATIVAS somantos TODOS os estados",sistema=sistema).order_by("-id")[0]
-        
-        total_viabilidades = 0
-        total_viabilidades_primarias = 0 
-        total_viabilidades_secundarias = 0 
+        sistema = "oi"
 
-        dados_credito = []
+        # limpeza herdada do código antigo
+        DadoExtracao.objects.filter(
+            titulo="Total Empresas Receita Federal", sistema=sistema
+        ).delete()
 
-        quantidade_credito_aprovado_N_mei = 0
-        quantidade_credito_aprovado_mei = 0
-        
-        
-        quantidade_credito_negado_N_mei = 0
-        quantidade_credito_negado_mei = 0
-        
+        # ---- 1 query: pega o registro mais recente de cada título -----------
+        ids_recentes = (
+            DadoExtracao.objects
+            .filter(sistema=sistema)
+            .values("titulo")
+            .annotate(ult=Max("id"))
+            .values_list("ult", flat=True)
+        )
+        registros = list(DadoExtracao.objects.filter(id__in=list(ids_recentes)))
 
-        quantidade_credito_sem_info_N_mei = 0
-        quantidade_credito_sem_info_mei = 0
+        # ---- estrutura segmentada (MEI / NMEI) pro front --------------------
+        payload = monta_payload_dashboard(registros)
+        ctx["dashboard_json"] = json.dumps(payload)
 
-        for estado in ESTADOS_BR:
-            dado = DadoExtracao.objects.filter(titulo__icontains=f"Quantidade de Empresas com Viabilidade Primaria no Estado {estado}",sistema=sistema).order_by("-id")[0]
-            total_viabilidades += dado.quantidade
-            total_viabilidades_primarias += dado.quantidade
+        # KPIs gerais (RF)
+        total_rf = next(
+            (r for r in registros
+             if r.titulo == "Total de Empresas ATIVAS somantos TODOS os estados"),
+            None,
+        )
+        ctx["total_empresas"] = total_rf.quantidade if total_rf else 0
 
-            dado = DadoExtracao.objects.filter(titulo__icontains=f"Quantidade de Empresas com Viabilidade Secundaria no Estado {estado}",sistema=sistema).order_by("-id")[0]
-            total_viabilidades += dado.quantidade
-            total_viabilidades_secundarias += dado.quantidade
+        # tabela de referência: só os registros mais recentes, ordenados
+        ctx["dados"] = sorted(registros, key=lambda r: r.titulo)
 
-            dado_NMEI_primario = DadoExtracao.objects.filter(titulo__icontains=f"Quantidade de cnpjs com viabilidade Primaria e crédito aprovado no estado {estado} - NAO MEI",sistema=sistema).order_by("-id")[0]
-            quantidade_credito_aprovado_N_mei += dado_NMEI_primario.quantidade
-            dado_NMEI_secundaria = DadoExtracao.objects.filter(titulo__icontains=f"Quantidade de cnpjs com viabilidade Secundaria e crédito aprovado no estado {estado} - NAO MEI",sistema=sistema).order_by("-id")[0]
-            quantidade_credito_aprovado_N_mei += dado_NMEI_secundaria.quantidade
-            dado_MEI_primario = DadoExtracao.objects.filter(titulo__icontains=f"Quantidade de cnpjs com viabilidade Primaria e crédito aprovado no estado {estado} - MEI",sistema=sistema).order_by("-id")[0]
-            quantidade_credito_aprovado_mei += dado_MEI_primario.quantidade
-            dado_MEI_secundaria = DadoExtracao.objects.filter(titulo__icontains=f"Quantidade de cnpjs com viabilidade Secundaria e crédito aprovado no estado {estado} - MEI",sistema=sistema).order_by("-id")[0]
-            quantidade_credito_aprovado_mei += dado_MEI_secundaria.quantidade
-
-            dado_MEI_secundaria_negado = DadoExtracao.objects.filter(titulo__icontains=f"Quantidade de cnpjs com viabilidade Secundaria e crédito negado no estado {estado} - MEI",sistema=sistema).order_by("-id")[0]
-            quantidade_credito_negado_mei += dado_MEI_secundaria_negado.quantidade
-            dado_MEI_primario_negado = DadoExtracao.objects.filter(titulo__icontains=f"Quantidade de cnpjs com viabilidade Primaria e crédito negado no estado {estado} - MEI",sistema=sistema).order_by("-id")[0]
-            quantidade_credito_negado_mei += dado_MEI_primario_negado.quantidade
-            dado_NMEI_secundaria_negado = DadoExtracao.objects.filter(titulo__icontains=f"Quantidade de cnpjs com viabilidade Secundaria e crédito negado no estado {estado} - NAO MEI",sistema=sistema).order_by("-id")[0]
-            quantidade_credito_negado_N_mei += dado_NMEI_secundaria_negado.quantidade
-            dado_NMEI_primario_negado = DadoExtracao.objects.filter(titulo__icontains=f"Quantidade de cnpjs com viabilidade Primaria e crédito negado no estado {estado} - NAO MEI",sistema=sistema).order_by("-id")[0]
-            quantidade_credito_negado_N_mei += dado_NMEI_primario_negado.quantidade
-
-
-            dado_MEI_secundaria_sem_infos = DadoExtracao.objects.filter(titulo__icontains=f"Quantidade de cnpjs com viabilidade Secundaria e sem infos de crédito no estado {estado} - MEI",sistema=sistema).order_by("-id")[0]
-            quantidade_credito_sem_info_mei += dado_MEI_secundaria_sem_infos.quantidade
-            dado_MEI_primario_sem_info = DadoExtracao.objects.filter(titulo__icontains=f"Quantidade de cnpjs com viabilidade Primaria e sem infos de crédito no estado {estado} - MEI",sistema=sistema).order_by("-id")[0]
-            quantidade_credito_sem_info_mei += dado_MEI_primario_sem_info.quantidade
-            dado_NMEI_secundaria_sem_info = DadoExtracao.objects.filter(titulo__icontains=f"Quantidade de cnpjs com viabilidade Secundaria e sem infos de crédito no estado {estado} - NAO MEI",sistema=sistema).order_by("-id")[0]
-            quantidade_credito_sem_info_N_mei += dado_NMEI_secundaria_sem_info.quantidade
-            dado_NMEI_primario_sem_info = DadoExtracao.objects.filter(titulo__icontains=f"Quantidade de cnpjs com viabilidade Primaria e sem infos de crédito no estado {estado} - NAO MEI",sistema=sistema).order_by("-id")[0]
-            quantidade_credito_sem_info_N_mei += dado_NMEI_primario_sem_info.quantidade
-        
-        ctx["total_empresas_viabilidade"] = total_viabilidades
-        ctx["total_empresas_viabilidade_primaria"] = total_viabilidades_primarias
-        ctx["total_empresas_viabilidade_secundaria"] = total_viabilidades_secundarias
-
-        ctx["quantidade_credito_aprovado_N_mei"] = quantidade_credito_aprovado_N_mei
-        ctx["quantidade_credito_aprovado_mei"] = quantidade_credito_aprovado_mei
-        ctx["quantidade_credito_negado_N_mei"] = quantidade_credito_negado_N_mei
-        ctx["quantidade_credito_negado_mei"] = quantidade_credito_negado_mei
-        ctx["quantidade_credito_sem_info_N_mei"] = quantidade_credito_sem_info_N_mei
-        ctx["quantidade_credito_sem_info_mei"] = quantidade_credito_sem_info_mei
-
-        possiveis_status = Status_Execucoe_DB.objects.filter(sistema="geral").order_by("-id")
-        if possiveis_status.exists():
-            status = possiveis_status[0]
+        status = (
+            Status_Execucoe_DB.objects
+            .filter(sistema="geral").order_by("-id").first()
+        )
+        if status:
             ctx["ultima_exec"] = status.momento_inicializacao
 
         return ctx
-    
-def dados_tempo(request):
-    estado = request.GET.get("estado")
-
-    qs = DadoExtracao.objects.all()
-
-    if estado:
-        qs = qs.filter(titulo__contains=f"{estado}")
-
-    dados = (
-        qs.annotate(data=TruncDate("momento_criacao"))
-        .values("data", "titulo")
-        .annotate(total=Sum("quantidade"))
-        .order_by("data")
-    )
-
-    # organizar no formato que o Chart.js entende
-    resultado = {}
-
-    for item in dados:
-        titulo = item["titulo"]
-        data = item["data"].strftime("%Y-%m-%d")
-
-        if titulo not in resultado:
-            resultado[titulo] = {}
-
-        resultado[titulo][data] = item["total"]
-
-    # pegar todas as datas únicas
-    datas = sorted({d["data"].strftime("%Y-%m-%d") for d in dados})
-
-    datasets = []
-
-    for titulo, valores in list(resultado.items()):  # limita top 5
-        datasets.append({
-            "label": titulo,
-            "data": [valores.get(data, 0) for data in datas]
-        })
-
-    return JsonResponse({
-        "labels": datas,
-        "datasets": datasets
-    })
-
-def dados_dashboard(request):
-    estado = request.GET.get("estado")
-
-    qs = DadoExtracao.objects.all()
-
-    if estado:
-        qs = qs.filter(titulo__icontains=f"estado {estado}")
-
-    dados = (
-        qs.values("titulo")
-        .annotate(total=Sum("quantidade"))
-        .order_by("-total")[:10]
-    )
-
-    return JsonResponse({
-        "labels": [d["titulo"] for d in dados],
-        "valores": [d["total"] for d in dados]
-    })
-
 
 class Status_Execucao(LoginRequiredMixin,TemplateView):
     template_name = "status_execucao.html"
@@ -578,7 +638,8 @@ def filtra_mailing_cpfs_view(request):
             }
             dia = datetime.datetime.now().day 
             dia = str(dia) if dia > 9 else "0"+ str(dia)
-            data_atual = f'{dia}-{meses[str(datetime.datetime.now().month)]}'
+            mes_extenso = meses[str(datetime.datetime.now().month)]
+            data_atual = f'{dia}-{mes_extenso}'
             nome_padrao_arquivo += data_atual
             # Preparar dados para exibição
             
@@ -600,7 +661,9 @@ def filtra_mailing_cpfs_view(request):
             context['colunas'] = df.columns.tolist()
             context['qtd_resultados'] = len(df.index)
 
-            response = FileResponse(open(f"{pasta_raiz}/{request.user.username}_filtrados_mailing.zip", 'rb'), as_attachment=True, filename='dados_filtrados.zip')
+            filename = f"Mailing CPF's - {dia} de {mes_extenso}.zip"
+
+            response = FileResponse(open(f"{pasta_raiz}/{request.user.username}_filtrados_mailing.zip", 'rb'), as_attachment=True, filename=filename)
             return response
         except Exception as e:
             return JsonResponse({"error": traceback.format_exc()})
@@ -620,7 +683,7 @@ def filtra_mailing_view(request):
         'sistema': request.session["sistema"],
         'cidades':LISTA_ESTADOS_MUNICIPIOS
     }
-    nome_padrao_arquivo = ""
+    nome_padrao_arquivo = "Dados Mailing"
     PASTAS_RAIZ = {
             "oi": os.path.join(os.getcwd(), "media"),
             "geral": os.path.join(os.getcwd(), "media"),
@@ -714,7 +777,6 @@ def filtra_mailing_view(request):
                 tipos_credito.append("Sem Infos")
 
 
-            print("TIPOS DECRETO>> ", tipos_credito)
             if len(tipos_credito) == 0:
                 df = pd.DataFrame()
                 df.to_csv(os.path.join(filepath_csv, f"{nome_padrao_arquivo}.csv"), sep=";", index=False)
@@ -753,8 +815,8 @@ def filtra_mailing_view(request):
             }
             dia = datetime.datetime.now().day 
             dia = str(dia) if dia > 9 else "0"+ str(dia)
-            data_atual = f'{dia}-{meses[str(datetime.datetime.now().month)]}'
-            nome_padrao_arquivo += data_atual
+            mes_extenso = meses[str(datetime.datetime.now().month)]
+            data_atual = f'{dia}-{mes_extenso}'
             # Preparar dados para exibição
             if not df.empty:
                 
@@ -775,8 +837,11 @@ def filtra_mailing_view(request):
                 context['resultados'] = df.replace({pd.NA: ''}).head(50).values.tolist()
                 context['colunas'] = df.columns.tolist()
                 context['qtd_resultados'] = len(df.index)
+                
 
-                response = FileResponse(open(f"{pasta_raiz}/{request.user.username}_filtrados_mailing.zip", 'rb'), as_attachment=True, filename='dados_filtrados.zip')
+                filename = f"{titulos[sistema]} - {dia} de {mes_extenso}.zip"
+
+                response = FileResponse(open(f"{pasta_raiz}/{request.user.username}_filtrados_mailing.zip", 'rb'), as_attachment=True, filename=filename)
                 return response
             return render(request, 'data_not_found.html', context)
 
@@ -803,7 +868,7 @@ def filtro_geral_view(request):
         'cnaes': get_cnaes()
     }
 
-    nome_padrao_arquivo = ""
+    nome_padrao_arquivo = "Dados Mailing"
     filepath_csv = os.path.join(os.getcwd(), "media/arquivos_receita_federal_filtrados")
     for file in os.listdir(filepath_csv):
         os.remove(os.path.join(filepath_csv, file))
@@ -815,7 +880,6 @@ def filtro_geral_view(request):
 
             # Estados (múltiplos valores via checkbox)
             estados = request.POST.getlist('estado', [])
-            print(f"ESTADOS: {estados}")
             if estados != []:
                 estados = estados
             else:
@@ -826,13 +890,17 @@ def filtro_geral_view(request):
             if estados:
                 filtros['uf'] = estados
                 for estado in estados:
-                    nome_padrao_arquivo += f"{estado}_"
+                    nome_padrao_arquivo += f" {estado} "
+
+
 
             # CNAE (múltiplos valores)
             cnaes = request.POST.getlist('cnae', '')
-            print(f"CNAES: {cnaes}")
             if cnaes:
                 filtros['cnae_fiscal'] = cnaes
+
+
+            
 
             # Município (múltiplos valores)
             municipios = request.POST.getlist('municipio', '')
@@ -845,28 +913,22 @@ def filtro_geral_view(request):
             #     filtros["termos_chave"] = termos_chave
 
             tipo_empresa = request.POST.get("tipo_mei", "")
-            print(f"Tipo de empresa: {tipo_empresa}")
 
             if tipo_empresa:
                 filtros["MEINAOMEI"] = tipo_empresa
             
-            print(f"Tempo até o momento de pegar os dados = {time.time() - initial}")
             # Obter dados do CSV
             df = get_dados_csv(filtros)
-            print(f"Tempo até o momento depois de pegar os dados = {time.time() - initial}")
             # Converter colunas categóricas para strings
             for col in df.select_dtypes(include=['category']).columns:
                 df[col] = df[col].astype(str)
-            print(f"Tempo até o momento depois de definir os types = {time.time() - initial}")
 
 
             tipoTelefone = request.POST.get('tipoTelefone', '')
-            print(f"Tipo de telefone: {tipoTelefone}")
 
             if tipoTelefone == "apenas_movel":
                 df = remove_fixos(df) 
 
-            print(f"Tempo até remover os fixos = {time.time() - initial}")
 
             # Agora pode usar replace e fillna tranquilamente
             df["cnpj"] = df["cnpj"].apply(lambda x: re.sub(r'[^0-9]', '', x))
@@ -888,10 +950,25 @@ def filtro_geral_view(request):
             }
             dia = datetime.datetime.now().day 
             dia = str(dia) if dia > 9 else "0"+ str(dia)
-            data_atual = f'{dia}-{meses[str(datetime.datetime.now().month)]}'
-            nome_padrao_arquivo += data_atual
+            data_atual = f'{dia} de {meses[str(datetime.datetime.now().month)]}'
             # Preparar dados para exibição
             
+            formato_download = request.POST.get('formatoDownload', '')
+            if formato_download == "IPBOX":
+                colunas_ipbox = ["cnpj", "logradouro", "num_fachada", "complemento1", "bairro", "cep", "municipio", "uf", "DDD1", "TEL1", "DDD2", "TEL2", "DDD3", "TEL3", "DDD4", "TEL4", "DDD5", "TEL5", "DDD6", "TEL6", "DDD7", "TEL7", "DDD8", "TEL8", ]
+                colunas_telefone = ["TEL1", "TEL2", "TEL3"] 
+
+                i = 1
+                for ct in colunas_telefone:
+                    df[f'DDD{i}'] = df[ct].str[:2]
+                    df[f"TEL{i}"] = df[ct].str[2:]
+                    i+=1                
+                for i in range(4,9):
+                    df[f'DDD{i}'] = ""
+                    df[f"TEL{i}"] = ""
+                df = df[colunas_ipbox]
+
+
             if len(df.index) > 0:
                 max_linhas = 200_000
 
@@ -899,7 +976,7 @@ def filtro_geral_view(request):
                     # Divide em pedaços de 200k
                     f = 0
                     for i in range(0, len(df), max_linhas):
-                        nome_arquivo = nome_padrao_arquivo + f"_parte_{f}" + ".csv"
+                        nome_arquivo = nome_padrao_arquivo + f"parte {f}" + ".csv"
                         df.iloc[i:i + max_linhas].to_csv(os.path.join(filepath_csv, nome_arquivo),sep=";", index=False)
                         f+=1
                 else:
@@ -911,7 +988,7 @@ def filtro_geral_view(request):
                 context['colunas'] = df.columns.tolist()
                 context['qtd_resultados'] = len(df.index)
 
-            response = FileResponse(open(f"media/{request.user.username}_filtrados.zip", 'rb'), as_attachment=True, filename='dados_filtro_geral.zip')
+            response = FileResponse(open(f"media/{request.user.username}_filtrados.zip", 'rb'), as_attachment=True, filename=f'Dados Receita Federal {data_atual}.zip')
             return response
         except Exception as e:
             return JsonResponse({"error": traceback.format_exc()})

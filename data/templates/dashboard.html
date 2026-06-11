@@ -3,652 +3,459 @@
 
 {% block static %}
 <style>
-  .painel {
-    width: 240px;
-    max-height: 420px;
-    display: flex;
-    flex-direction: column;
-    border-radius: 12px;
-    background: #ffffff;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-    overflow: hidden;
-    font-family: sans-serif;
-}
+  /* ===== Escopo: tudo abaixo vive dentro de #dashRoot p/ não vazar no base ===== */
+  #dashRoot{
+    --mei:#6366f1; --mei-soft:#eef2ff;
+    --nmei:#f59e0b; --nmei-soft:#fff7ed;
+    --ok:#16a34a; --ok-soft:#e8f7ee;
+    --no:#dc2626; --no-soft:#fdecec;
+    --na:#94a3b8; --na-soft:#f1f5f9;
+    --ink:#0f172a; --muted:#64748b; --line:#e7ebf1; --bg:#f6f8fb;
+    --card:#ffffff; --radius:16px;
+    color:var(--ink);
+    font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  }
 
-.painel-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 12px;
-    font-weight: bold;
-    border-bottom: 1px solid #eee;
-}
+  /* Cabeçalho */
+  #dashRoot .dash-head{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end;justify-content:space-between;margin-bottom:22px}
+  #dashRoot .dash-head h2{font-weight:800;letter-spacing:-.02em;margin:0;font-size:1.55rem}
+  #dashRoot .dash-sub{color:var(--muted);font-size:.85rem;margin-top:4px}
+  #dashRoot .dash-sub b{color:var(--ink);font-weight:600}
 
-.painel-header button {
-    border: none;
-    background: #f3f3f3;
-    border-radius: 6px;
-    padding: 4px 8px;
-    cursor: pointer;
-}
+  /* Seletor de segmento (assinatura da página) */
+  #dashRoot .seg{display:inline-flex;background:#eef1f6;border-radius:999px;padding:4px;gap:2px}
+  #dashRoot .seg button{
+    border:0;background:transparent;border-radius:999px;padding:8px 18px;
+    font-weight:600;font-size:.86rem;color:var(--muted);cursor:pointer;transition:.18s;white-space:nowrap}
+  #dashRoot .seg button:hover{color:var(--ink)}
+  #dashRoot .seg button.active{background:var(--card);color:var(--ink);box-shadow:0 1px 4px rgba(15,23,42,.12)}
+  #dashRoot .seg button[data-seg="mei"].active{color:var(--mei)}
+  #dashRoot .seg button[data-seg="nmei"].active{color:var(--nmei)}
 
-.painel-header button:hover {
-    background: #ddd;
-}
+  /* faixa de identidade do segmento ativo */
+  #dashRoot .seg-flag{height:4px;border-radius:4px;width:100%;margin:14px 0 22px;background:var(--line);transition:.2s}
+  #dashRoot.is-mei .seg-flag{background:linear-gradient(90deg,var(--mei),#a5b4fc)}
+  #dashRoot.is-nmei .seg-flag{background:linear-gradient(90deg,var(--nmei),#fcd34d)}
+  #dashRoot.is-comp .seg-flag{background:linear-gradient(90deg,var(--mei),var(--nmei))}
 
-#buscaDataset {
-    margin: 10px;
-    padding: 8px;
-    border-radius: 8px;
-    border: 1px solid #ddd;
-}
+  #dashRoot select.uf{
+    border:1px solid var(--line);background:var(--card);border-radius:10px;
+    padding:9px 12px;font-size:.86rem;color:var(--ink);min-width:210px;font-weight:500}
+  #dashRoot select.uf:focus{outline:none;border-color:#c7d2fe;box-shadow:0 0 0 3px rgba(99,102,241,.15)}
 
-.lista {
-    overflow-y: auto;
-    padding: 5px 10px 10px 10px;
-}
+  /* Cards KPI */
+  #dashRoot .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:22px}
+  #dashRoot .kpi{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;position:relative;overflow:hidden}
+  #dashRoot .kpi .lbl{font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:600}
+  #dashRoot .kpi .val{font-size:1.7rem;font-weight:800;letter-spacing:-.02em;margin-top:6px;line-height:1}
+  #dashRoot .kpi .meta{font-size:.78rem;color:var(--muted);margin-top:7px}
+  #dashRoot .kpi .tag{position:absolute;top:16px;right:16px;width:34px;height:34px;border-radius:10px;display:grid;place-items:center;font-size:.9rem}
+  #dashRoot .kpi.k-total .tag{background:var(--mei-soft);color:var(--mei)}
+  #dashRoot .kpi.k-ok .val{color:var(--ok)} #dashRoot .kpi.k-ok .tag{background:var(--ok-soft);color:var(--ok)}
+  #dashRoot .kpi.k-no .val{color:var(--no)} #dashRoot .kpi.k-no .tag{background:var(--no-soft);color:var(--no)}
+  #dashRoot .kpi.k-na .val{color:#475569} #dashRoot .kpi.k-na .tag{background:var(--na-soft);color:var(--na)}
+  #dashRoot .kpi .bar{height:5px;border-radius:4px;background:var(--na-soft);margin-top:12px;overflow:hidden}
+  #dashRoot .kpi .bar > i{display:block;height:100%;border-radius:4px}
 
-/* item */
-.item {
-    display: flex;
-    align-items: center;
-    padding: 6px;
-    border-radius: 8px;
-    transition: background 0.2s;
-}
+  /* Painéis / cards de gráfico */
+  #dashRoot .panel{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:20px}
+  #dashRoot .panel h5{font-weight:700;font-size:1rem;margin:0 0 2px}
+  #dashRoot .panel .hint{font-size:.78rem;color:var(--muted);margin-bottom:14px}
+  #dashRoot .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px}
+  #dashRoot .grid-37{display:grid;grid-template-columns:5fr 7fr;gap:20px;margin-bottom:20px}
+  @media (max-width:900px){#dashRoot .grid-2,#dashRoot .grid-37{grid-template-columns:1fr}}
 
-.item:hover {
-    background: #f5f5f5;
-}
+  /* Tabela por estado */
+  #dashRoot table.tbl{width:100%;border-collapse:collapse;font-size:.86rem}
+  #dashRoot table.tbl th,#dashRoot table.tbl td{padding:11px 12px;text-align:right;white-space:nowrap}
+  #dashRoot table.tbl th:first-child,#dashRoot table.tbl td:first-child{text-align:left}
+  #dashRoot table.tbl thead th{font-size:.7rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);border-bottom:2px solid var(--line);cursor:pointer;user-select:none}
+  #dashRoot table.tbl thead th:hover{color:var(--ink)}
+  #dashRoot table.tbl tbody tr{border-bottom:1px solid #f1f4f8}
+  #dashRoot table.tbl tbody tr:hover{background:#fafbfe}
+  #dashRoot table.tbl td .uf{display:inline-block;min-width:30px;font-weight:700;color:var(--ink)}
+  #dashRoot table.tbl td .nm{color:var(--muted);font-size:.78rem;margin-left:6px}
+  #dashRoot .pill{display:inline-block;padding:2px 9px;border-radius:999px;font-weight:700;font-size:.78rem}
+  #dashRoot .pill.ok{background:var(--ok-soft);color:var(--ok)}
+  #dashRoot .pill.mid{background:var(--nmei-soft);color:#b45309}
+  #dashRoot .pill.low{background:var(--no-soft);color:var(--no)}
 
-.item input {
-    cursor: pointer;
-}
+  /* mini barra dentro da célula (comparativo) */
+  #dashRoot .minibar{height:8px;border-radius:6px;background:#eef1f6;width:120px;display:inline-block;vertical-align:middle;overflow:hidden}
+  #dashRoot .minibar > i{display:block;height:100%}
 
-.item label {
-    margin-left: 8px;
-    cursor: pointer;
-    font-size: 14px;
-}
+  #dashRoot .legend{display:flex;gap:18px;flex-wrap:wrap;font-size:.8rem;color:var(--muted);margin-top:4px}
+  #dashRoot .legend span{display:inline-flex;align-items:center;gap:6px}
+  #dashRoot .legend i{width:11px;height:11px;border-radius:3px;display:inline-block}
+
+  /* tabela bruta colapsável */
+  #dashRoot details.raw{margin-top:22px;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:6px 20px 20px}
+  #dashRoot details.raw summary{cursor:pointer;font-weight:700;padding:14px 0;list-style:none}
+  #dashRoot details.raw summary::-webkit-details-marker{display:none}
+  #dashRoot details.raw summary::before{content:'▸';margin-right:8px;color:var(--muted)}
+  #dashRoot details.raw[open] summary::before{content:'▾'}
+  #dashRoot .raw input{width:100%;max-width:320px;padding:9px 14px;border:1px solid var(--line);border-radius:999px;font-size:.85rem;margin-bottom:12px}
+  #dashRoot .raw input:focus{outline:none;border-color:#c7d2fe;box-shadow:0 0 0 3px rgba(99,102,241,.15)}
+  #dashRoot .raw table{width:100%;border-collapse:collapse;font-size:.83rem}
+  #dashRoot .raw th,#dashRoot .raw td{padding:9px 10px;border-bottom:1px solid #f1f4f8;text-align:left}
+  #dashRoot .raw th{font-size:.7rem;text-transform:uppercase;color:var(--muted);letter-spacing:.04em}
+
+  #dashRoot .hide{display:none!important}
 </style>
-{% endblock%}
+{% endblock %}
 
 {% block main_body %}
+<div id="dashRoot" class="is-mei">
 
-    <!-- Cabeçalho da página -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-      <h2 class="fw-bold mb-0">Dados Última Extração - MEI + NMEI</h2>
-      
-      <div class="d-flex align-items-center">
-       
+  <!-- ===== Cabeçalho + controles ===== -->
+  <div class="dash-head">
+    <div>
+      <h2>Painel de Viabilidade &amp; Crédito</h2>
+      <div class="dash-sub">
+        {{ total_empresas|intcomma }} empresas ativas na Receita Federal
+        {% if ultima_exec %}· última extração <b>{{ ultima_exec }}</b>{% endif %}
       </div>
     </div>
-    <div class="d-flex justify-content-between align-items-center mb-4">
-      <h6 class="fw-bold mb-0 text-secondary">{{ultima_exec}}</h6>
+    <div class="d-flex align-items-center gap-3 flex-wrap">
+      <div class="seg" id="segSwitch">
+        <button data-seg="mei" class="active">MEI</button>
+        <button data-seg="nmei">NMEI</button>
+        <button data-seg="comp">Comparativo</button>
+      </div>
+      <select class="uf" id="ufFilter">
+        <option value="">Todos os estados</option>
+      </select>
     </div>
-
-    <!-- Cards de estatísticas -->
-    <div class="row g-4 mb-4">
-      <div class="col-md-6 col-xl-3">
-        <div class="stat-card p-3 d-flex align-items-center">
-          <div class="stat-icon me-3">
-            <i class="fas fa-building"></i>
-          </div>
-          <div>
-            <span class="text-muted text-uppercase small">Empresas Encontradas na RF</span>
-            <h3 class="fw-bold mb-0">{{ total_empresas.quantidade|intcomma }}</h3>            <!-- <span class="text-success small"><i class="fas fa-arrow-up me-1"></i> +12%</span> -->
-          </div>
-        </div>
-      </div>
-      <div class="col-md-6 col-xl-3">
-        <div class="stat-card p-3 d-flex align-items-center">
-          <div class="stat-icon me-3" style="background: #e3f2fd; color: #0dcaf0;">
-            <i class="fas fa-briefcase"></i>
-          </div>
-          <div>
-            <span class="text-muted text-uppercase small">Total de Empresas com viabilidade</span>
-            <h3 class="fw-bold mb-0">{{total_empresas_viabilidade|intcomma}}</h3>
-            <!-- <span class="text-success small"><i class="fas fa-arrow-up me-1"></i> +5%</span> -->
-          </div>
-        </div>
-      </div>
-      <div class="col-md-6 col-xl-3">
-        <div class="stat-card p-3 d-flex align-items-center">
-          <div class="stat-icon me-3" style="background: #dbfed9; color: #13ff07;">
-            <i class="fas fa-star"></i>
-          </div>
-          <div>
-            <span class="text-muted text-uppercase small">Viabilidades Primárias</span>
-            <h3 class="fw-bold mb-0">{{total_empresas_viabilidade_primaria|intcomma}}</h3>
-            <!-- <span class="text-success small"><i class="fas fa-arrow-up me-1"></i> +8%</span> -->
-          </div>
-        </div>
-      </div>
-      <div class="col-md-6 col-xl-3">
-        <div class="stat-card p-3 d-flex align-items-center">
-          <div class="stat-icon me-3" style="background: #feebe8; color: #0755ff;">
-            <i class="far fa-star"></i>
-          </div>
-          <div>
-            <span class="text-muted text-uppercase small">Viabilidades Secundárias</span>
-            <h3 class="fw-bold mb-0">{{total_empresas_viabilidade_secundaria|intcomma}}</h3>
-            <!-- <span class="text-danger small"><i class="fas fa-arrow-down me-1"></i> -2%</span> -->
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- NOVA LINHA: Gráficos de pizza -->
-    <div class="row g-4 mb-4">
-      <div class="col-md-6">
-        <div class="chart-placeholder">
-          <h5 class="fw-semibold mb-3">Créditos MEI</h5>
-          <canvas id="ChartMEI" style="max-height: 250px; width: 100%;"></canvas>
-        </div>
-      </div>
-      <div class="col-md-6">
-        <div class="chart-placeholder">
-          <h5 class="fw-semibold mb-3">Créditos Não MEI</h5>
-          <canvas id="ChartNMEI" style="max-height: 250px; width: 100%;"></canvas>
-        </div>
-      </div>
-    </div>
-
-    <!-- Gráfico de barras e pedidos recentes (inalterado) -->
-    <!-- <div class="row g-4 mb-4">
-      <div class="col-lg-7">
-        <div class="chart-placeholder">
-          <h5 class="fw-semibold mb-4">Receita mensal</h5>
-          <div class="mb-4">
-            <div class="d-flex justify-content-between mb-1"><span>Jan</span> <span>R$ 32k</span></div>
-            <div class="bar" style="width: 70%;"></div>
-            <div class="d-flex justify-content-between mb-1 mt-3"><span>Fev</span> <span>R$ 45k</span></div>
-            <div class="bar" style="width: 85%;"></div>
-            <div class="d-flex justify-content-between mb-1 mt-3"><span>Mar</span> <span>R$ 38k</span></div>
-            <div class="bar" style="width: 75%;"></div>
-            <div class="d-flex justify-content-between mb-1 mt-3"><span>Abr</span> <span>R$ 50k</span></div>
-            <div class="bar" style="width: 95%;"></div>
-          </div>
-          <div class="d-flex text-muted small">
-            <span class="me-3"><i class="fas fa-circle text-primary me-1"></i> 2025</span>
-          </div>
-        </div>
-      </div>
-      <div class="col-lg-5">
-        <div class="chart-placeholder h-100 d-flex flex-column">
-          <h5 class="fw-semibold mb-4">Pedidos recentes</h5>
-          <div class="list-group list-group-flush bg-transparent">
-            <div class="list-group-item d-flex justify-content-between align-items-center px-0 border-0 bg-transparent">
-              <div><i class="fas fa-circle text-success me-2" style="font-size: 0.6rem;"></i> #INV-001</div>
-              <span class="badge bg-light text-dark">R$ 299</span>
-            </div>
-            <div class="list-group-item d-flex justify-content-between align-items-center px-0 border-0 bg-transparent">
-              <div><i class="fas fa-circle text-warning me-2" style="font-size: 0.6rem;"></i> #INV-002</div>
-              <span class="badge bg-light text-dark">R$ 1.450</span>
-            </div>
-            <div class="list-group-item d-flex justify-content-between align-items-center px-0 border-0 bg-transparent">
-              <div><i class="fas fa-circle text-primary me-2" style="font-size: 0.6rem;"></i> #INV-003</div>
-              <span class="badge bg-light text-dark">R$ 87</span>
-            </div>
-            <div class="list-group-item d-flex justify-content-between align-items-center px-0 border-0 bg-transparent">
-              <div><i class="fas fa-circle text-info me-2" style="font-size: 0.6rem;"></i> #INV-004</div>
-              <span class="badge bg-light text-dark">R$ 632</span>
-            </div>
-          </div>
-          <a href="#" class="text-decoration-none mt-auto">Ver todos <i class="fas fa-arrow-right ms-1"></i></a>
-        </div>
-      </div>
-    </div> -->
-    
-
-    <div style="width: 100%;margin: 0 auto;">
-        <select id="filtroEstado" class="form-control">
-              <option value="">Todos os estados</option>
-              
-              <option value="AC">AC - Acre</option>
-              <option value="AL">AL - Alagoas</option>
-              <option value="AP">AP - Amapá</option>
-              <option value="AM">AM - Amazonas</option>
-              <option value="BA">BA - Bahia</option>
-              <option value="CE">CE - Ceará</option>
-              <option value="DF">DF - Distrito Federal</option>
-              <option value="ES">ES - Espírito Santo</option>
-              <option value="GO">GO - Goiás</option>
-              <option value="MA">MA - Maranhão</option>
-              <option value="MT">MT - Mato Grosso</option>
-              <option value="MS">MS - Mato Grosso do Sul</option>
-              <option value="MG">MG - Minas Gerais</option>
-              <option value="PA">PA - Pará</option>
-              <option value="PB">PB - Paraíba</option>
-              <option value="PR">PR - Paraná</option>
-              <option value="PE">PE - Pernambuco</option>
-              <option value="PI">PI - Piauí</option>
-              <option value="RJ">RJ - Rio de Janeiro</option>
-              <option value="RN">RN - Rio Grande do Norte</option>
-              <option value="RS">RS - Rio Grande do Sul</option>
-              <option value="RO">RO - Rondônia</option>
-              <option value="RR">RR - Roraima</option>
-              <option value="SC">SC - Santa Catarina</option>
-              <option value="SP">SP - São Paulo</option>
-              <option value="SE">SE - Sergipe</option>
-              <option value="TO">TO - Tocantins</option>
-          </select>
-        <canvas id="graficoCnpjs"></canvas>
-    </div>
-
-    <div style="display: flex; gap: 20px;">
-
-      <!-- Painel -->
-      <div class="painel">
-          <div class="painel-header">
-              <span>Linhas</span>
-              <div>
-                  <button onclick="toggleAll(true)">✔</button>
-                  <button onclick="toggleAll(false)">✖</button>
-              </div>
-          </div>
-
-          <input type="text" id="buscaDataset" placeholder="Buscar..." />
-
-          <div id="checkboxContainer" class="lista"></div>
-      </div>
-
-      <!-- Gráfico -->
-      <div style="flex: 1;">
-          <canvas id="graficoTempo"></canvas>
-      </div>
-
   </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
-    <script>
-      let chart;
-      let chartTempo;
-      async function carregarGrafico(estado = "") {
-          const url = estado 
-              ? `{% url 'dados_dashboard' %}?estado=${estado}` 
-              : `{% url 'dados_dashboard' %}`;
+  <div class="seg-flag"></div>
 
-          const response = await fetch(url);
-          const data = await response.json();
+  <!-- ===== KPIs ===== -->
+  <div class="kpis" id="kpiRow"></div>
 
-          const ctx = document.getElementById("graficoCnpjs").getContext("2d");
+  <!-- ===== Visão por segmento (MEI ou NMEI) ===== -->
+  <div id="viewSingle">
+    <div class="grid-37">
+      <div class="panel">
+        <h5>Distribuição de crédito</h5>
+        <div class="hint" id="donutHint">Aprovado · negado · sem informação</div>
+        <canvas id="chDonut" height="240"></canvas>
+        <div class="legend">
+          <span><i style="background:var(--ok)"></i>Aprovado</span>
+          <span><i style="background:var(--no)"></i>Negado</span>
+          <span><i style="background:var(--na)"></i>Sem info</span>
+        </div>
+      </div>
+      <div class="panel">
+        <h5>Crédito por nível de viabilidade</h5>
+        <div class="hint">Como aprovados, negados e sem-info se dividem entre viabilidade primária e secundária</div>
+        <canvas id="chStack" height="240"></canvas>
+      </div>
+    </div>
 
-          if (chart) {
-              chart.destroy(); // evita sobreposição
-          }
-
-          chart = new Chart(ctx, {
-              type: "bar",
-              data: {
-                  labels: data.labels,
-                  datasets: [{
-                      data: data.valores,
-                      borderWidth: 1
-                  }]
-              },
-              options: {
-                  responsive: true,
-                  plugins: {
-                      legend: { display: false }
-                  },
-                  ticks: {
-                      callback: function(value) {
-                          const label = this.getLabelForValue(value);
-                          return label.length > 25 ? label.substring(0, 25) + '...' : label;
-                      }
-                  },
-                  plugins: {
-                      tooltip: {
-                          callbacks: {
-                              title: function(context) {
-                                  return context[0].label; // mostra completo no hover
-                              }
-                          }
-                      }
-                  }
-              }
-          });
-      }
-
-      async function carregarGraficoTempo(estado = "") {
-          const url = estado 
-              ? `{% url "dados_tempo" %}?estado=${estado}` 
-              : `{% url "dados_tempo" %}`;
-
-          const response = await fetch(url);
-          const data = await response.json();
-
-          const ctx = document.getElementById("graficoTempo").getContext("2d");
-
-          if (chartTempo) {
-              chartTempo.destroy();
-          }
-
-          chartTempo = new Chart(ctx, {
-              type: "line",
-              data: {
-                  labels: data.labels,
-                  datasets: data.datasets.map(ds => ({
-                      ...ds,
-                      fill: false,
-                      tension: 0.3
-                  }))
-              },
-              options: {
-                  responsive: true,
-                  plugins: {
-                      legend: {
-                          display: false // 👈 escondemos a legenda padrão
-                      }
-                  }
-              }
-          });
-
-          criarPainelCheckbox(data.datasets);
-      }
-      
-      
-      function criarPainelCheckbox(datasets) {
-        const container = document.getElementById("checkboxContainer");
-        container.innerHTML = "";
-
-        datasets.forEach((ds, index) => {
-            const wrapper = document.createElement("div");
-            wrapper.className = "item";
-
-            const checkbox = document.createElement("input");
-            checkbox.type = "checkbox";
-            checkbox.checked = false; // 👈 começa desmarcado
-
-            // 👇 já começa oculto no gráfico
-            const meta = chartTempo.getDatasetMeta(index);
-            meta.hidden = true;
-
-            checkbox.addEventListener("change", () => {
-                const meta = chartTempo.getDatasetMeta(index);
-                meta.hidden = !checkbox.checked;
-                chartTempo.update();
-            });
-
-            const label = document.createElement("label");
-            label.textContent = ds.label;
-            label.style.color = ds.borderColor;
-
-            wrapper.appendChild(checkbox);
-            wrapper.appendChild(label);
-            container.appendChild(wrapper);
-        });
-
-        chartTempo.update(); // 👈 importante pra aplicar o estado inicial
-    }
-
-      document.getElementById("buscaDataset").addEventListener("input", function() {
-          const termo = this.value.toLowerCase();
-          const itens = document.querySelectorAll(".item");
-
-          itens.forEach(item => {
-              const texto = item.innerText.toLowerCase();
-              item.style.display = texto.includes(termo) ? "flex" : "none";
-          });
-      });
-
-    // carregar inicial
-carregarGrafico();
-carregarGraficoTempo();
-
-
-// evento do filtro
-document.getElementById("filtroEstado").addEventListener("change", function() {
-    carregarGrafico(this.value);
-    carregarGraficoTempo(this.value);
-});
-    </script>
-
-
-
-
-    <!-- Tabela de pedidos -->
-    <div class="chart-placeholder">
-      <h5 class="fw-semibold mb-3">Todos os Dados</h5>
-      
-      <div class="table-wrapper">
-  <!-- Campo de filtro -->
-  <div class="filter-container">
-    <input
-      type="text"
-      id="filterInput"
-      class="filter-input"
-      placeholder="🔍 Filtrar por título..."
-      aria-label="Filtrar por título"
-    />
+    <div class="panel" style="margin-bottom:20px">
+      <h5>Ranking por estado</h5>
+      <div class="hint">Estados ordenados por volume de CNPJs analisados — clique numa barra para filtrar</div>
+      <canvas id="chStates" height="300"></canvas>
+    </div>
   </div>
 
-  <!-- Tabela -->
-  <div class="table-responsive">
-    <table class="table table-custom align-middle mb-0" id="dataTable">
-      <thead class="table-header">
-        <tr>
-          <th>Dado</th>
-          <th>Quantidade</th>
-          <th>Data atualização</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for dado in dados %}
-        <tr>
-          <td>{{ dado.titulo }}</td>
-          <td>{{ dado.quantidade }}</td>
-          <td>{{ dado.momento_criacao }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+  <!-- ===== Comparativo MEI x NMEI ===== -->
+  <div id="viewComp" class="hide">
+    <div class="grid-2">
+      <div class="panel">
+        <h5>MEI x NMEI por status de crédito</h5>
+        <div class="hint">Volume absoluto de CNPJs em cada status</div>
+        <canvas id="chCompBar" height="260"></canvas>
+        <div class="legend">
+          <span><i style="background:var(--mei)"></i>MEI</span>
+          <span><i style="background:var(--nmei)"></i>NMEI</span>
+        </div>
+      </div>
+      <div class="panel">
+        <h5>Participação no total analisado</h5>
+        <div class="hint">Quanto cada segmento representa do volume total</div>
+        <canvas id="chCompShare" height="260"></canvas>
+        <div class="legend">
+          <span><i style="background:var(--mei)"></i>MEI</span>
+          <span><i style="background:var(--nmei)"></i>NMEI</span>
+        </div>
+      </div>
+    </div>
   </div>
+
+  <!-- ===== Tabela por estado ===== -->
+  <div class="panel">
+    <h5 id="tblTitle">Detalhamento por estado</h5>
+    <div class="hint">Clique nos cabeçalhos para ordenar</div>
+    <div style="overflow-x:auto">
+      <table class="tbl" id="stateTable"></table>
+    </div>
+  </div>
+
+  <!-- ===== Tabela bruta (referência) ===== -->
+  <details class="raw">
+    <summary>Dados brutos da extração ({{ dados|length }} registros)</summary>
+    <input type="text" id="rawFilter" placeholder="🔍 Filtrar por título...">
+    <div style="overflow-x:auto;max-height:460px">
+      <table id="rawTable">
+        <thead><tr><th>Título</th><th style="text-align:right">Quantidade</th><th>Atualização</th></tr></thead>
+        <tbody>
+          {% for dado in dados %}
+          <tr>
+            <td>{{ dado.titulo }}</td>
+            <td style="text-align:right">{{ dado.quantidade|intcomma }}</td>
+            <td>{{ dado.momento_criacao }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </details>
 </div>
 
-<style>
-  /* Estilo geral da página (opcional – ajuste conforme seu projeto) */
-  body {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background: #f8fafc;
-    margin: 0;
-    padding: 20px;
-  }
-
-  /* Container que envolve filtro + tabela */
-  .table-wrapper {
-    max-width: 1200px;
-    margin: 0 auto;
-    background: white;
-    border-radius: 20px;
-    box-shadow: 0 20px 35px -8px rgba(0, 0, 0, 0.1), 0 5px 10px -4px rgba(0, 0, 0, 0.05);
-    padding: 1.5rem;
-    transition: all 0.2s ease;
-  }
-
-  /* Estilo do campo de filtro */
-  .filter-container {
-    margin-bottom: 1.5rem;
-  }
-
-  .filter-input {
-    width: 100%;
-    max-width: 320px;
-    padding: 0.75rem 1rem;
-    font-size: 0.95rem;
-    border: 1px solid #e2e8f0;
-    border-radius: 60px; /* pill shape */
-    outline: none;
-    background: #ffffff;
-    transition: all 0.2s;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.02);
-    font-family: inherit;
-  }
-
-  .filter-input:focus {
-    border-color: #3b82f6;
-    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
-  }
-
-  .filter-input::placeholder {
-    color: #94a3b8;
-    font-weight: 300;
-  }
-
-  /* Estilo da tabela */
-  .table-custom {
-    width: 100%;
-    border-collapse: separate;
-    border-spacing: 0 6px;
-    margin: 0;
-  }
-
-  .table-custom th {
-    font-weight: 600;
-    font-size: 0.85rem;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-    color: #475569;
-    background: #f1f5f9;
-    padding: 1rem 1.25rem;
-    white-space: nowrap;
-    border: none;
-  }
-
-  .table-custom td {
-    background: white;
-    padding: 1rem 1.25rem;
-    color: #1e293b;
-    font-size: 0.95rem;
-    border: none;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-    transition: background 0.15s;
-  }
-
-  /* Primeiro e último th/td com bordas arredondadas */
-  .table-custom th:first-child {
-    border-top-left-radius: 14px;
-    border-bottom-left-radius: 14px;
-  }
-  .table-custom th:last-child {
-    border-top-right-radius: 14px;
-    border-bottom-right-radius: 14px;
-  }
-
-  .table-custom td:first-child {
-    border-top-left-radius: 14px;
-    border-bottom-left-radius: 14px;
-  }
-  .table-custom td:last-child {
-    border-top-right-radius: 14px;
-    border-bottom-right-radius: 14px;
-  }
-
-  /* Linhas com leve elevação ao passar o mouse */
-  .table-custom tbody tr:hover td {
-    background: #fafdff;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.02);
-    cursor: default;
-  }
-
-  /* Responsividade: mantém a rolagem horizontal em telas pequenas */
-  .table-responsive {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-</style>
-
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-  (function() {
-    // Função de filtro
-    function filterTable() {
-      const input = document.getElementById('filterInput');
-      const filterValue = input.value.trim().toLowerCase();
-      const table = document.getElementById('dataTable');
-      const rows = table.querySelectorAll('tbody tr');
+(function(){
+  const DADOS = {{ dashboard_json|safe }};
+  const C = {ok:'#16a34a', no:'#dc2626', na:'#94a3b8', mei:'#6366f1', nmei:'#f59e0b'};
+  const NOMES_SEG = {mei:'MEI', nmei:'NMEI'};
+  const fmt = n => (n||0).toLocaleString('pt-BR');
+  const pct = (p,t) => t>0 ? (p/t*100) : 0;
 
-      rows.forEach(row => {
-        const titleCell = row.querySelector('td:first-child'); // primeira coluna = título
-        if (titleCell) {
-          const titleText = titleCell.textContent || titleCell.innerText;
-          if (titleText.toLowerCase().includes(filterValue)) {
-            row.style.display = ''; // mostra
-          } else {
-            row.style.display = 'none'; // esconde
-          }
-        }
-      });
-    }
+  const root = document.getElementById('dashRoot');
+  let seg = 'mei';      // 'mei' | 'nmei' | 'comp'
+  let uf  = '';         // '' = todos
+  let charts = {};
 
-    // Aguarda o carregamento completo do DOM
-    document.addEventListener('DOMContentLoaded', function() {
-      const input = document.getElementById('filterInput');
-      if (input) {
-        input.addEventListener('keyup', filterTable);
-        // Opcional: também filtra ao colar ou recortar
-        input.addEventListener('search', filterTable); // para o botão "x" de reset em alguns navegadores
-      }
+  /* ---------- popular filtro de estados (união MEI+NMEI) ---------- */
+  (function(){
+    const ufs = {};
+    ['mei','nmei'].forEach(s => DADOS[s].estados.forEach(e => ufs[e.uf] = e.nome));
+    const sel = document.getElementById('ufFilter');
+    Object.keys(ufs).sort().forEach(code => {
+      const o = document.createElement('option');
+      o.value = code; o.textContent = code + ' — ' + ufs[code];
+      sel.appendChild(o);
     });
   })();
-</script>
-    </div>
-  </div>
 
-  <script>
-  // Inicialização dos gráficos de pizza
-  document.addEventListener('DOMContentLoaded', function () {
-    // Gráfico 1: Vendas por categoria
-    const ctx1 = document.getElementById('ChartMEI').getContext('2d');
-    new Chart(ctx1, {
-      type: 'pie',
-      data: {
-        labels: ['Crédito Aprovado', 'Crédito Negado', 'Sem Info de Crédito', ],
-        datasets: [{
-          data: [{{quantidade_credito_aprovado_mei}}, {{quantidade_credito_negado_mei}}, {{quantidade_credito_sem_info_mei}}],
-          backgroundColor: ['#20c997','#dc3545', '#ffc107'],
-          borderWidth: 0
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: true,
-        plugins: {
-          legend: { position: 'bottom' }
-        }
-      }
+  /* ---------- acesso unificado a um bloco de dados ---------- */
+  function bloco(s, code){
+    if(!code) return DADOS[s].totais;
+    return DADOS[s].estados.find(e => e.uf === code) || {
+      uf:code, nome:code, primaria:{aprovado:0,negado:0,sem_info:0},
+      secundaria:{aprovado:0,negado:0,sem_info:0},
+      aprovado:0,negado:0,sem_info:0,total:0,viab_primaria:0,viab_secundaria:0
+    };
+  }
+
+  function destroy(){ Object.values(charts).forEach(c=>c&&c.destroy()); charts={}; }
+
+  /* ================= KPIs ================= */
+  function renderKPIs(){
+    const row = document.getElementById('kpiRow');
+    if(seg === 'comp'){
+      const m = bloco('mei', uf), n = bloco('nmei', uf);
+      const grand = m.total + n.total || 1;
+      row.innerHTML = `
+        ${kpiCard('Total analisado', fmt(m.total+n.total), 'MEI + NMEI', 'k-total','fa-layer-group', null)}
+        ${kpiCard('Total MEI', fmt(m.total), pct(m.total,grand).toFixed(1)+'% do volume', 'k-total','fa-store', pct(m.total,grand), C.mei)}
+        ${kpiCard('Total NMEI', fmt(n.total), pct(n.total,grand).toFixed(1)+'% do volume', 'k-total','fa-building', pct(n.total,grand), C.nmei)}
+        ${kpiCard('Aprovação MEI', pct(m.aprovado,m.total).toFixed(1)+'%', fmt(m.aprovado)+' aprovados', 'k-ok','fa-circle-check', pct(m.aprovado,m.total), C.ok)}
+        ${kpiCard('Aprovação NMEI', pct(n.aprovado,n.total).toFixed(1)+'%', fmt(n.aprovado)+' aprovados', 'k-ok','fa-circle-check', pct(n.aprovado,n.total), C.ok)}
+      `;
+      return;
+    }
+    const d = bloco(seg, uf);
+    const taxa = pct(d.aprovado, d.total);
+    row.innerHTML = `
+      ${kpiCard('CNPJs com viabilidade', fmt(d.total), fmt(d.viab_primaria)+' prim. · '+fmt(d.viab_secundaria)+' sec.', 'k-total', seg==='mei'?'fa-store':'fa-building', null)}
+      ${kpiCard('Crédito aprovado', fmt(d.aprovado), taxa.toFixed(1)+'% do total', 'k-ok','fa-circle-check', taxa, C.ok)}
+      ${kpiCard('Crédito negado', fmt(d.negado), pct(d.negado,d.total).toFixed(1)+'% do total', 'k-no','fa-circle-xmark', pct(d.negado,d.total), C.no)}
+      ${kpiCard('Sem informação', fmt(d.sem_info), pct(d.sem_info,d.total).toFixed(1)+'% do total', 'k-na','fa-circle-question', pct(d.sem_info,d.total), C.na)}
+    `;
+  }
+  function kpiCard(lbl,val,meta,cls,icon,barPct,barColor){
+    const bar = (barPct!=null)
+      ? `<div class="bar"><i style="width:${Math.min(barPct,100)}%;background:${barColor}"></i></div>` : '';
+    return `<div class="kpi ${cls}">
+      <div class="tag"><i class="fas ${icon}"></i></div>
+      <div class="lbl">${lbl}</div><div class="val">${val}</div>
+      <div class="meta">${meta}</div>${bar}</div>`;
+  }
+
+  /* ================= gráficos de um segmento ================= */
+  function renderSingle(){
+    const d = bloco(seg, uf);
+    const cor = seg==='mei'?C.mei:C.nmei;
+
+    // donut
+    charts.donut = new Chart(document.getElementById('chDonut'), {
+      type:'doughnut',
+      data:{ labels:['Aprovado','Negado','Sem info'],
+        datasets:[{ data:[d.aprovado,d.negado,d.sem_info],
+          backgroundColor:[C.ok,C.no,C.na], borderWidth:2, borderColor:'#fff' }]},
+      options:{ cutout:'62%', plugins:{ legend:{display:false},
+        tooltip:{callbacks:{label:c=>` ${c.label}: ${fmt(c.raw)} (${pct(c.raw,d.total).toFixed(1)}%)`}}}}
+    });
+    document.getElementById('donutHint').textContent =
+      `${fmt(d.total)} CNPJs analisados — ${pct(d.aprovado,d.total).toFixed(1)}% aprovados`;
+
+    // stacked: primária vs secundária
+    charts.stack = new Chart(document.getElementById('chStack'), {
+      type:'bar',
+      data:{ labels:['Primária','Secundária'],
+        datasets:[
+          {label:'Aprovado', data:[d.primaria.aprovado,d.secundaria.aprovado], backgroundColor:C.ok},
+          {label:'Negado',   data:[d.primaria.negado,d.secundaria.negado],     backgroundColor:C.no},
+          {label:'Sem info', data:[d.primaria.sem_info,d.secundaria.sem_info], backgroundColor:C.na},
+        ]},
+      options:{ responsive:true, scales:{x:{stacked:true,grid:{display:false}},
+        y:{stacked:true,ticks:{callback:v=>fmt(v)}}},
+        plugins:{legend:{position:'bottom',labels:{boxWidth:12,font:{size:11}}},
+          tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${fmt(c.raw)}`}}}}
     });
 
-    // Gráfico 2: Origem do tráfego
-    const ctx2 = document.getElementById('ChartNMEI').getContext('2d');
-    new Chart(ctx2, {
-      type: 'doughnut', // também poderia ser 'pie'
-      data: {
-        labels: ['Crédito Aprovado', 'Crédito Negado', 'Sem Info de Crédito',],
-        datasets: [{
-          data: [{{quantidade_credito_aprovado_N_mei}}, {{quantidade_credito_negado_N_mei}}, {{quantidade_credito_sem_info_N_mei}}],
-          backgroundColor: ['#20c997','#dc3545', '#ffc107'],
-          borderWidth: 0
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: true,
-        plugins: {
-          legend: { position: 'bottom' }
-        },
-        cutout: '60%' // para efeito de donut
+    // ranking estados (top 12)
+    const top = DADOS[seg].estados.slice(0,12);
+    charts.states = new Chart(document.getElementById('chStates'), {
+      type:'bar',
+      data:{ labels: top.map(e=>e.uf),
+        datasets:[
+          {label:'Aprovado', data:top.map(e=>e.aprovado), backgroundColor:C.ok},
+          {label:'Negado',   data:top.map(e=>e.negado),   backgroundColor:C.no},
+          {label:'Sem info', data:top.map(e=>e.sem_info), backgroundColor:C.na},
+        ]},
+      options:{ indexAxis:'y', responsive:true,
+        scales:{x:{stacked:true,ticks:{callback:v=>fmt(v)}},y:{stacked:true,grid:{display:false}}},
+        plugins:{legend:{position:'bottom',labels:{boxWidth:12,font:{size:11}}},
+          tooltip:{callbacks:{title:i=>{const e=top[i[0].dataIndex];return e.uf+' — '+e.nome;},
+            label:c=>` ${c.dataset.label}: ${fmt(c.raw)}`}}},
+        onClick:(e,els)=>{ if(els.length){ const code=top[els[0].index].uf;
+          document.getElementById('ufFilter').value = (uf===code?'':code);
+          uf = (uf===code?'':code); renderAll(); } }
       }
+    });
+  }
+
+  /* ================= comparativo ================= */
+  function renderComp(){
+    const m = bloco('mei', uf), n = bloco('nmei', uf);
+    charts.compBar = new Chart(document.getElementById('chCompBar'), {
+      type:'bar',
+      data:{ labels:['Aprovado','Negado','Sem info'],
+        datasets:[
+          {label:'MEI',  data:[m.aprovado,m.negado,m.sem_info], backgroundColor:C.mei, borderRadius:6},
+          {label:'NMEI', data:[n.aprovado,n.negado,n.sem_info], backgroundColor:C.nmei, borderRadius:6},
+        ]},
+      options:{ responsive:true, scales:{y:{ticks:{callback:v=>fmt(v)}},x:{grid:{display:false}}},
+        plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${fmt(c.raw)}`}}}}
+    });
+    charts.compShare = new Chart(document.getElementById('chCompShare'), {
+      type:'doughnut',
+      data:{ labels:['MEI','NMEI'],
+        datasets:[{data:[m.total,n.total], backgroundColor:[C.mei,C.nmei], borderWidth:2, borderColor:'#fff'}]},
+      options:{ cutout:'62%', plugins:{legend:{display:false},
+        tooltip:{callbacks:{label:c=>` ${c.label}: ${fmt(c.raw)} (${pct(c.raw,m.total+n.total).toFixed(1)}%)`}}}}
+    });
+  }
+
+  /* ================= tabela por estado ================= */
+  let sortKey='total', sortDir=-1;
+  function renderTable(){
+    const tbl = document.getElementById('stateTable');
+    if(seg === 'comp'){
+      document.getElementById('tblTitle').textContent = 'Comparativo por estado — MEI x NMEI';
+      const map = {};
+      DADOS.mei.estados.forEach(e => map[e.uf] = {uf:e.uf,nome:e.nome,mei:e.total,nmei:0});
+      DADOS.nmei.estados.forEach(e => { (map[e.uf]=map[e.uf]||{uf:e.uf,nome:e.nome,mei:0,nmei:0}).nmei=e.total; });
+      let rows = Object.values(map).map(r=>({...r, total:r.mei+r.nmei}));
+      const maxT = Math.max(...rows.map(r=>r.total),1);
+      rows.sort((a,b)=> (a[sortKey]-b[sortKey])*sortDir);
+      tbl.innerHTML = `
+        <thead><tr>
+          <th data-k="uf">Estado</th><th data-k="mei">MEI</th><th data-k="nmei">NMEI</th>
+          <th data-k="total">Total</th><th>Proporção MEI / NMEI</th></tr></thead>
+        <tbody>${rows.map(r=>`<tr>
+          <td><span class="uf">${r.uf}</span><span class="nm">${r.nome}</span></td>
+          <td>${fmt(r.mei)}</td><td>${fmt(r.nmei)}</td><td><b>${fmt(r.total)}</b></td>
+          <td><span class="minibar" title="${pct(r.mei,r.total).toFixed(0)}% MEI">
+            <i style="width:${pct(r.mei,r.total)}%;background:${C.mei};float:left"></i>
+            <i style="width:${pct(r.nmei,r.total)}%;background:${C.nmei};float:left"></i></span></td>
+        </tr>`).join('')}</tbody>`;
+      bindSort(tbl);
+      return;
+    }
+
+    document.getElementById('tblTitle').textContent =
+      `Detalhamento por estado — ${NOMES_SEG[seg]}`;
+    let rows = DADOS[seg].estados.slice();
+    rows.sort((a,b)=>{
+      const va = sortKey==='taxa'?pct(a.aprovado,a.total):a[sortKey];
+      const vb = sortKey==='taxa'?pct(b.aprovado,b.total):b[sortKey];
+      return (va-vb)*sortDir;
+    });
+    tbl.innerHTML = `
+      <thead><tr>
+        <th data-k="uf">Estado</th><th data-k="viab_primaria">Viab. Prim.</th>
+        <th data-k="viab_secundaria">Viab. Sec.</th><th data-k="aprovado">Aprovado</th>
+        <th data-k="negado">Negado</th><th data-k="sem_info">Sem info</th>
+        <th data-k="total">Total</th><th data-k="taxa">Aprovação</th></tr></thead>
+      <tbody>${rows.map(r=>{
+        const t = pct(r.aprovado,r.total);
+        const cls = t>=50?'ok':(t>=25?'mid':'low');
+        const hl = (uf===r.uf)?'style="background:#eef2ff"':'';
+        return `<tr ${hl}>
+          <td><span class="uf">${r.uf}</span><span class="nm">${r.nome}</span></td>
+          <td>${fmt(r.viab_primaria)}</td><td>${fmt(r.viab_secundaria)}</td>
+          <td style="color:${C.ok};font-weight:600">${fmt(r.aprovado)}</td>
+          <td style="color:${C.no}">${fmt(r.negado)}</td>
+          <td style="color:#64748b">${fmt(r.sem_info)}</td>
+          <td><b>${fmt(r.total)}</b></td>
+          <td><span class="pill ${cls}">${t.toFixed(1)}%</span></td>
+        </tr>`;}).join('')}</tbody>`;
+    bindSort(tbl);
+  }
+  function bindSort(tbl){
+    tbl.querySelectorAll('thead th[data-k]').forEach(th=>{
+      th.onclick=()=>{ const k=th.dataset.k;
+        if(sortKey===k) sortDir*=-1; else {sortKey=k; sortDir=(k==='uf'?1:-1);}
+        renderTable(); };
+    });
+  }
+
+  /* ================= orquestração ================= */
+  function renderAll(){
+    destroy();
+    root.classList.remove('is-mei','is-nmei','is-comp');
+    root.classList.add(seg==='comp'?'is-comp':(seg==='mei'?'is-mei':'is-nmei'));
+    document.getElementById('viewSingle').classList.toggle('hide', seg==='comp');
+    document.getElementById('viewComp').classList.toggle('hide', seg!=='comp');
+    renderKPIs();
+    if(seg==='comp') renderComp(); else renderSingle();
+    renderTable();
+  }
+
+  /* ================= eventos ================= */
+  document.querySelectorAll('#segSwitch button').forEach(b=>{
+    b.onclick=()=>{
+      document.querySelectorAll('#segSwitch button').forEach(x=>x.classList.remove('active'));
+      b.classList.add('active'); seg=b.dataset.seg;
+      sortKey='total'; sortDir=-1; renderAll();
+    };
+  });
+  document.getElementById('ufFilter').onchange=function(){ uf=this.value; renderAll(); };
+
+  // filtro tabela bruta
+  document.getElementById('rawFilter').addEventListener('keyup', function(){
+    const q=this.value.toLowerCase();
+    document.querySelectorAll('#rawTable tbody tr').forEach(tr=>{
+      tr.style.display = tr.cells[0].textContent.toLowerCase().includes(q)?'':'none';
     });
   });
 
-  // Destacar link ativo (simulação)
-  document.querySelectorAll('.nav-link').forEach(link => {
-    link.addEventListener('click', function(e) {
-      document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
-      this.classList.add('active');
-    });
-  });
+  renderAll();
+})();
 </script>
 {% endblock %}
