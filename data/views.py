@@ -847,7 +847,7 @@ def inicia_gerador_view(request):
 
 def importa_dados_telefones_view(request):
     try:
-        TelefonesDiscados.objects.delete()
+        TelefonesDiscados.objects.filter().delete()
         cadastra_telefones_antigos()
 
         return JsonResponse({'status': 'success', 'sucessos': [f"Iniciou sistema coleta diária com sucesso!",], "erros":[], "links": [], "relatorio": []})
