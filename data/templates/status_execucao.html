@@ -126,6 +126,8 @@
     {% endif %}
     {% if is_mailing_cpfs %}
       <a href="{% url 'filtra_mailing_cpfs' %}"class="btn status-badge" id="currentStatusBadge">Filtrar/Baixar</a>
+    {% elif is_mailing_geral %}
+      <a href="{% url 'filtro_geral' %}"class="btn status-badge" id="currentStatusBadge">Filtrar/Baixar</a>
     {% else %}
       <a href="{% url 'filtra_mailing' %}"class="btn status-badge" id="currentStatusBadge">Filtrar/Baixar</a>
     {% endif %}

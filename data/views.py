@@ -1,34 +1,15 @@
 from django.shortcuts import render
 from django.shortcuts import render, redirect
 from django.urls import reverse
-from django.contrib.auth import authenticate, login, logout
-from django.contrib import messages
-# from .forms import LoginForm
 from .models import *
-# from universal_data.models import ResultadoExtracao
-# from functions.gera_mailing import *
 from functions.utils import *
-# from universal_data.models import *
 from django.views.generic import TemplateView
 from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_GET
 import os, datetime,threading, pandas as pd
-from django.conf import settings
-from typing import Union
 from django.http import StreamingHttpResponse
-from multiprocessing import Process   
 from django.contrib.auth.mixins import LoginRequiredMixin
 import traceback, shutil
-from django.http import FileResponse, Http404
-from django.conf import settings
-import re
-from django.db.models import Sum
-from django.db.models.functions import TruncDate
-
-from django.db.models import Count
-from django.core.paginator import Paginator
-import json
+from django.http import FileResponse
 from functions.contantes import *
 from functions.gerador import inicia_gerador, inicia_gerador_mailing_2026, inicia_gerador_arquivos_cpf
 from functions.finaliza_analise_de_dados import conta_dados
@@ -40,6 +21,8 @@ from collections import defaultdict
 from django.db.models import Max
 from django.views.generic import TemplateView
 from django.contrib.auth.mixins import LoginRequiredMixin
+
+from functions.importa_dados_telefones import cadastra_telefones_dia
 
 titulos = {
     'oi': "Mailing Original (Nio)",
@@ -262,6 +245,8 @@ class Status_Execucao(LoginRequiredMixin,TemplateView):
             context["is_giga_mais"] = True
         if sistema == "mailing_cpfs":
             context["is_mailing_cpfs"] = True
+        if sistema == "geral":
+            context["is_mailing_geral"] = True
         context['titulo'] = titulos[sistema]
         self.request.session["sistema"] = sistema
 
@@ -308,9 +293,6 @@ class Status_Execucao(LoginRequiredMixin,TemplateView):
             else:
                 erros.append(mensagem)
         
-        print("Sucesssos ", sucessos)
-        print("Erros ", erros)
-        print("Mensagem ", mensagem)
         context = {}
         sistema="janeiro_2026"
         context["sistema"] = sistema
@@ -758,6 +740,8 @@ def filtra_mailing_view(request):
             tipos_telefone = request.POST.get("tipoTelefone", "")
             tipoMailing = request.POST.get("tipoMailing", "")
             filtro_telefone_blacklist = request.POST.get("filtro_telefone_blacklist", "")
+            telefones_discados = request.POST.get("telefones_discados", "")
+
 
             checkbox_credito_preaprovado = request.POST.get("checkbox_credito_preaprovado", "")
             checkbox_pre_negado = request.POST.get("checkbox_pre_negado", "")
@@ -792,7 +776,7 @@ def filtra_mailing_view(request):
             
             
             pasta_dados = os.path.join(pasta_raiz, "viabilidades_credito_enriquecido")
-            df = get_dados_mailing(filtros, tipos_credito=tipos_credito, formato_saida=formato_saida, conjunto_telefones=conjunto_telefones, tipos_telefone= tipos_telefone, tipoMailing=tipoMailing, filtro_telefone_blacklist=filtro_telefone_blacklist, pasta_dados=pasta_dados)
+            df = get_dados_mailing(filtros, tipos_credito=tipos_credito, formato_saida=formato_saida, conjunto_telefones=conjunto_telefones, tipos_telefone= tipos_telefone, tipoMailing=tipoMailing, filtro_telefone_blacklist=filtro_telefone_blacklist, pasta_dados=pasta_dados, telefones_discados=telefones_discados)
             dfs.append(df)
 
             df = pd.concat(dfs)
@@ -860,6 +844,12 @@ def inicia_gerador_view(request):
     processo.start()
 
     return JsonResponse({'status': 'success', 'sucessos': [f"Iniciou sistema {sistema} com sucesso!",], "erros":[], "links": [], "relatorio": []})
+
+def importa_dados_telefones_view(request):
+    processo = threading.Thread(target=cadastra_telefones_dia, )
+    processo.start()
+
+    return JsonResponse({'status': 'success', 'sucessos': [f"Iniciou sistema coleta diária com sucesso!",], "erros":[], "links": [], "relatorio": []})
 
 def filtro_geral_view(request):
     context = {

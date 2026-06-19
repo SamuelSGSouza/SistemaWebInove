@@ -120,3 +120,9 @@ def verifica_atualizacao_receita():
             ExecucaoSistema.objects.create(mes_ano=mes_ano)
             #faz requisição pro endpoint de inicialização
             requests.get("http://177.39.236.250/data/inicia_gerador_view")
+
+
+class TelefonesDiscados(models.Model):
+    telefone = models.CharField(max_length=13,)
+    sucesso_chamada = models.BooleanField()
+    momento_chamada = models.DateTimeField()

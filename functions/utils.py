@@ -14,10 +14,13 @@ warnings.filterwarnings('ignore')
 import time
 import numpy as np
 from pathlib import Path
-from data.models import salva_dado
+from data.models import salva_dado, TelefonesDiscados
 import traceback
 from concurrent.futures import ProcessPoolExecutor
 from typing import List, Tuple
+from django.db.models import Count, Q, F, FloatField
+from django.db.models.functions import Cast
+
 
 PASTA_ARQUIVOS_BLACKLIST = os.path.join(os.getcwd(), "media/arquivos_blacklist")
 PASTA_ARQUIVOS_TELS_NEXT = os.path.join(os.getcwd(), "media/arquivos_tels_next")
@@ -877,6 +880,50 @@ def filtra_mailing(df:pd.DataFrame, cols_tels_originais:list=["TEL1", "TEL2", "T
             df[c] = df[c].apply(clean_phone_number)
     return df
 
+def filtra_telefones_discados(df:pd.DataFrame, cols_tels_originais:list=["TEL1", "TEL2", "TEL3"], percentual_sucessos:int=0) -> pd.DataFrame:
+    if len(df.index) == 0:
+        return df
+    ini = time.time()
+
+    telefones_para_coletar = list(set((
+        TelefonesDiscados.objects
+        .values('telefone')
+        .annotate(
+            total=Count('id'),
+            sucessos=Count('id', filter=Q(sucesso_chamada=True)),
+            taxa=Cast('sucessos', FloatField()) / Cast('total', FloatField()),
+        )
+        .filter(taxa__gt=percentual_sucessos/100)
+    ).values_list("telefone", flat=True)))
+
+    tipos_colunas_telefone = [
+        cols_tels_originais,
+        [f"Telefone_{i}" for i in range(1, 21)]
+    ]
+
+    for colunas_telefone in tipos_colunas_telefone:
+        ini = time.time()
+
+        for col in colunas_telefone:
+            df[col] = df[col].where(
+                df[col].isin(telefones_para_coletar), 
+                ""
+            )
+
+        phones_matrix = df[colunas_telefone].values
+        filtered_phones = []
+
+        for row in phones_matrix:
+            valid_phones = [str(phone) for phone in list(set(row)) if str(phone).strip() and phone in telefones_para_coletar]
+
+
+            to_add = valid_phones + [''] * (len(colunas_telefone)- len(valid_phones))
+            filtered_phones.append(to_add)
+        df[colunas_telefone] = filtered_phones
+        for c in colunas_telefone:
+            df[c] = df[c].apply(clean_phone_number)
+    return df
+
 
 def filtra_arquivos(raiz, pasta_arquivos_para_filtrar, pasta_usuario) -> str:
     relatorio = ""
@@ -1533,7 +1580,7 @@ def compacta_colunas(df: pd.DataFrame, colunas: list) -> pd.DataFrame:
     df[colunas] = result
     return df
 
-def get_dados_mailing(colunas_filtro:dict, campos_retorno:list=[], tipos_credito:list=[], formato_saida:str="padrao", conjunto_telefones:str="todos", tipos_telefone:str="todos", tipoMailing:str="ambos", filtro_telefone_blacklist:str="apenas_filtrados", pasta_dados:str="") -> pd.DataFrame:
+def get_dados_mailing(colunas_filtro:dict, campos_retorno:list=[], tipos_credito:list=[], formato_saida:str="padrao", conjunto_telefones:str="todos", tipos_telefone:str="todos", tipoMailing:str="ambos", filtro_telefone_blacklist:str="apenas_filtrados", pasta_dados:str="", telefones_discados:str="") -> pd.DataFrame:
     
     arquivos_para_ler = []
     colunas_ip_box = ["cnpj", "razao_social", "decisor", "correio_eletronico", "logradouro", "num_fachada", "complemento1", "bairro", "cep", "municipio", "uf", "DDD1", "TEL1", "DDD2", "TEL2", "DDD3", "TEL3", "DDD4", "TEL4", "DDD5", "TEL5", "DDD6", "TEL6", "DDD7", "TEL7", "DDD8", "TEL8", ]
@@ -1639,6 +1686,9 @@ def get_dados_mailing(colunas_filtro:dict, campos_retorno:list=[], tipos_credito
 
     if filtro_telefone_blacklist == "apenas_filtrados":
         df = filtra_mailing(df)
+
+    if telefones_discados:
+        df = filtra_telefones_discados(df, percentual_sucessos=int(telefones_discados))
     
     colunas_telefone = ["TEL1", "TEL2", "TEL3"] + [f"Telefone_{i}" for i in range(1,21)]
     cols = df.columns.tolist()
