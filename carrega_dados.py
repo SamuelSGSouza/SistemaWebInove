@@ -1,2 +1,0 @@
-from functions.importa_dados_telefones import cadastra_telefones_antigos
-cadastra_telefones_antigos()
