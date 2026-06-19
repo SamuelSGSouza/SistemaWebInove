@@ -22,7 +22,7 @@ from django.db.models import Max
 from django.views.generic import TemplateView
 from django.contrib.auth.mixins import LoginRequiredMixin
 
-from functions.importa_dados_telefones import cadastra_telefones_dia, cadastra_telefones_antigos
+from functions.importa_dados_telefones import cadastra_telefones_dia
 
 titulos = {
     'oi': "Mailing Original (Nio)",
@@ -846,13 +846,10 @@ def inicia_gerador_view(request):
     return JsonResponse({'status': 'success', 'sucessos': [f"Iniciou sistema {sistema} com sucesso!",], "erros":[], "links": [], "relatorio": []})
 
 def importa_dados_telefones_view(request):
-    try:
-        TelefonesDiscados.objects.filter().delete()
-        cadastra_telefones_antigos()
+    processo = threading.Thread(target=cadastra_telefones_dia, )
+    processo.start()
 
-        return JsonResponse({'status': 'success', 'sucessos': [f"Iniciou sistema coleta diária com sucesso!",], "erros":[], "links": [], "relatorio": []})
-    except:
-        return JsonResponse({'status': 'erro', 'sucessos': [], "erros":[f"{traceback.format_exc()}"], "links": [], "relatorio": []})
+    return JsonResponse({'status': 'success', 'sucessos': [f"Iniciou sistema coleta diária com sucesso!",], "erros":[], "links": [], "relatorio": []})
 
 def filtro_geral_view(request):
     context = {
