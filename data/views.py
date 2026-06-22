@@ -22,7 +22,7 @@ from django.db.models import Max
 from django.views.generic import TemplateView
 from django.contrib.auth.mixins import LoginRequiredMixin
 
-from functions.importa_dados_telefones import cadastra_telefones_dia, cadastra_telefones_antigos
+from functions.importa_dados_telefones import cadastra_telefones_dia
 
 titulos = {
     'oi': "Mailing Original (Nio)",
@@ -845,9 +845,18 @@ def inicia_gerador_view(request):
 
     return JsonResponse({'status': 'success', 'sucessos': [f"Iniciou sistema {sistema} com sucesso!",], "erros":[], "links": [], "relatorio": []})
 
+def total_telefones_view(request):
+    
+    # if request.method != 'POST':
+    #     return JsonResponse({'status': 'error', 'sucessos': [], "erros":['Método inválido.',], "links": [], "relatorio": []})
+
+    sistema = request.GET.get("sistema", "oi")
+    total =  TelefonesDiscados.objects.count()
+
+    return JsonResponse({'status': 'success', 'sucessos': [f"Total de telefones: {total}",], "erros":[], "links": [], "relatorio": []})
+
 def importa_dados_telefones_view(request):
-    TelefonesDiscados.objects.filter().delete()
-    processo = threading.Thread(target=cadastra_telefones_antigos, )
+    processo = threading.Thread(target=cadastra_telefones_dia, )
     processo.start()
 
     return JsonResponse({'status': 'success', 'sucessos': [f"Iniciou sistema coleta diária com sucesso!",], "erros":[], "links": [], "relatorio": []})
@@ -985,3 +994,5 @@ def filtro_geral_view(request):
             return JsonResponse({"error": traceback.format_exc()})
 
     return render(request, 'filtro_geral.html', context)
+
+
