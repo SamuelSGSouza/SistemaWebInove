@@ -880,48 +880,47 @@ def filtra_mailing(df:pd.DataFrame, cols_tels_originais:list=["TEL1", "TEL2", "T
             df[c] = df[c].apply(clean_phone_number)
     return df
 
-def filtra_telefones_discados(df:pd.DataFrame, cols_tels_originais:list=["TEL1", "TEL2", "TEL3"], percentual_sucessos:int=0) -> pd.DataFrame:
+def filtra_telefones_discados(df: pd.DataFrame, cols_tels_originais: list = ["TEL1", "TEL2", "TEL3"], filtrar_atendidos: bool=True) -> pd.DataFrame:
     if len(df.index) == 0:
         return df
-    ini = time.time()
-
-    telefones_para_coletar = list(set((
-        TelefonesDiscados.objects
-        .values('telefone')
-        .annotate(
-            total=Count('id'),
-            sucessos=Count('id', filter=Q(sucesso_chamada=True)),
-            taxa=Cast('sucessos', FloatField()) / Cast('total', FloatField()),
+    if filtrar_atendidos:
+        telefones_para_coletar = set(
+            TelefonesDiscados.objects.filter(sucesso_chamada=True)
+            .values_list('telefone', flat=True)
         )
-        .filter(taxa__gt=percentual_sucessos/100)
-    ).values_list("telefone", flat=True)))
+    else:
+        telefones_para_coletar = set(
+            TelefonesDiscados.objects.exclude(sucesso_chamada=True)
+            .values_list('telefone', flat=True)
+        )
 
     tipos_colunas_telefone = [
         cols_tels_originais,
-        [f"Telefone_{i}" for i in range(1, 21)]
+        [f"Telefone_{i}" for i in range(1, 21)],
     ]
 
     for colunas_telefone in tipos_colunas_telefone:
-        ini = time.time()
+        colunas_telefone = [c for c in colunas_telefone if c in df.columns]
+        if not colunas_telefone:
+            continue
 
+        # Limpa e mantém só os que estão no set, vetorizado por coluna
         for col in colunas_telefone:
-            df[col] = df[col].where(
-                df[col].isin(telefones_para_coletar), 
-                ""
-            )
+            limpo = df[col].apply(clean_phone_number)
+            df[col] = limpo.where(limpo.isin(telefones_para_coletar), "")
 
-        phones_matrix = df[colunas_telefone].values
-        filtered_phones = []
+        # Compacta: empurra os válidos para a esquerda, remove duplicatas por linha
+        def compacta(row):
+            vistos = set()
+            validos = []
+            for v in row:
+                if v and v not in vistos:
+                    vistos.add(v)
+                    validos.append(v)
+            return validos + [""] * (len(row) - len(validos))
 
-        for row in phones_matrix:
-            valid_phones = [str(phone) for phone in list(set(row)) if str(phone).strip() and phone in telefones_para_coletar]
+        df[colunas_telefone] = [compacta(r) for r in df[colunas_telefone].values]
 
-
-            to_add = valid_phones + [''] * (len(colunas_telefone)- len(valid_phones))
-            filtered_phones.append(to_add)
-        df[colunas_telefone] = filtered_phones
-        for c in colunas_telefone:
-            df[c] = df[c].apply(clean_phone_number)
     return df
 
 
@@ -1688,7 +1687,7 @@ def get_dados_mailing(colunas_filtro:dict, campos_retorno:list=[], tipos_credito
         df = filtra_mailing(df)
 
     if telefones_discados:
-        df = filtra_telefones_discados(df, percentual_sucessos=int(telefones_discados))
+        df = filtra_telefones_discados(df, filtrar_atendidos=telefones_discados=="true")
     
     colunas_telefone = ["TEL1", "TEL2", "TEL3"] + [f"Telefone_{i}" for i in range(1,21)]
     cols = df.columns.tolist()

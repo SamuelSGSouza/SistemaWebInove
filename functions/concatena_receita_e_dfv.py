@@ -330,10 +330,15 @@ def fase_2_concatenador(sistema, nova_execucao:Status_Execucoe_DB):
                             df_cpf.columns = df_cpf.columns.str.lower()
                             df_cpf.rename(columns={
                                     "logradouro": "endereco",
+                                    "ENDERECO": "endereco",
                                     "celular1": "celular_1",
+                                    "CEL_1": "celular_1",
                                     "celular2": "celular_2",
+                                    "CEL_2": "celular_2",
                                     "celular3": "celular_3",
+                                    "CEL_3": "celular_3",
                                     "renda pressumida": "renda_pressumida",
+                                    "RENDA": "renda_pressumida",
 
                                 }, inplace=True)
 
@@ -342,6 +347,9 @@ def fase_2_concatenador(sistema, nova_execucao:Status_Execucoe_DB):
                                 df_cpf["celular_2"] = df_cpf["ddd2"] + df_cpf["tel2"]
                                 df_cpf["celular_3"] = df_cpf["ddd3"] + df_cpf["tel3"]
                                 df_cpf["renda_presumida"] = ""
+
+                            if "complemento" not in df_cpf.columns.to_list():
+                                df_cpf["complemento"] = ""
                             df_cpf = df_cpf[COLUNAS_CPF]
                             df_cpf = gera_campos_cep(df_cpf, "cep", "numero", "endereco")
                             df_cpf["cpf"] = df_cpf["cpf"].apply(lambda x: re.sub(r"\D+", "", str(x)).zfill(11))

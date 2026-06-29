@@ -286,27 +286,6 @@
           </div>
         </div>
 
-        <div class="col-md-4">
-          <label class="form-label">Filtro Telefones Discados</label>
-          <div class="d-flex flex-column gap-2">
-            <div class="form-check">
-              <input class="form-check-input" type="radio" name="telefones_discados" id="telefones_discados_20" value="20">
-              <label class="form-check-label" for="telefones_discados_20">Apenas com +20% sucesso</label>
-            </div>
-            <div class="form-check">
-              <input class="form-check-input" type="radio" name="telefones_discados" id="telefones_discados_50" value="50">
-              <label class="form-check-label" for="telefones_discados_50">Apenas com +50% sucesso</label>
-            </div>
-            <div class="form-check">
-              <input class="form-check-input" type="radio" name="telefones_discados" id="telefones_discados_80" value="80">
-              <label class="form-check-label" for="telefones_discados_80">Apenas com +80% sucesso</label>
-            </div>
-            <div class="form-check">
-              <input class="form-check-input" type="radio" name="telefones_discados" id="telefones_discados_todos" value="" checked>
-              <label class="form-check-label" for="telefones_discados_todos">Todos Telefones</label>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
 
@@ -361,7 +340,36 @@
         </div>
       </div>
     </div>
+
+    <!-- Seção 5: Filtros de crédito (checkboxes) -->
+    <div class="form-section">
+      <h5>📞 Filtros de Discados</h5>
+      <div class="row">
+        <div class="col-12 d-flex flex-wrap gap-4">
+          <div class="form-check">
+            <input class="form-check-input" type="radio" name="telefones_discados" id="tel_atenderam" value="true">
+            <label class="form-check-label" for="tel_atenderam">
+              Telefones que Atenderam
+            </label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="radio" name="telefones_discados" id="tel_nao_atenderam" value="false">
+            <label class="form-check-label" for="tel_nao_atenderam">
+              Telefones que NÃO Atenderam
+            </label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="radio" name="telefones_discados" id="tel_sem_info" value="" checked>
+            <label class="form-check-label" for="tel_sem_info">
+              Não Filtrar
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
     {% endif %}
+
+
 
     <!-- Botões de ação -->
     <div class="d-flex justify-content-end gap-3 mt-4 pt-2">

@@ -742,7 +742,6 @@ def filtra_mailing_view(request):
             filtro_telefone_blacklist = request.POST.get("filtro_telefone_blacklist", "")
             telefones_discados = request.POST.get("telefones_discados", "")
 
-
             checkbox_credito_preaprovado = request.POST.get("checkbox_credito_preaprovado", "")
             checkbox_pre_negado = request.POST.get("checkbox_pre_negado", "")
             checkbox_sem_info_credito = request.POST.get("checkbox_sem_info_credito", "")
