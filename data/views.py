@@ -954,7 +954,8 @@ def filtro_geral_view(request):
             
             formato_download = request.POST.get('formatoDownload', '')
             if formato_download == "IPBOX":
-                colunas_ipbox = ["cnpj", "logradouro", "num_fachada", "complemento1", "bairro", "cep", "municipio", "uf", "DDD1", "TEL1", "DDD2", "TEL2", "DDD3", "TEL3", "DDD4", "TEL4", "DDD5", "TEL5", "DDD6", "TEL6", "DDD7", "TEL7", "DDD8", "TEL8", ]
+                print(df.columns.tolist())
+                colunas_ipbox = ["cnpj","razao_social", "logradouro", "num_fachada", "complemento1", "bairro", "cep", "municipio", "uf", "DDD1", "TEL1", "DDD2", "TEL2", "DDD3", "TEL3", "DDD4", "TEL4", "DDD5", "TEL5", "DDD6", "TEL6", "DDD7", "TEL7", "DDD8", "TEL8", ]
                 colunas_telefone = ["TEL1", "TEL2", "TEL3"] 
 
                 i = 1
