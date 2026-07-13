@@ -10,13 +10,12 @@ from functions.utils import clean_phone_number
 
 
 def cadastra_telefones_dia():
-    # --- Configuração de conexão (sobrescrevível por variável de ambiente) ---
+    # --- Configuração de conexão com o banco de origem (MySQL das chamadas) ---
     DB_HOST = "177.39.236.251"
     DB_PORT = int("3306")
     DB_USER = "inove_db2"
     DB_PASSWORD = "4g2dH4cmyzcLUswTIc3z0cVXj"
     DB_NAME = "brdsoft"
-
 
     conn = pymysql.connect(
         host=DB_HOST,
@@ -31,10 +30,6 @@ def cadastra_telefones_dia():
     )
 
     def montar_query(limit: int) -> str:
-        """Monta o SQL. Com limit > 0, pega os mais recentes (ORDER BY ... DESC LIMIT n).
-
-        O LIMIT é interpolado direto (int validado), nunca o filtro de usuário.
-        """
         base = """
             SELECT dst_clean, hangup_desc, calldate
             FROM chamadas
@@ -44,45 +39,77 @@ def cadastra_telefones_dia():
             return base + f"ORDER BY calldate DESC LIMIT {int(limit)}"
         return base + "ORDER BY calldate ASC"
 
-    with conn.cursor() as cur:
+    try:
+        with conn.cursor() as cur:
+            hoje = datetime.date.today()
+            inicio = f"{hoje:%Y-%m-%d} 00:00:00"
+            fim = f"{hoje:%Y-%m-%d} 23:59:59"
 
-        dia = str(datetime.datetime.today().day).zfill(2)
-        mes = str(datetime.datetime.today().month).zfill(2)
-        ano= datetime.datetime.today().year
-        print(dia, mes, ano)
+            cur.execute(montar_query(0), {"inicio": inicio, "fim": fim})
+            linhas = list(cur.fetchall())
+    finally:
+        conn.close()
 
-        cur.execute(montar_query(0), {"inicio": f"{ano}-{mes}-{dia} 00:00:00", "fim": f'{ano}-{mes}-{dia} 23:59:59'})
-        linhas = list(cur.fetchall())
-        df = pd.DataFrame(linhas)
-        df["hangup_desc"] = df["hangup_desc"].apply(lambda x: True if "200 - OK" in str(x) else False)
+    if not linhas:
+        return  # nada discado hoje
 
-        #todas as infos =  calldate, conta, src, dst_clean, duration, billsec, id_term, hangup_desc
+    df = pd.DataFrame(linhas)
 
-        df.rename(columns={
-            "dst_clean": "Telefone",
-            "hangup_desc": "Sucesso Chamada",
-            "calldate": "Momento Chamada"
-        }, inplace=True)
+    df["sucesso_chamada"] = df["hangup_desc"].apply(
+        lambda x: "200 - OK" in str(x)
+    )
+    df["telefone"] = df["dst_clean"].apply(clean_phone_number)
+    df.rename(columns={"calldate": "momento_chamada"}, inplace=True)
 
-        df["Telefone"] = df["Telefone"].apply(lambda x: clean_phone_number(x))
-        
-        objs = []
-        for index, row in df.iterrows():
-            dt = datetime.datetime.strptime(row["Momento Chamada"], "%Y-%m-%d %H:%M:%S")
-            if timezone.is_naive(dt):
-                dt = timezone.make_aware(dt)
-            
-            objs.append(TelefonesDiscados(
-                telefone=row["Telefone"],
-                sucesso_chamada=row["Sucesso Chamada"].strip().lower() == "true",
-                momento_chamada=dt,
-            ))
-        
-        TelefonesDiscados.objects.bulk_create(objs)
+    # Deduplica dentro do próprio dia:
+    # prioriza sucesso=True e, no empate, o momento mais recente
+    df = (
+        df.sort_values(
+            ["sucesso_chamada", "momento_chamada"],
+            ascending=[False, False],
+        )
+        .drop_duplicates(subset="telefone", keep="first")
+    )
 
-        limite = timezone.now() - datetime.timedelta(days=90)
-        TelefonesDiscados.objects.filter(momento_chamada__lt=limite).delete()
+    objs_sucesso = []
+    objs_falha = []
 
+    for row in df.itertuples(index=False):
+        dt = row.momento_chamada
+        if isinstance(dt, str):
+            dt = datetime.datetime.strptime(dt, "%Y-%m-%d %H:%M:%S")
+        if timezone.is_naive(dt):
+            dt = timezone.make_aware(dt)
+
+        obj = TelefonesDiscados(
+            telefone=row.telefone,
+            sucesso_chamada=bool(row.sucesso_chamada),
+            momento_chamada=dt,
+        )
+        (objs_sucesso if obj.sucesso_chamada else objs_falha).append(obj)
+
+    # Sucessos: cria se o telefone não existe; se existe,
+    # atualiza só o bool e o momento (upsert via ON CONFLICT DO UPDATE)
+    if objs_sucesso:
+        TelefonesDiscados.objects.bulk_create(
+            objs_sucesso,
+            update_conflicts=True,
+            update_fields=["sucesso_chamada", "momento_chamada"],
+            unique_fields=["telefone"],
+        )
+
+    # Falhas: só insere se o telefone ainda não estiver cadastrado
+    # (ON CONFLICT DO NOTHING)
+    if objs_falha:
+        TelefonesDiscados.objects.bulk_create(
+            objs_falha,
+            ignore_conflicts=True,
+        )
+
+    # Limpeza de registros antigos (90 dias)
+    limite = timezone.now() - datetime.timedelta(days=90)
+    TelefonesDiscados.objects.filter(momento_chamada__lt=limite).delete()
+    
 def cadastra_telefones_antigos():
     dir_telefones = os.path.join(os.getcwd(), "Telefones_Chamados")
     for file in os.listdir(dir_telefones):

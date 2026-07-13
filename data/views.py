@@ -42,8 +42,17 @@ ESTADOS_NOMES = {
     "RS": "Rio Grande do Sul", "RO": "Rondônia", "RR": "Roraima", "SC": "Santa Catarina",
     "SP": "São Paulo", "SE": "Sergipe", "TO": "Tocantins",
 }
+from django.utils import timezone
 
 
+
+telefones_achados = TelefonesDiscados.objects.values_list("telefone", flat=True)
+print("Telefones: ", len(telefones_achados))
+print("Telefones filtrados: ", len(set(telefones_achados)))
+
+limite = timezone.now() - datetime.timedelta(days=90)
+TelefonesDiscados.objects.filter(momento_chamada__lt=limite)
+print("Telefones Antigos: ", TelefonesDiscados.objects.filter(momento_chamada__lt=limite).count())
 def _normaliza(texto: str) -> str:
     """Remove acentos e baixa a caixa para casar títulos de forma robusta."""
     texto = unicodedata.normalize("NFKD", texto or "")
@@ -740,7 +749,17 @@ def filtra_mailing_view(request):
             tipos_telefone = request.POST.get("tipoTelefone", "")
             tipoMailing = request.POST.get("tipoMailing", "")
             filtro_telefone_blacklist = request.POST.get("filtro_telefone_blacklist", "")
-            telefones_discados = request.POST.get("telefones_discados", "")
+            coletar_atendidos = request.POST.get("checkbox_coletar_atendidos", False)
+            if coletar_atendidos:
+                coletar_atendidos = True
+
+            coletar_nao_atendidos = request.POST.get("checkbox_coletar_nao_atendidos", False)
+            if coletar_nao_atendidos:
+                coletar_nao_atendidos = True
+                
+            coletar_novos = request.POST.get("checkbox_coletar_novos", False)
+            if coletar_novos:
+                coletar_novos = True
 
             checkbox_credito_preaprovado = request.POST.get("checkbox_credito_preaprovado", "")
             checkbox_pre_negado = request.POST.get("checkbox_pre_negado", "")
@@ -775,7 +794,7 @@ def filtra_mailing_view(request):
             
             
             pasta_dados = os.path.join(pasta_raiz, "viabilidades_credito_enriquecido")
-            df = get_dados_mailing(filtros, tipos_credito=tipos_credito, formato_saida=formato_saida, conjunto_telefones=conjunto_telefones, tipos_telefone= tipos_telefone, tipoMailing=tipoMailing, filtro_telefone_blacklist=filtro_telefone_blacklist, pasta_dados=pasta_dados, telefones_discados=telefones_discados)
+            df = get_dados_mailing(filtros, tipos_credito=tipos_credito, formato_saida=formato_saida, conjunto_telefones=conjunto_telefones, tipos_telefone= tipos_telefone, tipoMailing=tipoMailing, filtro_telefone_blacklist=filtro_telefone_blacklist, pasta_dados=pasta_dados, coletar_atendidos=coletar_atendidos, coletar_nao_atendidos=coletar_nao_atendidos, coletar_novos=coletar_novos)
             dfs.append(df)
 
             df = pd.concat(dfs)
@@ -855,8 +874,15 @@ def total_telefones_view(request):
     return JsonResponse({'status': 'success', 'sucessos': [f"Total de telefones: {total}",], "erros":[], "links": [], "relatorio": []})
 
 def importa_dados_telefones_view(request):
-    processo = threading.Thread(target=cadastra_telefones_dia, )
-    processo.start()
+
+    manter_ids = (
+        TelefonesDiscados.objects
+        .order_by('telefone', '-sucesso_chamada', '-momento_chamada')
+        .distinct('telefone')          # DISTINCT ON, só existe no Postgres
+        .values_list('id', flat=True)
+    )
+
+    TelefonesDiscados.objects.exclude(id__in=list(manter_ids)).delete()
 
     return JsonResponse({'status': 'success', 'sucessos': [f"Iniciou sistema coleta diária com sucesso!",], "erros":[], "links": [], "relatorio": []})
 

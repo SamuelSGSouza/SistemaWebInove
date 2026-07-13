@@ -880,19 +880,32 @@ def filtra_mailing(df:pd.DataFrame, cols_tels_originais:list=["TEL1", "TEL2", "T
             df[c] = df[c].apply(clean_phone_number)
     return df
 
-def filtra_telefones_discados(df: pd.DataFrame, cols_tels_originais: list = ["TEL1", "TEL2", "TEL3"], filtrar_atendidos: bool=True) -> pd.DataFrame:
+def filtra_telefones_discados(
+    df: pd.DataFrame,
+    cols_tels_originais: list = ["TEL1", "TEL2", "TEL3"],
+    coletar_atendidos: bool = False,
+    coletar_nao_atendidos: bool = False,
+    coletar_novos: bool = False,
+) -> pd.DataFrame:
     if len(df.index) == 0:
         return df
-    if filtrar_atendidos:
-        telefones_para_coletar = set(
-            TelefonesDiscados.objects.filter(sucesso_chamada=True)
-            .values_list('telefone', flat=True)
-        )
-    else:
-        telefones_para_coletar = set(
-            TelefonesDiscados.objects.exclude(sucesso_chamada=True)
-            .values_list('telefone', flat=True)
-        )
+
+    if not (coletar_atendidos or coletar_nao_atendidos or coletar_novos):
+        return df
+
+    coletar_tudo = coletar_atendidos and coletar_nao_atendidos and coletar_novos
+
+    atendidos, nao_atendidos, discados = set(), set(), set()
+    if not coletar_tudo:
+        # Uma única query traz telefone + status; os sets são montados em memória
+        for telefone, sucesso in TelefonesDiscados.objects.values_list(
+            'telefone', 'sucesso_chamada'
+        ).iterator():
+            discados.add(telefone)
+            if sucesso:
+                atendidos.add(telefone)
+        # Precedência: se atendeu ao menos uma vez, conta como atendido
+        nao_atendidos = discados - atendidos
 
     tipos_colunas_telefone = [
         cols_tels_originais,
@@ -904,12 +917,23 @@ def filtra_telefones_discados(df: pd.DataFrame, cols_tels_originais: list = ["TE
         if not colunas_telefone:
             continue
 
-        # Limpa e mantém só os que estão no set, vetorizado por coluna
         for col in colunas_telefone:
             limpo = df[col].apply(clean_phone_number)
-            df[col] = limpo.where(limpo.isin(telefones_para_coletar), "")
+            nao_vazio = limpo.astype(bool)
 
-        # Compacta: empurra os válidos para a esquerda, remove duplicatas por linha
+            if coletar_tudo:
+                manter = nao_vazio
+            else:
+                manter = pd.Series(False, index=df.index)
+                if coletar_atendidos:
+                    manter |= limpo.isin(atendidos)
+                if coletar_nao_atendidos:
+                    manter |= limpo.isin(nao_atendidos)
+                if coletar_novos:
+                    manter |= nao_vazio & ~limpo.isin(discados)
+
+            df[col] = limpo.where(manter, "")
+
         def compacta(row):
             vistos = set()
             validos = []
@@ -922,7 +946,6 @@ def filtra_telefones_discados(df: pd.DataFrame, cols_tels_originais: list = ["TE
         df[colunas_telefone] = [compacta(r) for r in df[colunas_telefone].values]
 
     return df
-
 
 def filtra_arquivos(raiz, pasta_arquivos_para_filtrar, pasta_usuario) -> str:
     relatorio = ""
@@ -1579,7 +1602,10 @@ def compacta_colunas(df: pd.DataFrame, colunas: list) -> pd.DataFrame:
     df[colunas] = result
     return df
 
-def get_dados_mailing(colunas_filtro:dict, campos_retorno:list=[], tipos_credito:list=[], formato_saida:str="padrao", conjunto_telefones:str="todos", tipos_telefone:str="todos", tipoMailing:str="ambos", filtro_telefone_blacklist:str="apenas_filtrados", pasta_dados:str="", telefones_discados:str="") -> pd.DataFrame:
+def get_dados_mailing(colunas_filtro:dict, campos_retorno:list=[], tipos_credito:list=[], formato_saida:str="padrao", conjunto_telefones:str="todos", tipos_telefone:str="todos", tipoMailing:str="ambos", filtro_telefone_blacklist:str="apenas_filtrados", pasta_dados:str="", 
+    coletar_atendidos: bool = False,
+    coletar_nao_atendidos: bool = False,
+    coletar_novos: bool = False,) -> pd.DataFrame:
     
     arquivos_para_ler = []
     colunas_ip_box = ["cnpj", "razao_social", "decisor", "correio_eletronico", "logradouro", "num_fachada", "complemento1", "bairro", "cep", "municipio", "uf", "DDD1", "TEL1", "DDD2", "TEL2", "DDD3", "TEL3", "DDD4", "TEL4", "DDD5", "TEL5", "DDD6", "TEL6", "DDD7", "TEL7", "DDD8", "TEL8", ]
@@ -1686,8 +1712,8 @@ def get_dados_mailing(colunas_filtro:dict, campos_retorno:list=[], tipos_credito
     if filtro_telefone_blacklist == "apenas_filtrados":
         df = filtra_mailing(df)
 
-    if telefones_discados:
-        df = filtra_telefones_discados(df, filtrar_atendidos=telefones_discados=="true")
+    if not (coletar_atendidos and coletar_nao_atendidos and coletar_novos):
+        df = filtra_telefones_discados(df, coletar_atendidos=coletar_atendidos, coletar_nao_atendidos=coletar_nao_atendidos, coletar_novos=coletar_novos)
     
     colunas_telefone = ["TEL1", "TEL2", "TEL3"] + [f"Telefone_{i}" for i in range(1,21)]
     cols = df.columns.tolist()
