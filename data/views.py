@@ -883,25 +883,33 @@ def total_telefones_view(request):
 def importa_dados_telefones_view(request):
 
 
-    def limpar_duplicados():
-        manter_ids = (
-            TelefonesDiscados.objects
-            .order_by('telefone', '-sucesso_chamada', '-momento_chamada')
-            .distinct('telefone')
-            .values_list('id', flat=True)
-        )
+    def limpar_duplicados(batch_size=10_000):
+        with connection.cursor() as cur:
+            # 1. Materializa os sobreviventes uma única vez
+            cur.execute("""
+                CREATE TEMP TABLE manter AS
+                SELECT DISTINCT ON (telefone) id
+                FROM app_telefonesdiscados
+                ORDER BY telefone, sucesso_chamada DESC, momento_chamada DESC
+            """)
+            cur.execute("CREATE INDEX ON manter (id)")
 
-        total = 0
-        while True:
-            batch = list(
-                TelefonesDiscados.objects
-                .exclude(id__in=manter_ids)   # subquery, sem list()
-                .values_list('id', flat=True)[:500_000]
-            )
-            if not batch:
-                break
-            deleted, _ = TelefonesDiscados.objects.filter(id__in=batch).delete()
-            total += deleted
+            total = 0
+            while True:
+                # 2. Deleta em batches curtos usando ctid/id
+                cur.execute("""
+                    DELETE FROM app_telefonesdiscados
+                    WHERE id IN (
+                        SELECT t.id
+                        FROM app_telefonesdiscados t
+                        LEFT JOIN manter m ON m.id = t.id
+                        WHERE m.id IS NULL
+                        LIMIT %s
+                    )
+                """, [batch_size])
+                if cur.rowcount == 0:
+                    break
+                total += cur.rowcount
         return total
 
 
