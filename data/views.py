@@ -912,7 +912,6 @@ def importa_dados_telefones_view(request):
                 total += cur.rowcount
         return total
 
-
     processo = threading.Thread(target=limpar_duplicados, )
     processo.start()
     return JsonResponse({'status': 'success', 'sucessos': [f"Iniciou sistema coleta diária com sucesso!",], "erros":[], "links": [], "relatorio": []})
