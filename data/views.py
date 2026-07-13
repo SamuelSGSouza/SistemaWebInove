@@ -873,18 +873,40 @@ def total_telefones_view(request):
 
     return JsonResponse({'status': 'success', 'sucessos': [f"Total de telefones: {total}",], "erros":[], "links": [], "relatorio": []})
 
+# def importa_dados_telefones_view(request):
+#     processo = threading.Thread(target=cadastra_telefones_dia, )
+#     processo.start()
+
+#     return JsonResponse({'status': 'success', 'sucessos': [f"Iniciou sistema coleta diária com sucesso!",], "erros":[], "links": [], "relatorio": []})
+
+
 def importa_dados_telefones_view(request):
 
 
-    manter_ids = (
-        TelefonesDiscados.objects
-        .order_by('telefone', '-sucesso_chamada', '-momento_chamada')
-        .distinct('telefone')          # DISTINCT ON, só existe no Postgres
-        .values_list('id', flat=True)
-    )
+    def limpar_duplicados():
+        manter_ids = (
+            TelefonesDiscados.objects
+            .order_by('telefone', '-sucesso_chamada', '-momento_chamada')
+            .distinct('telefone')
+            .values_list('id', flat=True)
+        )
 
-    TelefonesDiscados.objects.exclude(id__in=list(manter_ids)).delete()
+        total = 0
+        while True:
+            batch = list(
+                TelefonesDiscados.objects
+                .exclude(id__in=manter_ids)   # subquery, sem list()
+                .values_list('id', flat=True)[:500_000]
+            )
+            if not batch:
+                break
+            deleted, _ = TelefonesDiscados.objects.filter(id__in=batch).delete()
+            total += deleted
+        return total
 
+
+    processo = threading.Thread(target=limpar_duplicados, )
+    processo.start()
     return JsonResponse({'status': 'success', 'sucessos': [f"Iniciou sistema coleta diária com sucesso!",], "erros":[], "links": [], "relatorio": []})
 
 def filtro_geral_view(request):
