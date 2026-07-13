@@ -102,7 +102,7 @@ total_dados_receita_Mei = 0
 def salva_log_geral(msg:str, sistema:str="geral"):
     salva_log(msg, sistema)
 
-def baixa_arquivos_receita():
+def baixa_arquivos_receita(nova_execucao):
     salva_log_geral("Iniciou Exclusão de dados anteriores da Receita Federal")
 
     for item in os.listdir(pasta_destino):
@@ -166,10 +166,14 @@ def baixa_arquivos_receita():
 
     try:
         for file_name in files_to_download:
+
+
             file_url = f"https://arquivos.receitafederal.gov.br/public.php/dav/files/YggdBLfdninEJX9/{data_formatada}/{file_name}"
 
             with requests.get(file_url, stream=True, timeout=300) as r:
                 r.raise_for_status()
+                salva_status(nova_execucao, titulo=f"Iniciando Download do Arquivo: {file_name}",status="Em Andamento")
+
                 file_path = os.path.join(pasta_destino, file_name)
                 with open(file_path, 'wb') as f:
                     for chunk in r.iter_content(chunk_size=8192):
@@ -177,7 +181,7 @@ def baixa_arquivos_receita():
         
 
     except Exception as e:
-        salva_log_geral(f"Erro ao baixar o arquivo com url : {file_url}. Erro: {e}")
+        salva_status(nova_execucao, titulo=f"Erro ao baixar o arquivo com url : {file_url}. Erro: {traceback.format_exc()}",status="Em Andamento")
 
 def extrair_zip_e_renomear(pasta_destino=pasta_destino):
     salva_log_geral(f"Iniciou processo de extração dos arquivos zipados da Receita Federal")
@@ -803,7 +807,7 @@ def fase_1_gerador():
         salva_log_geral("Iniciou Sistema de Geração de Mailings")
         
         salva_status(nova_execucao, titulo="Iniciando Download Arquivos da Receita Federal",status="Em Andamento")
-        baixa_arquivos_receita()
+        baixa_arquivos_receita(nova_execucao)
         
         salva_status(nova_execucao, titulo="Iniciando Extração dos Arquivos da Receita Federal",status="Em Andamento")
 
