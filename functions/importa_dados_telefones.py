@@ -10,7 +10,6 @@ from functions.utils import clean_phone_number
 
 
 def cadastra_telefones_dia():
-    
     # --- Configuração de conexão com o banco de origem (MySQL das chamadas) ---
     DB_HOST = "177.39.236.251"
     DB_PORT = int("3306")
