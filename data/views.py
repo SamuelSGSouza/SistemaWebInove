@@ -875,6 +875,7 @@ def total_telefones_view(request):
 
 def importa_dados_telefones_view(request):
 
+
     manter_ids = (
         TelefonesDiscados.objects
         .order_by('telefone', '-sucesso_chamada', '-momento_chamada')
