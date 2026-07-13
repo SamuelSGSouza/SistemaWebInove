@@ -46,13 +46,13 @@ from django.utils import timezone
 
 
 
-telefones_achados = TelefonesDiscados.objects.values_list("telefone", flat=True)
-print("Telefones: ", len(telefones_achados))
-print("Telefones filtrados: ", len(set(telefones_achados)))
+# telefones_achados = TelefonesDiscados.objects.values_list("telefone", flat=True)
+# print("Telefones: ", len(telefones_achados))
+# print("Telefones filtrados: ", len(set(telefones_achados)))
 
-limite = timezone.now() - datetime.timedelta(days=90)
-TelefonesDiscados.objects.filter(momento_chamada__lt=limite)
-print("Telefones Antigos: ", TelefonesDiscados.objects.filter(momento_chamada__lt=limite).count())
+# limite = timezone.now() - datetime.timedelta(days=90)
+# TelefonesDiscados.objects.filter(momento_chamada__lt=limite)
+# print("Telefones Antigos: ", TelefonesDiscados.objects.filter(momento_chamada__lt=limite).count())
 def _normaliza(texto: str) -> str:
     """Remove acentos e baixa a caixa para casar títulos de forma robusta."""
     texto = unicodedata.normalize("NFKD", texto or "")
