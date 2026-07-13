@@ -103,7 +103,7 @@ def salva_log_geral(msg:str, sistema:str="geral"):
     salva_log(msg, sistema)
 
 def baixa_arquivos_receita(nova_execucao):
-    salva_log_geral("Iniciou Exclusão de dados anteriores da Receita Federal")
+    salva_status(nova_execucao, titulo=f"Iniciou Exclusão de dados anteriores da Receita Federal",status="Em Andamento")
 
     for item in os.listdir(pasta_destino):
         item_full_path = os.path.join(pasta_destino, item)
@@ -111,7 +111,7 @@ def baixa_arquivos_receita(nova_execucao):
             os.remove(item_full_path)
         elif os.path.isdir(item_full_path):
             shutil.rmtree(item_full_path)
-    salva_log_geral("Finalizou Exclusão de dados anteriores da Receita Federal")
+    salva_status(nova_execucao, titulo=f"Finalizou Exclusão de dados anteriores da Receita Federal",status="Em Andamento")
 
     # Calcula a URL com base no mês anterior
     hoje = datetime.today()
@@ -181,7 +181,7 @@ def baixa_arquivos_receita(nova_execucao):
         
 
     except Exception as e:
-        salva_status(nova_execucao, titulo=f"Erro ao baixar o arquivo com url : {file_url}. Erro: {traceback.format_exc()}",status="Em Andamento")
+        salva_status(nova_execucao, titulo=f"Erro ao baixar o arquivo com url : {file_url}. Erro: {traceback.format_exc()}",status="Erro")
 
 def extrair_zip_e_renomear(pasta_destino=pasta_destino):
     salva_log_geral(f"Iniciou processo de extração dos arquivos zipados da Receita Federal")
