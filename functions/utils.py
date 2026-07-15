@@ -1136,6 +1136,67 @@ def complementa_arquivos(pasta_usuario, pasta_destino) -> str:
         erros.append(traceback.format_exc())
         return relatorio, erros
 
+def classifica_telefones(pasta_usuario, pasta_destino):
+    relatorio = ""
+    erros = []
+
+    try:
+        PASTA_ARQUIVOS_COMPLEMENTAR = pasta_destino
+        os.makedirs(PASTA_ARQUIVOS_COMPLEMENTAR, exist_ok=True)
+
+
+        atendidos = TelefonesDiscados.objects.filter(sucesso_chamada=True).values_list("telefone", flat=True)
+        nao_atendidos = TelefonesDiscados.objects.exclude(sucesso_chamada=True).values_list("telefone", flat=True)
+
+        
+        for arq in os.listdir(PASTA_ARQUIVOS_COMPLEMENTAR):
+            file = os.path.join(PASTA_ARQUIVOS_COMPLEMENTAR, arq)
+            extensao = os.path.splitext(file)[1].lower()
+            sep = _detectar_sep_csv(file)
+            
+
+            df = pd.DataFrame([])
+            if extensao in [".csv", ".txt"]:
+                encoding = _detectar_encoding_csv(file)
+                df = pd.read_csv(file, sep=sep, dtype=str, encoding=encoding,on_bad_lines="skip")
+            else:#[".xls", '.xlsx', ".xlsb"]
+                df = pd.read_excel(
+                    file,
+                    dtype=str,
+                )
+
+            if "telefone" not in df.columns.tolist():
+                relatorio += f"Arquivo {file} ignorado por não ter coluna 'telefone'\n"
+                continue
+            df["telefone_clean"] = df["telefone"].apply(clean_phone_number)
+
+            df["classificacao"] = "NOVO"
+
+            df.loc[df["telefone_clean"].isin(atendidos), "classificacao"] = "ATENDIDO"
+
+            df.loc[df["telefone_clean"].isin(nao_atendidos), "classificacao"] = "NAO ATENDIDO"
+
+            df.drop(columns=["telefone_clean"], inplace=True)
+            if extensao in [".csv", ".txt"]:
+                df.to_csv(file,sep=sep, index=False)
+            else:#[".xls", '.xlsx', ".xlsb"]         
+                df.to_excel(file, index=False)
+
+            del df
+
+            relatorio +=  f"Telefones do arquivo {file} classificados com sucesso"
+        
+        zip_folder(PASTA_ARQUIVOS_COMPLEMENTAR, os.path.join(pasta_usuario, "arquivos_telefones_classificados.zip"))
+        for arq in os.listdir(PASTA_ARQUIVOS_COMPLEMENTAR):
+            file = os.path.join(PASTA_ARQUIVOS_COMPLEMENTAR, arq)
+            os.remove(file)
+        return relatorio,erros
+    
+    except Exception as e:
+        erros.append(traceback.format_exc())
+        return relatorio, erros
+    
+
 def complementa_cnpj(raiz) -> str:
     relatorio = ""
     erros = []

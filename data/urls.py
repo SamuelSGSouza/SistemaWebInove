@@ -8,6 +8,7 @@ urlpatterns = [
     path('filtro_geral', filtro_geral_view, name="filtro_geral"),
     path('inicia_gerador_view', inicia_gerador_view, name="inicia_gerador_view"),
     path('importa_dados_telefones_view', importa_dados_telefones_view, name="importa_dados_telefones_view"),
+    path('telefones_discados_view', telefones_discados_view, name="telefones_discados_view"),
     path('total_telefones', total_telefones_view, name="total_telefones"),
     path('download_arquivo', download_arquivo_view, name="download_arquivo"),
     path('atualizacao_bases', AtualizaBases.as_view(), name="atualizacao_bases"),

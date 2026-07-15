@@ -21,6 +21,7 @@ from collections import defaultdict
 from django.db.models import Max
 from django.views.generic import TemplateView
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.db.models.functions import TruncDate
 
 from functions.importa_dados_telefones import cadastra_telefones_dia
 
@@ -352,6 +353,7 @@ class TratamentosArquivosExternos(LoginRequiredMixin,TemplateView):
         dict_tipos = {
             "Limpeza de BlackList": "Envie aqui um arquivo para que sejam removidos os telefones que estão na BlackList e Quarentena",
             "Enriquecimento de Dados": "Envie aqui um arquivo com coluna 'cnpj' e ele será enriquecido com dados do sistema",
+            "Classificar Telefones": "Envie aqui um arquivo com coluna 'telefone' e ele será mapeado entre 'Atendido', 'Não Atendidos' e 'Novos'",
         }
         context["descricao"] = dict_tipos[context["tipo_tratamento"]]
 
@@ -403,6 +405,10 @@ class TratamentosArquivosExternos(LoginRequiredMixin,TemplateView):
         if tipo_tratamento == "Enriquecimento de Dados":
             zip_path = os.path.join(pasta_usuario,"arquivos_complementar.zip")
             relatorio, erros_internos = complementa_arquivos(pasta_usuario,pasta_destino)
+        
+        if tipo_tratamento == "Classificar Telefones":
+            zip_path = os.path.join(pasta_usuario,"arquivos_telefones_classificados.zip")
+            relatorio, erros_internos = classifica_telefones(pasta_usuario,pasta_destino)
         
         
 
@@ -873,12 +879,60 @@ def total_telefones_view(request):
 
     return JsonResponse({'status': 'success', 'sucessos': [f"Total de telefones: {total}",], "erros":[], "links": [], "relatorio": []})
 
+
+
 # def importa_dados_telefones_view(request):
 #     processo = threading.Thread(target=cadastra_telefones_dia, )
 #     processo.start()
 
 #     return JsonResponse({'status': 'success', 'sucessos': [f"Iniciou sistema coleta diária com sucesso!",], "erros":[], "links": [], "relatorio": []})
 
+
+def telefones_discados_view(request):
+    qs = TelefonesDiscados.objects.all()
+ 
+    # Agregações feitas direto no banco (uma única query)
+    resumo = qs.aggregate(
+        total=Count('id'),
+        sucesso=Count('id', filter=Q(sucesso_chamada=True)),
+        falha=Count('id', filter=Q(sucesso_chamada=False)),
+        ultima_chamada=Max('momento_chamada'),
+    )
+ 
+    # Série diária para o gráfico de evolução
+    por_dia = (
+        qs.annotate(dia=TruncDate('momento_chamada'))
+          .values('dia')
+          .annotate(
+              sucesso=Count('id', filter=Q(sucesso_chamada=True)),
+              falha=Count('id', filter=Q(sucesso_chamada=False)),
+          )
+          .order_by('dia')
+    )
+ 
+    dashboard = {
+        'sucesso': resumo['sucesso'] or 0,
+        'falha': resumo['falha'] or 0,
+        'serie': [
+            {
+                'dia': item['dia'].strftime('%d/%m/%Y'),
+                'sucesso': item['sucesso'],
+                'falha': item['falha'],
+            }
+            for item in por_dia
+        ],
+    }
+ 
+    # Lista mais recente primeiro. Se a tabela crescer muito,
+    # troque o [:1000] por paginação (django.core.paginator).
+    telefones = qs.order_by('-momento_chamada')[:1000]
+ 
+    context = {
+        'resumo': resumo,
+        'telefones': telefones,
+        'dashboard_json': json.dumps(dashboard),
+    }
+    return render(request, 'telefones_discados.html', context)
 
 def importa_dados_telefones_view(request):
 

@@ -1,0 +1,276 @@
+{% extends 'base_data.html' %}
+{% load humanize %}
+
+{% block static %}
+<style>
+  /* ===== Escopo: tudo vive dentro de #telRoot p/ não vazar no base ===== */
+  #telRoot{
+    --ok:#16a34a; --ok-soft:#e8f7ee;
+    --no:#dc2626; --no-soft:#fdecec;
+    --accent:#0ea5e9; --accent-soft:#e0f2fe;
+    --na:#94a3b8; --na-soft:#f1f5f9;
+    --ink:#0f172a; --muted:#64748b; --line:#e7ebf1;
+    --card:#ffffff; --radius:16px;
+    color:var(--ink);
+    font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  }
+
+  /* Cabeçalho */
+  #telRoot .dash-head{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end;justify-content:space-between;margin-bottom:22px}
+  #telRoot .dash-head h2{font-weight:800;letter-spacing:-.02em;margin:0;font-size:1.55rem}
+  #telRoot .dash-sub{color:var(--muted);font-size:.85rem;margin-top:4px}
+  #telRoot .dash-sub b{color:var(--ink);font-weight:600}
+
+  /* Seletor de status (mesma assinatura do painel de crédito) */
+  #telRoot .seg{display:inline-flex;background:#eef1f6;border-radius:999px;padding:4px;gap:2px}
+  #telRoot .seg button{
+    border:0;background:transparent;border-radius:999px;padding:8px 18px;
+    font-weight:600;font-size:.86rem;color:var(--muted);cursor:pointer;transition:.18s;white-space:nowrap}
+  #telRoot .seg button:hover{color:var(--ink)}
+  #telRoot .seg button.active{background:var(--card);color:var(--ink);box-shadow:0 1px 4px rgba(15,23,42,.12)}
+  #telRoot .seg button[data-st="ok"].active{color:var(--ok)}
+  #telRoot .seg button[data-st="no"].active{color:var(--no)}
+
+  #telRoot .seg-flag{height:4px;border-radius:4px;width:100%;margin:14px 0 22px;transition:.2s;
+    background:linear-gradient(90deg,var(--ok),var(--no))}
+  #telRoot.is-ok .seg-flag{background:linear-gradient(90deg,var(--ok),#86efac)}
+  #telRoot.is-no .seg-flag{background:linear-gradient(90deg,var(--no),#fca5a5)}
+
+  /* Cards KPI */
+  #telRoot .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:16px;margin-bottom:22px}
+  #telRoot .kpi{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;position:relative;overflow:hidden}
+  #telRoot .kpi .lbl{font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:600}
+  #telRoot .kpi .val{font-size:1.7rem;font-weight:800;letter-spacing:-.02em;margin-top:6px;line-height:1}
+  #telRoot .kpi .meta{font-size:.78rem;color:var(--muted);margin-top:7px}
+  #telRoot .kpi .tag{position:absolute;top:16px;right:16px;width:34px;height:34px;border-radius:10px;display:grid;place-items:center;font-size:.9rem}
+  #telRoot .kpi.k-total .tag{background:var(--accent-soft);color:var(--accent)}
+  #telRoot .kpi.k-ok .val{color:var(--ok)} #telRoot .kpi.k-ok .tag{background:var(--ok-soft);color:var(--ok)}
+  #telRoot .kpi.k-no .val{color:var(--no)} #telRoot .kpi.k-no .tag{background:var(--no-soft);color:var(--no)}
+  #telRoot .kpi.k-dt .val{font-size:1.25rem;padding-top:6px} #telRoot .kpi.k-dt .tag{background:var(--na-soft);color:var(--na)}
+  #telRoot .kpi .bar{height:5px;border-radius:4px;background:var(--na-soft);margin-top:12px;overflow:hidden}
+  #telRoot .kpi .bar > i{display:block;height:100%;border-radius:4px}
+
+  /* Painéis */
+  #telRoot .panel{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:20px}
+  #telRoot .panel h5{font-weight:700;font-size:1rem;margin:0 0 2px}
+  #telRoot .panel .hint{font-size:.78rem;color:var(--muted);margin-bottom:14px}
+  #telRoot .grid-37{display:grid;grid-template-columns:5fr 7fr;gap:20px;margin-bottom:20px}
+  @media (max-width:900px){#telRoot .grid-37{grid-template-columns:1fr}}
+
+  #telRoot .legend{display:flex;gap:18px;flex-wrap:wrap;font-size:.8rem;color:var(--muted);margin-top:4px}
+  #telRoot .legend span{display:inline-flex;align-items:center;gap:6px}
+  #telRoot .legend i{width:11px;height:11px;border-radius:3px;display:inline-block}
+
+  /* Tabela de telefones */
+  #telRoot .tbl-tools{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+  #telRoot .tbl-tools input{width:100%;max-width:320px;padding:9px 14px;border:1px solid var(--line);border-radius:999px;font-size:.85rem}
+  #telRoot .tbl-tools input:focus{outline:none;border-color:#bae6fd;box-shadow:0 0 0 3px rgba(14,165,233,.15)}
+  #telRoot .tbl-count{font-size:.8rem;color:var(--muted);margin-left:auto}
+
+  #telRoot table.tbl{width:100%;border-collapse:collapse;font-size:.86rem}
+  #telRoot table.tbl th,#telRoot table.tbl td{padding:11px 12px;text-align:left;white-space:nowrap}
+  #telRoot table.tbl thead th{font-size:.7rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);border-bottom:2px solid var(--line)}
+  #telRoot table.tbl tbody tr{border-bottom:1px solid #f1f4f8}
+  #telRoot table.tbl tbody tr:hover{background:#fafbfe}
+  #telRoot table.tbl td .fone{font-weight:700;font-variant-numeric:tabular-nums}
+
+  #telRoot .pill{display:inline-block;padding:2px 10px;border-radius:999px;font-weight:700;font-size:.78rem}
+  #telRoot .pill.ok{background:var(--ok-soft);color:var(--ok)}
+  #telRoot .pill.no{background:var(--no-soft);color:var(--no)}
+
+  #telRoot .empty{padding:30px;text-align:center;color:var(--muted);font-size:.9rem}
+
+  /* Botão flutuante — Classificar Telefones em Massa */
+  #telRoot .fab{
+    position:fixed;bottom:28px;right:28px;z-index:1000;
+    display:inline-flex;align-items:center;gap:10px;
+    background:var(--accent);color:#fff;text-decoration:none;
+    border-radius:999px;padding:14px 22px;
+    font-weight:700;font-size:.9rem;letter-spacing:.01em;
+    box-shadow:0 6px 18px rgba(14,165,233,.35);
+    transition:transform .18s, box-shadow .18s, background .18s}
+  #telRoot .fab i{font-size:1rem}
+  #telRoot .fab:hover{
+    background:#0284c7;color:#fff;transform:translateY(-2px);
+    box-shadow:0 10px 24px rgba(14,165,233,.45)}
+  #telRoot .fab:active{transform:translateY(0)}
+  @media (max-width:600px){
+    #telRoot .fab{bottom:18px;right:18px;padding:14px 16px}
+    #telRoot .fab span{display:none}  /* no celular vira só o ícone */
+  }
+</style>
+{% endblock %}
+
+{% block main_body %}
+<div id="telRoot">
+
+  <!-- ===== Cabeçalho + controles ===== -->
+  <div class="dash-head">
+    <div>
+      <h2>Telefones Discados</h2>
+      <div class="dash-sub">
+        {{ resumo.total|intcomma }} chamadas registradas
+        {% if resumo.ultima_chamada %}· última atualização <b>{{ resumo.ultima_chamada|date:"d/m/Y H:i" }}</b>{% endif %}
+      </div>
+    </div>
+    <div class="seg" id="stSwitch">
+      <button data-st="" class="active">Todos</button>
+      <button data-st="ok">Sucesso</button>
+      <button data-st="no">Falha</button>
+    </div>
+  </div>
+
+  <div class="seg-flag"></div>
+
+  <!-- ===== KPIs ===== -->
+  <div class="kpis" id="kpiRow"></div>
+
+  <!-- ===== Gráficos ===== -->
+  <div class="grid-37">
+    <div class="panel">
+      <h5>Resultado das chamadas</h5>
+      <div class="hint" id="donutHint">Sucesso · falha</div>
+      <canvas id="chDonut" height="240"></canvas>
+      <div class="legend">
+        <span><i style="background:var(--ok)"></i>Sucesso</span>
+        <span><i style="background:var(--no)"></i>Falha</span>
+      </div>
+    </div>
+    <div class="panel">
+      <h5>Evolução diária</h5>
+      <div class="hint">Chamadas por dia, separadas por resultado</div>
+      <canvas id="chSerie" height="240"></canvas>
+    </div>
+  </div>
+
+  <!-- ===== Tabela ===== -->
+  <div class="panel">
+    <h5>Detalhamento das chamadas</h5>
+    <div class="hint">Ordenado da chamada mais recente para a mais antiga</div>
+    <div class="tbl-tools">
+      <input type="text" id="foneFilter" placeholder="🔍 Filtrar por telefone...">
+      <span class="tbl-count" id="tblCount"></span>
+    </div>
+    <div style="overflow-x:auto;max-height:520px">
+      <table class="tbl" id="foneTable">
+        <thead>
+          <tr><th>Telefone</th><th>Resultado</th><th>Momento da chamada</th></tr>
+        </thead>
+        <tbody>
+          {% for tel in telefones %}
+          <tr data-st="{% if tel.sucesso_chamada %}ok{% else %}no{% endif %}">
+            <td><span class="fone">{{ tel.telefone }}</span></td>
+            <td>
+              {% if tel.sucesso_chamada %}
+                <span class="pill ok">Sucesso</span>
+              {% else %}
+                <span class="pill no">Falha</span>
+              {% endif %}
+            </td>
+            <td>{{ tel.momento_chamada|date:"d/m/Y H:i" }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="3" class="empty">Nenhuma chamada registrada até o momento.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ===== Botão flutuante ===== -->
+  <a href="{% url 'tratamento_arquivos_externos' %}?tipo_tratamento=Classificar Telefones" class="fab" title="Classificar Telefones em Massa">
+    <i class="fas fa-list-check"></i>
+    <span>Classificar Telefones em Massa</span>
+  </a>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+(function(){
+  const DADOS = {{ dashboard_json|safe }};
+  const C = {ok:'#16a34a', no:'#dc2626'};
+  const fmt = n => (n||0).toLocaleString('pt-BR');
+  const total = DADOS.sucesso + DADOS.falha;
+  const pct = p => total > 0 ? (p/total*100) : 0;
+
+  const root = document.getElementById('telRoot');
+  let st = '';   // '' = todos | 'ok' | 'no'
+
+  /* ================= KPIs ================= */
+  function kpiCard(lbl,val,meta,cls,icon,barPct,barColor){
+    const bar = (barPct!=null)
+      ? `<div class="bar"><i style="width:${Math.min(barPct,100)}%;background:${barColor}"></i></div>` : '';
+    return `<div class="kpi ${cls}">
+      <div class="tag"><i class="fas ${icon}"></i></div>
+      <div class="lbl">${lbl}</div><div class="val">${val}</div>
+      <div class="meta">${meta}</div>${bar}</div>`;
+  }
+  document.getElementById('kpiRow').innerHTML = `
+    ${kpiCard('Total de chamadas', fmt(total), 'registradas na base', 'k-total','fa-phone', null)}
+    ${kpiCard('Com sucesso', fmt(DADOS.sucesso), pct(DADOS.sucesso).toFixed(1)+'% do total', 'k-ok','fa-circle-check', pct(DADOS.sucesso), C.ok)}
+    ${kpiCard('Com falha', fmt(DADOS.falha), pct(DADOS.falha).toFixed(1)+'% do total', 'k-no','fa-circle-xmark', pct(DADOS.falha), C.no)}
+    ${kpiCard('Última atualização', '{% if resumo.ultima_chamada %}{{ resumo.ultima_chamada|date:"d/m/Y H:i" }}{% else %}—{% endif %}', 'momento da chamada mais recente', 'k-dt','fa-clock', null)}
+  `;
+
+  /* ================= Gráficos ================= */
+  new Chart(document.getElementById('chDonut'), {
+    type:'doughnut',
+    data:{ labels:['Sucesso','Falha'],
+      datasets:[{ data:[DADOS.sucesso, DADOS.falha],
+        backgroundColor:[C.ok, C.no], borderWidth:2, borderColor:'#fff' }]},
+    options:{ cutout:'62%', plugins:{ legend:{display:false},
+      tooltip:{callbacks:{label:c=>` ${c.label}: ${fmt(c.raw)} (${pct(c.raw).toFixed(1)}%)`}}}}
+  });
+  document.getElementById('donutHint').textContent =
+    `${fmt(total)} chamadas — ${pct(DADOS.sucesso).toFixed(1)}% com sucesso`;
+
+  new Chart(document.getElementById('chSerie'), {
+    type:'bar',
+    data:{ labels: DADOS.serie.map(d=>d.dia),
+      datasets:[
+        {label:'Sucesso', data:DADOS.serie.map(d=>d.sucesso), backgroundColor:C.ok},
+        {label:'Falha',   data:DADOS.serie.map(d=>d.falha),   backgroundColor:C.no},
+      ]},
+    options:{ responsive:true,
+      scales:{x:{stacked:true,grid:{display:false}}, y:{stacked:true,ticks:{callback:v=>fmt(v)}}},
+      plugins:{legend:{position:'bottom',labels:{boxWidth:12,font:{size:11}}},
+        tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${fmt(c.raw)}`}}}}
+  });
+
+  /* ================= Filtros da tabela ================= */
+  const rows = Array.from(document.querySelectorAll('#foneTable tbody tr[data-st]'));
+  const input = document.getElementById('foneFilter');
+
+  function applyFilters(){
+    const q = input.value.replace(/\D/g,'');  // compara só dígitos
+    let visiveis = 0;
+    rows.forEach(tr=>{
+      const okStatus = !st || tr.dataset.st === st;
+      const fone = tr.cells[0].textContent.replace(/\D/g,'');
+      const okFone = !q || fone.includes(q);
+      const show = okStatus && okFone;
+      tr.style.display = show ? '' : 'none';
+      if(show) visiveis++;
+    });
+    document.getElementById('tblCount').textContent =
+      `${fmt(visiveis)} de ${fmt(rows.length)} chamadas exibidas`;
+  }
+
+  input.addEventListener('keyup', applyFilters);
+
+  document.querySelectorAll('#stSwitch button').forEach(b=>{
+    b.onclick = ()=>{
+      document.querySelectorAll('#stSwitch button').forEach(x=>x.classList.remove('active'));
+      b.classList.add('active');
+      st = b.dataset.st;
+      root.classList.remove('is-ok','is-no');
+      if(st==='ok') root.classList.add('is-ok');
+      if(st==='no') root.classList.add('is-no');
+      applyFilters();
+    };
+  });
+
+  applyFilters();
+})();
+</script>
+{% endblock %}
