@@ -105,7 +105,16 @@
 <div id="telRoot">
 
   <!-- ===== Cabeçalho + controles ===== -->
-  
+   <!-- ===== Cabeçalho + controles ===== -->
+  <div class="dash-head">
+    <div>
+      <h2>Telefones Discados</h2>
+      <div class="dash-sub">
+        {{ resumo.total|intcomma }} chamadas registradas
+        {% if resumo.ultima_chamada %}· última atualização <b>{{ resumo.ultima_chamada|date:"d/m/Y H:i" }}</b>{% endif %}
+      </div>
+    </div>
+  </div>
 
   <div class="seg-flag"></div>
 
