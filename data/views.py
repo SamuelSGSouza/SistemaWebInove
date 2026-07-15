@@ -880,6 +880,13 @@ def total_telefones_view(request):
     return JsonResponse({'status': 'success', 'sucessos': [f"Total de telefones: {total}",], "erros":[], "links": [], "relatorio": []})
 
 
+def importa_dados_telefones_view(request):
+    def deleta_tudo():
+        TelefonesDiscados.objects.filter().delete()
+
+    processo = threading.Thread(target=deleta_tudo, )
+    processo.start()
+    return JsonResponse({'status': 'success', 'sucessos': [f"Iniciou sistema coleta diária com sucesso!",], "erros":[], "links": [], "relatorio": []})
 
 # def importa_dados_telefones_view(request):
 #     processo = threading.Thread(target=cadastra_telefones_dia, )
@@ -934,41 +941,7 @@ def telefones_discados_view(request):
     }
     return render(request, 'telefones_discados.html', context)
 
-def importa_dados_telefones_view(request):
 
-
-    def limpar_duplicados(batch_size=10_000):
-        with connection.cursor() as cur:
-            # 1. Materializa os sobreviventes uma única vez
-            cur.execute("""
-                CREATE TEMP TABLE manter AS
-                SELECT DISTINCT ON (telefone) id
-                FROM app_telefonesdiscados
-                ORDER BY telefone, sucesso_chamada DESC, momento_chamada DESC
-            """)
-            cur.execute("CREATE INDEX ON manter (id)")
-
-            total = 0
-            while True:
-                # 2. Deleta em batches curtos usando ctid/id
-                cur.execute("""
-                    DELETE FROM app_telefonesdiscados
-                    WHERE id IN (
-                        SELECT t.id
-                        FROM app_telefonesdiscados t
-                        LEFT JOIN manter m ON m.id = t.id
-                        WHERE m.id IS NULL
-                        LIMIT %s
-                    )
-                """, [batch_size])
-                if cur.rowcount == 0:
-                    break
-                total += cur.rowcount
-        return total
-
-    processo = threading.Thread(target=limpar_duplicados, )
-    processo.start()
-    return JsonResponse({'status': 'success', 'sucessos': [f"Iniciou sistema coleta diária com sucesso!",], "erros":[], "links": [], "relatorio": []})
 
 def filtro_geral_view(request):
     context = {
