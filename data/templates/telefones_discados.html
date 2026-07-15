@@ -105,20 +105,7 @@
 <div id="telRoot">
 
   <!-- ===== Cabeçalho + controles ===== -->
-  <div class="dash-head">
-    <div>
-      <h2>Telefones Discados</h2>
-      <div class="dash-sub">
-        {{ resumo.total|intcomma }} chamadas registradas
-        {% if resumo.ultima_chamada %}· última atualização <b>{{ resumo.ultima_chamada|date:"d/m/Y H:i" }}</b>{% endif %}
-      </div>
-    </div>
-    <div class="seg" id="stSwitch">
-      <button data-st="" class="active">Todos</button>
-      <button data-st="ok">Sucesso</button>
-      <button data-st="no">Falha</button>
-    </div>
-  </div>
+  
 
   <div class="seg-flag"></div>
 
@@ -136,11 +123,7 @@
         <span><i style="background:var(--no)"></i>Falha</span>
       </div>
     </div>
-    <div class="panel">
-      <h5>Evolução diária</h5>
-      <div class="hint">Chamadas por dia, separadas por resultado</div>
-      <canvas id="chSerie" height="240"></canvas>
-    </div>
+    
   </div>
 
   <!-- ===== Tabela ===== -->
@@ -224,18 +207,7 @@
   document.getElementById('donutHint').textContent =
     `${fmt(total)} chamadas — ${pct(DADOS.sucesso).toFixed(1)}% com sucesso`;
 
-  new Chart(document.getElementById('chSerie'), {
-    type:'bar',
-    data:{ labels: DADOS.serie.map(d=>d.dia),
-      datasets:[
-        {label:'Sucesso', data:DADOS.serie.map(d=>d.sucesso), backgroundColor:C.ok},
-        {label:'Falha',   data:DADOS.serie.map(d=>d.falha),   backgroundColor:C.no},
-      ]},
-    options:{ responsive:true,
-      scales:{x:{stacked:true,grid:{display:false}}, y:{stacked:true,ticks:{callback:v=>fmt(v)}}},
-      plugins:{legend:{position:'bottom',labels:{boxWidth:12,font:{size:11}}},
-        tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${fmt(c.raw)}`}}}}
-  });
+  
 
   /* ================= Filtros da tabela ================= */
   const rows = Array.from(document.querySelectorAll('#foneTable tbody tr[data-st]'));

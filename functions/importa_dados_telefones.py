@@ -7,7 +7,8 @@ import datetime
 from django.utils import timezone
 from data.models import TelefonesDiscados
 from functions.utils import clean_phone_number
-
+from data.models import salva_log
+import traceback
 
 def cadastra_telefones_dia():
     # --- Configuração de conexão com o banco de origem (MySQL das chamadas) ---
@@ -133,51 +134,57 @@ def cadastra_telefones_antigos():
     DB_USER = "inove_db2"
     DB_PASSWORD = "4g2dH4cmyzcLUswTIc3z0cVXj"
     DB_NAME = "brdsoft"
- 
-    conn = pymysql.connect(
-        host=DB_HOST,
-        port=DB_PORT,
-        user=DB_USER,
-        password=DB_PASSWORD,
-        database=DB_NAME,
-        charset="utf8mb4",
-        cursorclass=SSDictCursor,
-        connect_timeout=10000,
-        read_timeout=12000,
-    )
- 
-    QUERY = """
-        SELECT dst_clean, hangup_desc, calldate
-        FROM chamadas
-        WHERE calldate BETWEEN %(inicio)s AND %(fim)s
-        ORDER BY calldate ASC
-    """
- 
-    hoje = datetime.date.today()
-    dia = hoje - datetime.timedelta(days=90)  # começa no dia mais antigo
- 
+    
     try:
-        with conn.cursor() as cur:
-            # Itera dia a dia: mais antigo -> mais recente
-            while dia <= hoje:
-                inicio = f"{dia:%Y-%m-%d} 00:00:00"
-                fim = f"{dia:%Y-%m-%d} 23:59:59"
- 
-                cur.execute(QUERY, {"inicio": inicio, "fim": fim})
-                linhas = list(cur.fetchall())
- 
-                if linhas:
-                    _processa_dia(linhas)
- 
-                dia += datetime.timedelta(days=1)
-    finally:
-        conn.close()
- 
-    # Limpeza de registros antigos (90 dias)
-    limite = timezone.now() - datetime.timedelta(days=90)
-    TelefonesDiscados.objects.filter(momento_chamada__lt=limite).delete()
- 
- 
+        conn = pymysql.connect(
+            host=DB_HOST,
+            port=DB_PORT,
+            user=DB_USER,
+            password=DB_PASSWORD,
+            database=DB_NAME,
+            charset="utf8mb4",
+            cursorclass=SSDictCursor,
+            connect_timeout=10000,
+            read_timeout=12000,
+        )
+    
+        QUERY = """
+            SELECT dst_clean, hangup_desc, calldate
+            FROM chamadas
+            WHERE calldate BETWEEN %(inicio)s AND %(fim)s
+            ORDER BY calldate ASC
+        """
+    
+        hoje = datetime.date.today()
+        dia = hoje - datetime.timedelta(days=90)  # começa no dia mais antigo
+    
+        try:
+            with conn.cursor() as cur:
+                # Itera dia a dia: mais antigo -> mais recente
+                while dia <= hoje:
+                    inicio = f"{dia:%Y-%m-%d} 00:00:00"
+                    fim = f"{dia:%Y-%m-%d} 23:59:59"
+    
+                    cur.execute(QUERY, {"inicio": inicio, "fim": fim})
+                    linhas = list(cur.fetchall())
+    
+                    if linhas:
+                        _processa_dia(linhas)
+    
+                    dia += datetime.timedelta(days=1)
+        except Exception as e:
+            salva_log(f"Erro INTERNO: {traceback.format_exc()}", sistema="TelefonesDiscados") 
+        finally:
+            
+            conn.close()
+    
+        # Limpeza de registros antigos (90 dias)
+        limite = timezone.now() - datetime.timedelta(days=90)
+        TelefonesDiscados.objects.filter(momento_chamada__lt=limite).delete()
+        
+    except Exception as e:
+        salva_log(f"Erro externo: {traceback.format_exc()}", sistema="TelefonesDiscados") 
+
 def _processa_dia(linhas):
     """Deduplica e persiste as chamadas de um único dia."""
     df = pd.DataFrame(linhas)
