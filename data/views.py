@@ -23,7 +23,7 @@ from django.views.generic import TemplateView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models.functions import TruncDate
 
-from functions.importa_dados_telefones import cadastra_telefones_dia
+from functions.importa_dados_telefones import cadastra_telefones_dia, cadastra_telefones_antigos
 
 titulos = {
     'oi': "Mailing Original (Nio)",
@@ -881,10 +881,8 @@ def total_telefones_view(request):
 
 
 def importa_dados_telefones_view(request):
-    def deleta_tudo():
-        TelefonesDiscados.objects.filter().delete()
-
-    processo = threading.Thread(target=deleta_tudo, )
+    
+    processo = threading.Thread(target=cadastra_telefones_antigos, )
     processo.start()
     return JsonResponse({'status': 'success', 'sucessos': [f"Iniciou sistema coleta diária com sucesso!",], "erros":[], "links": [], "relatorio": []})
 

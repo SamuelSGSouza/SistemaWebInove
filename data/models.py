@@ -123,6 +123,6 @@ def verifica_atualizacao_receita():
 
 
 class TelefonesDiscados(models.Model):
-    telefone = models.CharField(max_length=13,)
+    telefone = models.CharField(max_length=13,unique=True)
     sucesso_chamada = models.BooleanField()
     momento_chamada = models.DateTimeField()
