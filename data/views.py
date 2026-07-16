@@ -882,7 +882,7 @@ def total_telefones_view(request):
 
 def importa_dados_telefones_view(request):
     
-    processo = threading.Thread(target=cadastra_telefones_antigos, )
+    processo = threading.Thread(target=cadastra_telefones_dia, )
     processo.start()
     return JsonResponse({'status': 'success', 'sucessos': [f"Iniciou sistema coleta diária com sucesso!",], "erros":[], "links": [], "relatorio": []})
 
