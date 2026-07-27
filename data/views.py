@@ -23,7 +23,7 @@ from django.views.generic import TemplateView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models.functions import TruncDate
 
-from functions.importa_dados_telefones import cadastra_telefones_dia, cadastra_telefones_antigos
+from functions.importa_dados_telefones import cadastra_telefones_dia, cadastra_telefones_antigos, pesquisa_telefones
 
 titulos = {
     'oi': "Mailing Original (Nio)",
@@ -44,8 +44,6 @@ ESTADOS_NOMES = {
     "SP": "São Paulo", "SE": "Sergipe", "TO": "Tocantins",
 }
 from django.utils import timezone
-
-
 
 # telefones_achados = TelefonesDiscados.objects.values_list("telefone", flat=True)
 # print("Telefones: ", len(telefones_achados))
@@ -882,7 +880,7 @@ def total_telefones_view(request):
 
 def importa_dados_telefones_view(request):
     
-    processo = threading.Thread(target=cadastra_telefones_antigos, )
+    processo = threading.Thread(target=cadastra_telefones_dia, )
     processo.start()
     return JsonResponse({'status': 'success', 'sucessos': [f"Iniciou sistema coleta diária com sucesso!",], "erros":[], "links": [], "relatorio": []})
 

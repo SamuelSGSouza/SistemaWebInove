@@ -213,3 +213,99 @@ def _processa_dia(linhas):
             objs_falha,
             ignore_conflicts=True,
         )
+
+def pesquisa_telefones(termo, dias=None, apenas_sucesso=None, limite=500):
+    """
+    Pesquisa telefones na base externa de chamadas (MySQL) usando
+    busca parcial (LIKE). Ex.: termo="27999" retorna qualquer numero
+    que contenha "27999" em qualquer posicao.
+ 
+    Parametros:
+    - termo (str): trecho do numero a buscar (obrigatorio).
+    - dias (int, opcional): se informado, limita a busca aos ultimos N dias.
+    - apenas_sucesso (bool, opcional):
+        True  -> so chamadas atendidas ("200 - OK")
+        False -> so chamadas nao atendidas
+        None  -> todas (padrao)
+    - limite (int): maximo de linhas retornadas (padrao 500).
+ 
+    Retorna:
+    - Lista de dicts com: telefone, hangup_desc, sucesso_chamada, momento_chamada.
+      Em caso de erro, retorna lista vazia e registra no log.
+    """
+
+    DB_HOST = "177.39.236.251"
+    DB_PORT = int("3306")
+    DB_USER = "inove_db2"
+    DB_PASSWORD = "4g2dH4cmyzcLUswTIc3z0cVXj"
+    DB_NAME = "brdsoft"
+    resultados = []
+ 
+    # Sanitiza o termo: mantem apenas digitos (evita quebrar o LIKE
+    # com caracteres especiais como % ou _)
+    termo_limpo = "".join(c for c in str(termo) if c.isdigit())
+    if not termo_limpo:
+        salva_log(
+            f"Pesquisa invalida: termo '{termo}' nao contem digitos.",
+            sistema="TelefonesDiscados",
+        )
+        return resultados
+ 
+    try:
+        conn = pymysql.connect(
+            host=DB_HOST,
+            port=DB_PORT,
+            user=DB_USER,
+            password=DB_PASSWORD,
+            database=DB_NAME,
+            charset="utf8mb4",
+            cursorclass=SSDictCursor,
+            connect_timeout=10000,
+            read_timeout=12000,
+        )
+ 
+        try:
+            # Monta a query dinamicamente conforme os filtros
+            condicoes = ["dst_clean LIKE %(padrao)s"]
+            params = {
+                "padrao": f"%{termo_limpo}%",
+                "limite": int(limite),
+            }
+ 
+            if dias is not None:
+                inicio = datetime.date.today() - datetime.timedelta(days=int(dias))
+                condicoes.append("calldate >= %(inicio)s")
+                params["inicio"] = f"{inicio:%Y-%m-%d} 00:00:00"
+ 
+            if apenas_sucesso is True:
+                condicoes.append("hangup_desc LIKE '%%200 - OK%%'")
+            elif apenas_sucesso is False:
+                condicoes.append("hangup_desc NOT LIKE '%%200 - OK%%'")
+ 
+            query = f"""
+                SELECT dst_clean, hangup_desc, calldate
+                FROM chamadas
+                WHERE {" AND ".join(condicoes)}
+                ORDER BY calldate DESC
+                LIMIT %(limite)s
+            """
+ 
+            with conn.cursor() as cur:
+                cur.execute(query, params)
+                for row in cur.fetchall():
+                    resultados.append({
+                        "telefone": row["dst_clean"],
+                        "hangup_desc": row["hangup_desc"],
+                        "sucesso_chamada": "200 - OK" in str(row["hangup_desc"]),
+                        "momento_chamada": row["calldate"],
+                    })
+        finally:
+            conn.close()
+ 
+    except Exception:
+        salva_log(
+            f"Erro na pesquisa de telefones: {traceback.format_exc()}",
+            sistema="TelefonesDiscados",
+        )
+ 
+    return resultados
