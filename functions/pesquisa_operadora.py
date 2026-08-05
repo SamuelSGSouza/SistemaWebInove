@@ -199,6 +199,7 @@ def consulta_operadora_lote(telefones, conn=None):
         if fechar_conn:
             conn.close()
 
+
     return resultados
 
 
