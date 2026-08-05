@@ -1099,23 +1099,47 @@ def _extrai_token(request):
     return request.META.get("HTTP_X_API_TOKEN", "").strip() or None
  
  
+IPS_PERMITIDOS = ["181.191.204.62", "177.39.236.250" ]          # ex.: ["203.0.113.10", "198.51.100.7"]
+ 
+ 
 def exige_token(view_func):
-    """Decorator que bloqueia a requisição se o token estiver ausente ou errado."""
+    """Versao do decorator com log de IP e whitelist opcional."""
     def wrapper(request, *args, **kwargs):
-        API_TOKEN = os.getenv("API_TOKEN", "token_padrao")
-        token = _extrai_token(request)
+        ip = get_client_ip(request)
  
-        if not token:
-            return JsonResponse({"erro": "Token nao informado."}, status=401)
- 
-        # compare_digest evita timing attacks (comparação em tempo constante)
-        if not hmac.compare_digest(token, API_TOKEN):
-            return JsonResponse({"erro": "Token invalido."}, status=403)
+        # 1) Whitelist de IP (se configurada)
+        if IPS_PERMITIDOS and ip not in IPS_PERMITIDOS:
+            return JsonResponse({"erro": "Acesso negado."}, status=403)
  
         return view_func(request, *args, **kwargs)
  
     return wrapper
+
  
+
+def get_client_ip(request) -> str:
+    """
+    Retorna o IP real do cliente.
+ 
+    Ordem de preferencia:
+      1. X-Real-IP        -> setado pelo SEU Nginx, nao forjavel pelo cliente
+      2. X-Forwarded-For  -> pega o ULTIMO valor (o que o seu Nginx acrescentou)
+      3. REMOTE_ADDR      -> fallback (sera 127.0.0.1 atras de proxy)
+ 
+    IMPORTANTE: nunca use o PRIMEIRO valor de X-Forwarded-For sem validacao.
+    O cliente pode enviar "X-Forwarded-For: 1.2.3.4" e o Nginx apenas
+    acrescenta o IP real no final, virando "1.2.3.4, IP_REAL".
+    """
+    ip = request.META.get("HTTP_X_REAL_IP")
+    if ip:
+        return ip.strip()
+ 
+    xff = request.META.get("HTTP_X_FORWARDED_FOR")
+    if xff:
+        # O ultimo da lista foi acrescentado pelo proxy confiavel
+        return xff.split(",")[-1].strip()
+ 
+    return request.META.get("REMOTE_ADDR", "")
  
 
 @exige_token
