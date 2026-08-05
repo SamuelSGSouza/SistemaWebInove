@@ -1,4 +1,5 @@
 import threading
+import time
 from typing import Optional
 
 import pymysql
@@ -76,8 +77,77 @@ def _normaliza_telefone(telefone: str) -> str:
     return numero
 
 
+# ---------------------------------------------------------------------------
+# Cache em memoria do de-para rn1 -> prestadora
+#
+# A view vi_rn1 e materializada pelo MySQL (sem indice utilizavel): cada
+# consulta pontual custa de 100ms a 450ms. Como sao apenas ~634 linhas,
+# carregamos tudo uma vez e servimos da memoria (~0ms por consulta).
+# ---------------------------------------------------------------------------
+CACHE_TTL_SEGUNDOS = 24 * 3600   # recarrega 1x por dia
+
+_cache_rn1 = None          # dict {rn1: prestadora}
+_cache_carregado_em = 0.0
+_cache_lock = threading.Lock()
+
+
+def carrega_cache_rn1(conn=None, forcar=False) -> dict:
+    """
+    Carrega (ou recarrega) o de-para rn1 -> prestadora em memoria.
+
+    Thread-safe. Retorna o dicionario do cache.
+    Chame no start da aplicacao para evitar que a 1a requisicao pague o custo.
+    """
+    global _cache_rn1, _cache_carregado_em
+
+    with _cache_lock:
+        expirado = (time.time() - _cache_carregado_em) > CACHE_TTL_SEGUNDOS
+        if _cache_rn1 is not None and not expirado and not forcar:
+            return _cache_rn1
+
+        fechar_conn = False
+        if conn is None:
+            conn = get_conn()
+            fechar_conn = True
+
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute("SELECT rn1, prestadora FROM vi_rn1")
+                novo = {
+                    str(r["rn1"]): r["prestadora"]
+                    for r in cursor.fetchall()
+                    if r.get("rn1") is not None
+                }
+            if novo:
+                _cache_rn1 = novo
+                _cache_carregado_em = time.time()
+        except Exception:
+            # Falhou o refresh: mantem o cache antigo se existir
+            if _cache_rn1 is None:
+                _cache_rn1 = {}
+        finally:
+            if fechar_conn:
+                conn.close()
+
+        return _cache_rn1
+
+
 def _busca_prestadora(cursor, rn1) -> Optional[str]:
-    """Busca o nome da prestadora na view vi_rn1 pelo rn1."""
+    """
+    Retorna o nome da prestadora a partir do rn1.
+
+    Usa o cache em memoria. Se o rn1 nao estiver no cache (base atualizada
+    depois da carga), cai para a consulta direta na view como fallback.
+    """
+    if rn1 is None:
+        return None
+
+    cache = carrega_cache_rn1()
+    prestadora = cache.get(str(rn1))
+    if prestadora is not None:
+        return prestadora
+
+    # Fallback: rn1 novo, ainda nao presente no cache
     cursor.execute("SELECT prestadora FROM vi_rn1 WHERE rn1 = %s LIMIT 1", (rn1,))
     row = cursor.fetchone()
     return row["prestadora"] if row else None
