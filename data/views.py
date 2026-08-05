@@ -49,6 +49,7 @@ ESTADOS_NOMES = {
     "RS": "Rio Grande do Sul", "RO": "Rondônia", "RR": "Roraima", "SC": "Santa Catarina",
     "SP": "São Paulo", "SE": "Sergipe", "TO": "Tocantins",
 }
+
 # from django.utils import timezone
 # imprime_relatorio()
 # telefones_achados = TelefonesDiscados.objects.values_list("telefone", flat=True)
