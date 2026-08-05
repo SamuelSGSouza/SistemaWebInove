@@ -22,8 +22,14 @@ from django.db.models import Max
 from django.views.generic import TemplateView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models.functions import TruncDate
-
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
 from functions.importa_dados_telefones import cadastra_telefones_dia, cadastra_telefones_antigos, pesquisa_telefones, imprime_relatorio
+from functions.pesquisa_operadora import consulta_operadora, consulta_operadora_lote
+import hmac
+from dotenv import load_dotenv
+import os
+load_dotenv()
 
 titulos = {
     'oi': "Mailing Original (Nio)",
@@ -43,8 +49,8 @@ ESTADOS_NOMES = {
     "RS": "Rio Grande do Sul", "RO": "Rondônia", "RR": "Roraima", "SC": "Santa Catarina",
     "SP": "São Paulo", "SE": "Sergipe", "TO": "Tocantins",
 }
-from django.utils import timezone
-imprime_relatorio()
+# from django.utils import timezone
+# imprime_relatorio()
 # telefones_achados = TelefonesDiscados.objects.values_list("telefone", flat=True)
 # print("Telefones: ", len(telefones_achados))
 # print("Telefones filtrados: ", len(set(telefones_achados)))
@@ -1074,4 +1080,130 @@ def filtro_geral_view(request):
 
     return render(request, 'filtro_geral.html', context)
 
-
+def _extrai_token(request):
+    """
+    Extrai o token da requisição. Aceita:
+      Header:  Authorization: Bearer <token>
+      Header:  X-Api-Token: <token>
+    """
+    auth = request.META.get("HTTP_AUTHORIZATION", "")
+    if auth.startswith("Bearer "):
+        return auth[len("Bearer "):].strip()
+ 
+    return request.META.get("HTTP_X_API_TOKEN", "").strip() or None
+ 
+ 
+def exige_token(view_func):
+    """Decorator que bloqueia a requisição se o token estiver ausente ou errado."""
+    def wrapper(request, *args, **kwargs):
+        API_TOKEN = os.getenv("API_TOKEN", "token_padrao")
+        token = _extrai_token(request)
+ 
+        if not token:
+            return JsonResponse({"erro": "Token nao informado."}, status=401)
+ 
+        # compare_digest evita timing attacks (comparação em tempo constante)
+        if not hmac.compare_digest(token, API_TOKEN):
+            return JsonResponse({"erro": "Token invalido."}, status=403)
+ 
+        return view_func(request, *args, **kwargs)
+ 
+    return wrapper
+ 
+ 
+@exige_token
+@require_http_methods(["GET"])
+def api_consulta_telefone(request, telefone=None):
+    """
+    Endpoint de consulta individual.
+ 
+    Aceita o telefone de duas formas:
+      GET /api/consulta/11987069513/        (na URL)
+      GET /api/consulta/?telefone=11987069513   (querystring)
+ 
+    Resposta:
+      {"telefone": "11987069513", "portado": true, "rn1": "...", "operadora": "TIM"}
+    """
+    telefone = telefone or request.GET.get("telefone")
+ 
+    if not telefone:
+        return JsonResponse(
+            {"erro": "Informe o telefone na URL ou no parametro ?telefone="},
+            status=400,
+        )
+ 
+    try:
+        resultado = consulta_operadora(telefone)
+    except ValueError as e:
+        return JsonResponse({"erro": str(e)}, status=400)
+    except Exception:
+        return JsonResponse(
+            {"erro": "Falha ao consultar o banco de dados."}, status=500
+        )
+ 
+    if resultado["rn1"] is None:
+        return JsonResponse(
+            dict(resultado, erro="Telefone nao encontrado nas bases."),
+            status=404,
+        )
+ 
+    return JsonResponse(resultado)
+ 
+ 
+@csrf_exempt
+@exige_token
+@require_http_methods(["POST"])
+def api_consulta_lote(request):
+    """
+    Endpoint de consulta em lote.
+ 
+    POST /api/consulta/lote/
+    Body (JSON):
+      {"telefones": ["11987069513", "21998765432", "..."]}
+ 
+    Resposta:
+      {
+        "total": 2,
+        "encontrados": 1,
+        "resultados": [
+          {"telefone": "11987069513", "portado": true, "rn1": "...", "operadora": "TIM"},
+          {"telefone": "21998765432", "portado": null, "rn1": null, "operadora": null}
+        ]
+      }
+    """
+    try:
+        body = json.loads(request.body.decode("utf-8"))
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return JsonResponse({"erro": "Body invalido. Envie um JSON."}, status=400)
+ 
+    telefones = body.get("telefones")
+ 
+    if not isinstance(telefones, list) or not telefones:
+        return JsonResponse(
+            {"erro": 'Envie uma lista no formato {"telefones": ["...", "..."]}'},
+            status=400,
+        )
+ 
+    MAX_LOTE = 1000
+    if len(telefones) > MAX_LOTE:
+        return JsonResponse(
+            {"erro": "Maximo de {} telefones por requisicao.".format(MAX_LOTE)},
+            status=400,
+        )
+ 
+    try:
+        resultados = consulta_operadora_lote(telefones)
+    except Exception:
+        return JsonResponse(
+            {"erro": "Falha ao consultar o banco de dados."}, status=500
+        )
+ 
+    encontrados = sum(1 for r in resultados if r.get("rn1") is not None)
+ 
+    return JsonResponse(
+        {
+            "total": len(resultados),
+            "encontrados": encontrados,
+            "resultados": resultados,
+        }
+    )
