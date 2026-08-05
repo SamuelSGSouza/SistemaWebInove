@@ -25,7 +25,12 @@ from django.db.models.functions import TruncDate
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from functions.importa_dados_telefones import cadastra_telefones_dia, cadastra_telefones_antigos, pesquisa_telefones, imprime_relatorio
-from functions.pesquisa_operadora import consulta_operadora, consulta_operadora_lote
+from functions.pesquisa_operadora import (
+    consulta_operadora,
+    consulta_operadora_lote,
+    get_conn_persistente,
+)
+
 import hmac
 from dotenv import load_dotenv
 import os
@@ -1112,6 +1117,7 @@ def exige_token(view_func):
     return wrapper
  
  
+
 @exige_token
 @require_http_methods(["GET"])
 def api_consulta_telefone(request, telefone=None):
@@ -1121,9 +1127,6 @@ def api_consulta_telefone(request, telefone=None):
     Aceita o telefone de duas formas:
       GET /api/consulta/11987069513/        (na URL)
       GET /api/consulta/?telefone=11987069513   (querystring)
- 
-    Resposta:
-      {"telefone": "11987069513", "portado": true, "rn1": "...", "operadora": "TIM"}
     """
     telefone = telefone or request.GET.get("telefone")
  
@@ -1134,7 +1137,8 @@ def api_consulta_telefone(request, telefone=None):
         )
  
     try:
-        resultado = consulta_operadora(telefone)
+        # Passa a conexão persistente da thread: sem abrir/fechar por request
+        resultado = consulta_operadora(telefone, conn=get_conn_persistente())
     except ValueError as e:
         return JsonResponse({"erro": str(e)}, status=400)
     except Exception:
@@ -1150,29 +1154,12 @@ def api_consulta_telefone(request, telefone=None):
  
     return JsonResponse(resultado)
  
-
  
 @csrf_exempt
 @exige_token
 @require_http_methods(["POST"])
 def api_consulta_lote(request):
-    """
-    Endpoint de consulta em lote.
- 
-    POST /api/consulta/lote/
-    Body (JSON):
-      {"telefones": ["11987069513", "21998765432", "..."]}
- 
-    Resposta:
-      {
-        "total": 2,
-        "encontrados": 1,
-        "resultados": [
-          {"telefone": "11987069513", "portado": true, "rn1": "...", "operadora": "TIM"},
-          {"telefone": "21998765432", "portado": null, "rn1": null, "operadora": null}
-        ]
-      }
-    """
+    """Endpoint de consulta em lote (mesma lógica de antes)."""
     try:
         body = json.loads(request.body.decode("utf-8"))
     except (json.JSONDecodeError, UnicodeDecodeError):
@@ -1194,7 +1181,10 @@ def api_consulta_lote(request):
         )
  
     try:
-        resultados = consulta_operadora_lote(telefones)
+        # Conexão persistente também no lote
+        resultados = consulta_operadora_lote(
+            telefones, conn=get_conn_persistente()
+        )
     except Exception:
         return JsonResponse(
             {"erro": "Falha ao consultar o banco de dados."}, status=500
@@ -1209,3 +1199,4 @@ def api_consulta_lote(request):
             "resultados": resultados,
         }
     )
+
