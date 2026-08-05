@@ -1,87 +1,90 @@
-
 """
-Separa o tempo de ABRIR CONEXAO do tempo de EXECUTAR AS QUERIES.
+Cronometra CADA query do fluxo separadamente, para achar qual delas
+consome os ~400ms.
 
-Isso identifica se o gargalo esta no connect() (ex.: reverse DNS do MySQL)
-ou nas consultas em si.
-
-Uso:  python3 mede_conexao.py
+Uso:  python3 mede_queries.py
 """
 import time
 
-from functions.pesquisa_operadora import get_conn, consulta_operadora, get_conn_persistente
+from functions.pesquisa_operadora import get_conn
 
-TELEFONE = "11987069513"
-N = 5
-
-
-def media(lista):
-    return sum(lista) / len(lista) if lista else 0
+# Um portado (achado em number_route_1) e um nao portado (cai no cadup)
+TELEFONES = ["11987069513", "11999999999", "2133334444"]
+N = 3
 
 
-print("=== 1. Tempo para ABRIR a conexao ===")
-tempos_conn = []
-for i in range(N):
-    inicio = time.perf_counter()
+def cronometra(cursor, rotulo, sql, params, n=N):
+    tempos = []
+    resultado = None
+    for _ in range(n):
+        inicio = time.perf_counter()
+        cursor.execute(sql, params)
+        resultado = cursor.fetchone()
+        tempos.append((time.perf_counter() - inicio) * 1000)
+    media = sum(tempos) / len(tempos)
+    marca = "  <<< LENTA" if media > 50 else ""
+    print(f"  {rotulo:<38} {media:8.2f} ms  (min {min(tempos):.2f})"
+          f"  -> {resultado}{marca}")
+    return resultado
+
+
+def main():
     conn = get_conn()
-    ms = (time.perf_counter() - inicio) * 1000
-    tempos_conn.append(ms)
-    conn.close()
-    print(f"  connect {i + 1}: {ms:8.2f} ms")
-print(f"  MEDIA CONNECT: {media(tempos_conn):.2f} ms")
+    try:
+        with conn.cursor() as cursor:
+            for telefone in TELEFONES:
+                numero = "".join(c for c in telefone if c.isdigit())
+                cn = numero[:2]
+                corpo = numero[2:]
+                prefixo = corpo[:-4]
+                sufixo = corpo[-4:]
+
+                print(f"\n=== Telefone {numero} ===")
+
+                # Query 1: portados
+                row = cronometra(
+                    cursor,
+                    "1) number_route_1 (tn)",
+                    "SELECT rn1 FROM number_route_1 WHERE tn = %s LIMIT 1",
+                    (numero,),
+                )
+
+                # Query 2: nao portados (roda sempre aqui, so para medir)
+                row2 = cronometra(
+                    cursor,
+                    "2) stfc_cadup (cn/prefixo/faixa)",
+                    """SELECT rn1 FROM stfc_cadup
+                       WHERE cn = %s AND prefixo = %s
+                         AND %s >= faixa_inicial AND %s <= faixa_final
+                       LIMIT 1""",
+                    (cn, prefixo, sufixo, sufixo),
+                )
+
+                # Query 3: prestadora
+                rn1 = (row or row2 or {}).get("rn1")
+                if rn1:
+                    cronometra(
+                        cursor,
+                        "3) vi_rn1 (prestadora)",
+                        "SELECT prestadora FROM vi_rn1 WHERE rn1 = %s LIMIT 1",
+                        (rn1,),
+                    )
+                else:
+                    print("  3) vi_rn1 .............................. [sem rn1]")
+
+            # Tipos das colunas envolvidas — descasamento de tipo mata indice
+            print("\n=== Tipos das colunas de busca ===")
+            for tabela, colunas in [
+                ("number_route_1", ("tn",)),
+                ("stfc_cadup", ("cn", "prefixo", "faixa_inicial", "faixa_final")),
+            ]:
+                cursor.execute(f"DESCRIBE {tabela}")
+                for r in cursor.fetchall():
+                    if r["Field"] in colunas:
+                        print(f"  {tabela}.{r['Field']:<16} {r['Type']}")
+    finally:
+        conn.close()
 
 
-print("\n=== 2. Consulta completa REUTILIZANDO a conexao ===")
-conn = get_conn()
-tempos_query = []
-for i in range(N):
-    inicio = time.perf_counter()
-    consulta_operadora(TELEFONE, conn=conn)
-    ms = (time.perf_counter() - inicio) * 1000
-    tempos_query.append(ms)
-    print(f"  consulta {i + 1}: {ms:8.2f} ms")
-conn.close()
-print(f"  MEDIA QUERY: {media(tempos_query):.2f} ms")
-
-
-print("\n=== 3. Consulta ABRINDO conexao a cada vez (codigo antigo) ===")
-tempos_total = []
-for i in range(N):
-    inicio = time.perf_counter()
-    consulta_operadora(TELEFONE)  # sem conn -> abre e fecha
-    ms = (time.perf_counter() - inicio) * 1000
-    tempos_total.append(ms)
-    print(f"  consulta {i + 1}: {ms:8.2f} ms")
-print(f"  MEDIA TOTAL: {media(tempos_total):.2f} ms")
-
-
-print("\n=== 4. Consulta com conexao PERSISTENTE (codigo novo) ===")
-tempos_persist = []
-for i in range(N):
-    inicio = time.perf_counter()
-    consulta_operadora(TELEFONE, conn=get_conn_persistente())
-    ms = (time.perf_counter() - inicio) * 1000
-    tempos_persist.append(ms)
-    print(f"  consulta {i + 1}: {ms:8.2f} ms")
-print(f"  MEDIA PERSISTENTE: {media(tempos_persist):.2f} ms")
-
-
-print("\n" + "=" * 55)
-print("RESUMO")
-print("=" * 55)
-print(f"  Abrir conexao ............ {media(tempos_conn):8.2f} ms")
-print(f"  Queries (conexao pronta) . {media(tempos_query):8.2f} ms")
-print(f"  Codigo antigo (total) .... {media(tempos_total):8.2f} ms")
-print(f"  Codigo novo (persistente)  {media(tempos_persist):8.2f} ms")
-
-if media(tempos_conn) > 100:
-    print("\n  >>> ABRIR CONEXAO e o gargalo principal.")
-    print("      Suspeita: reverse DNS do MySQL a cada conexao.")
-    print("      Verifique no servidor MySQL:  SHOW VARIABLES LIKE 'skip_name_resolve';")
-    print("      Se estiver OFF, peca ao DBA para ligar (skip_name_resolve=ON no my.cnf).")
-elif media(tempos_query) > 100:
-    print("\n  >>> As QUERIES sao o gargalo (inesperado, dado o teste anterior).")
-else:
-    print("\n  >>> Banco esta rapido nos dois casos.")
-    print("      O gargalo dos 670ms esta na aplicacao (Django/Gunicorn/middleware),")
-    print("      nao no banco.")
+if __name__ == "__main__":
+    main()
