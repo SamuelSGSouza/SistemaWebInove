@@ -204,6 +204,7 @@ if __name__ == "__main__":
     # Consulta em lote (lista)
     lote = ["11987069513", "(21) 99876-5432", "abc123"]
     for r in consulta_operadora_lote(lote):
+        
         if r.get("erro"):
             print(f"{r['telefone']}: ERRO - {r['erro']}")
         else:
