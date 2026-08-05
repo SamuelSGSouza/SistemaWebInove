@@ -1,7 +1,8 @@
+import threading
 from typing import Optional
 
 import pymysql
-from pymysql.cursors import SSDictCursor
+from pymysql.cursors import DictCursor
 from dotenv import load_dotenv
 import os
 load_dotenv()
@@ -12,7 +13,9 @@ EXTERNAL_2_DB_USER = os.getenv("EXTERNAL_2_DB_USER", "")
 EXTERNAL_2_DB_PASSWORD = os.getenv("EXTERNAL_2_DB_PASSWORD", "")
 EXTERNAL_2_DB_NAME = os.getenv("EXTERNAL_2_DB_NAME", "")
 
+
 def get_conn():
+    """Abre uma conexão NOVA com o banco (caller é responsável por fechar)."""
     return pymysql.connect(
         host=EXTERNAL_2_DB_HOST,
         port=EXTERNAL_2_DB_PORT,
@@ -20,10 +23,42 @@ def get_conn():
         password=EXTERNAL_2_DB_PASSWORD,
         database=EXTERNAL_2_DB_NAME,
         charset="utf8mb4",
-        cursorclass=SSDictCursor,
-        connect_timeout=10000,
-        read_timeout=12000,
+        cursorclass=DictCursor,   # bufferizado: correto para queries LIMIT 1
+        connect_timeout=10,
+        read_timeout=30,
     )
+
+
+# ---------------------------------------------------------------------------
+# Conexão persistente por thread (para uso nas views / Gunicorn com threads)
+# ---------------------------------------------------------------------------
+_local = threading.local()
+
+
+def get_conn_persistente():
+    """
+    Retorna uma conexão persistente exclusiva da thread atual.
+
+    - Cada thread do Gunicorn mantém a própria conexão viva entre requisições,
+      eliminando o custo de abrir/fechar conexão a cada chamada.
+    - ping(reconnect=True) reconecta automaticamente se o MySQL derrubou a
+      conexão por inatividade (wait_timeout).
+    - NUNCA feche esta conexão manualmente.
+    """
+    conn = getattr(_local, "conn", None)
+    if conn is None:
+        _local.conn = get_conn()
+    else:
+        try:
+            conn.ping(reconnect=True)
+        except Exception:
+            # Conexão irrecuperável: descarta e abre outra
+            try:
+                conn.close()
+            except Exception:
+                pass
+            _local.conn = get_conn()
+    return _local.conn
 
 
 def _normaliza_telefone(telefone: str) -> str:
@@ -57,6 +92,9 @@ def consulta_operadora(telefone: str, conn=None) -> dict:
       2. Se não encontrar, consulta stfc_cadup (não portados) por cn, prefixo e
          faixa_inicial/faixa_final.
       3. Com o rn1 encontrado, busca a prestadora na view vi_rn1.
+
+    Se `conn` for passada, ela é reutilizada e NÃO é fechada aqui.
+    Se não for passada, abre e fecha uma conexão própria.
 
     Retorna:
       {
