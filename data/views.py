@@ -1150,6 +1150,7 @@ def api_consulta_telefone(request, telefone=None):
  
     return JsonResponse(resultado)
  
+
  
 @csrf_exempt
 @exige_token
