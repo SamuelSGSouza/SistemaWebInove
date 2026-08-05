@@ -4,7 +4,7 @@ o plano de execução (EXPLAIN) das queries reais.
 
 Uso:  python3 verifica_indexes.py
 """
-from consulta_operadora import get_conn
+from functions.pesquisa_operadora import get_conn
 
 TABELAS = ["number_route_1", "stfc_cadup"]
 
