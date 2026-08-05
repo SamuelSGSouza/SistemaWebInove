@@ -2,16 +2,23 @@ from typing import Optional
 
 import pymysql
 from pymysql.cursors import SSDictCursor
-from amb_vars import *
+from dotenv import load_dotenv
+import os
+load_dotenv()
 
+EXTERNAL_2_DB_HOST = os.getenv("EXTERNAL_2_DB_HOST", "")
+EXTERNAL_2_DB_PORT = int(os.getenv("EXTERNAL_2_DB_PORT", "3306"))
+EXTERNAL_2_DB_USER = os.getenv("EXTERNAL_2_DB_USER", "")
+EXTERNAL_2_DB_PASSWORD = os.getenv("EXTERNAL_2_DB_PASSWORD", "")
+EXTERNAL_2_DB_NAME = os.getenv("EXTERNAL_2_DB_NAME", "")
 
 def get_conn():
     return pymysql.connect(
-        host=DB_HOST,
-        port=DB_PORT,
-        user=DB_USER,
-        password=DB_PASSWORD,
-        database=DB_NAME,
+        host=EXTERNAL_2_DB_HOST,
+        port=EXTERNAL_2_DB_PORT,
+        user=EXTERNAL_2_DB_USER,
+        password=EXTERNAL_2_DB_PASSWORD,
+        database=EXTERNAL_2_DB_NAME,
         charset="utf8mb4",
         cursorclass=SSDictCursor,
         connect_timeout=10000,

@@ -9,6 +9,9 @@ from data.models import TelefonesDiscados
 from functions.utils import clean_phone_number
 from data.models import salva_log
 import traceback
+from dotenv import load_dotenv
+import os
+load_dotenv()
 
 def cadastra_telefones_dia():
     """
@@ -27,19 +30,19 @@ def cadastra_telefones_dia():
     - Falhas em telefones já cadastrados são ignoradas (DO NOTHING).
     """
     # --- Configuração de conexão com o banco de origem (MySQL das chamadas) ---
-    DB_HOST = "177.39.236.251"
-    DB_PORT = int("3306")
-    DB_USER = "inove_db2"
-    DB_PASSWORD = "4g2dH4cmyzcLUswTIc3z0cVXj"
-    DB_NAME = "brdsoft"
     
+    EXTERNAL_1_DB_HOST = os.getenv("EXTERNAL_1_DB_HOST", "")
+    EXTERNAL_1_DB_PORT = int(os.getenv("EXTERNAL_1_DB_PORT", "3306"))
+    EXTERNAL_1_DB_USER = os.getenv("EXTERNAL_1_DB_USER", "")
+    EXTERNAL_1_DB_PASSWORD = os.getenv("EXTERNAL_1_DB_PASSWORD", "")
+    EXTERNAL_1_DB_NAME = os.getenv("EXTERNAL_1_DB_NAME", "")
     try:
         conn = pymysql.connect(
-            host=DB_HOST,
-            port=DB_PORT,
-            user=DB_USER,
-            password=DB_PASSWORD,
-            database=DB_NAME,
+            host=EXTERNAL_1_DB_HOST,
+            port=EXTERNAL_1_DB_PORT,
+            user=EXTERNAL_1_DB_USER,
+            password=EXTERNAL_1_DB_PASSWORD,
+            database=EXTERNAL_1_DB_NAME,
             charset="utf8mb4",
             cursorclass=SSDictCursor,
             connect_timeout=10000,
@@ -101,19 +104,19 @@ def cadastra_telefones_antigos():
     - Falhas em telefones já cadastrados são ignoradas (DO NOTHING).
     """
     # --- Configuração de conexão com o banco de origem (MySQL das chamadas) ---
-    DB_HOST = "177.39.236.251"
-    DB_PORT = int("3306")
-    DB_USER = "inove_db2"
-    DB_PASSWORD = "4g2dH4cmyzcLUswTIc3z0cVXj"
-    DB_NAME = "brdsoft"
+    EXTERNAL_1_DB_HOST = os.getenv("EXTERNAL_1_DB_HOST", "")
+    EXTERNAL_1_DB_PORT = int(os.getenv("EXTERNAL_1_DB_PORT", "3306"))
+    EXTERNAL_1_DB_USER = os.getenv("EXTERNAL_1_DB_USER", "")
+    EXTERNAL_1_DB_PASSWORD = os.getenv("EXTERNAL_1_DB_PASSWORD", "")
+    EXTERNAL_1_DB_NAME = os.getenv("EXTERNAL_1_DB_NAME", "")
     
     try:
         conn = pymysql.connect(
-            host=DB_HOST,
-            port=DB_PORT,
-            user=DB_USER,
-            password=DB_PASSWORD,
-            database=DB_NAME,
+            host=EXTERNAL_1_DB_HOST,
+            port=EXTERNAL_1_DB_PORT,
+            user=EXTERNAL_1_DB_USER,
+            password=EXTERNAL_1_DB_PASSWORD,
+            database=EXTERNAL_1_DB_NAME,
             charset="utf8mb4",
             cursorclass=SSDictCursor,
             connect_timeout=10000,
