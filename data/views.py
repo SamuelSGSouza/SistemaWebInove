@@ -23,7 +23,7 @@ from django.views.generic import TemplateView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models.functions import TruncDate
 
-from functions.importa_dados_telefones import cadastra_telefones_dia, cadastra_telefones_antigos, pesquisa_telefones
+from functions.importa_dados_telefones import cadastra_telefones_dia, cadastra_telefones_antigos, pesquisa_telefones, imprime_relatorio
 
 titulos = {
     'oi': "Mailing Original (Nio)",
@@ -44,7 +44,7 @@ ESTADOS_NOMES = {
     "SP": "São Paulo", "SE": "Sergipe", "TO": "Tocantins",
 }
 from django.utils import timezone
-
+imprime_relatorio()
 # telefones_achados = TelefonesDiscados.objects.values_list("telefone", flat=True)
 # print("Telefones: ", len(telefones_achados))
 # print("Telefones filtrados: ", len(set(telefones_achados)))

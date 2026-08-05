@@ -307,5 +307,131 @@ def pesquisa_telefones(termo, dias=None, apenas_sucesso=None, limite=500):
             f"Erro na pesquisa de telefones: {traceback.format_exc()}",
             sistema="TelefonesDiscados",
         )
- 
+    
     return resultados
+
+def relatorio_ligacoes(dias=90):
+    """
+    Gera um relatório das ligações dos últimos `dias` (padrão 90),
+    processando UM DIA POR VEZ, do mais antigo para o mais recente.
+
+    Retorna um DataFrame com as colunas:
+    - dia:                data do dia processado
+    - total_ligacoes:     quantidade total de ligações no dia (com repetições)
+    - telefones_distintos: quantidade de telefones diferentes chamados no dia
+    - telefones_novos:    telefones vistos pela PRIMEIRA vez naquele dia
+                          (considerando o período analisado)
+    - novos_acumulado:    total acumulado de telefones únicos até aquele dia
+    """
+    DB_HOST = "177.39.236.251"
+    DB_PORT = int("3306")
+    DB_USER = "inove_db2"
+    DB_PASSWORD = "4g2dH4cmyzcLUswTIc3z0cVXj"
+    DB_NAME = "brdsoft"
+    resultados = []
+
+    try:
+        conn = pymysql.connect(
+            host=DB_HOST,
+            port=DB_PORT,
+            user=DB_USER,
+            password=DB_PASSWORD,
+            database=DB_NAME,
+            charset="utf8mb4",
+            cursorclass=SSDictCursor,
+            connect_timeout=10000,
+            read_timeout=12000,
+        )
+
+        QUERY = """
+            SELECT dst_clean, calldate
+            FROM chamadas
+            WHERE calldate BETWEEN %(inicio)s AND %(fim)s
+            ORDER BY calldate ASC
+        """
+
+        hoje = datetime.date.today()
+        dia = hoje - datetime.timedelta(days=dias)
+
+        telefones_vistos = set()  # todos os telefones já vistos no período
+
+        try:
+            with conn.cursor() as cur:
+                while dia <= hoje:
+                    inicio = f"{dia:%Y-%m-%d} 00:00:00"
+                    fim = f"{dia:%Y-%m-%d} 23:59:59"
+
+                    cur.execute(QUERY, {"inicio": inicio, "fim": fim})
+                    linhas = list(cur.fetchall())
+
+                    # 1) Total de ligações do dia (inclui repetições)
+                    total_ligacoes = len(linhas)
+
+                    # 2) Telefones diferentes chamados no dia
+                    telefones_dia = {
+                        clean_phone_number(l["dst_clean"]) for l in linhas
+                    }
+                    telefones_dia.discard(None)  # descarta números inválidos
+                    telefones_dia.discard("")
+
+                    # 3) Telefones novos: primeira aparição no período
+                    novos = telefones_dia - telefones_vistos
+                    telefones_vistos |= novos
+
+                    resultados.append({
+                        "dia": dia,
+                        "total_ligacoes": total_ligacoes,
+                        "telefones_distintos": len(telefones_dia),
+                        "telefones_novos": len(novos),
+                        "novos_acumulado": len(telefones_vistos),
+                    })
+
+                    dia += datetime.timedelta(days=1)
+        except Exception:
+            salva_log(
+                f"Erro INTERNO: {traceback.format_exc()}",
+                sistema="RelatorioLigacoes",
+            )
+        finally:
+            conn.close()
+
+    except Exception:
+        salva_log(
+            f"Erro externo: {traceback.format_exc()}",
+            sistema="RelatorioLigacoes",
+        )
+
+    df = pd.DataFrame(
+        resultados,
+        columns=[
+            "dia",
+            "total_ligacoes",
+            "telefones_distintos",
+            "telefones_novos",
+            "novos_acumulado",
+        ],
+    )
+    return df
+
+
+def imprime_relatorio(dias=90):
+    """Imprime o relatório formatado no console."""
+    df = relatorio_ligacoes(dias=dias)
+    df.to_csv("relatorio_ligacoes.csv", index=False, sep=";")
+    if df.empty:
+        print("Nenhuma ligação encontrada no período.")
+        return df
+
+    print(f"{'Dia':<12} {'Ligações':>10} {'Distintos':>10} "
+          f"{'Novos':>8} {'Acumulado':>10}")
+    print("-" * 54)
+    for row in df.itertuples(index=False):
+        print(f"{row.dia:%d/%m/%Y}   {row.total_ligacoes:>10} "
+              f"{row.telefones_distintos:>10} {row.telefones_novos:>8} "
+              f"{row.novos_acumulado:>10}")
+
+    print("-" * 54)
+    print(f"{'TOTAL':<12} {df['total_ligacoes'].sum():>10} "
+          f"{'':>10} {df['telefones_novos'].sum():>8}")
+
+    return df
