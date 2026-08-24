@@ -5,7 +5,146 @@ from functions.contantes import *
 from pathlib import Path
 from datetime import datetime, timedelta
 from functions.utils import _detectar_encoding_csv, _detectar_sep_csv
+from corpdata.models import Empresa
+import unicodedata
+
+
+# ----------------------------------------------------------------------------
+# 1. NORMALIZAÇÃO
+# ----------------------------------------------------------------------------
+_UNIDADES = {
+    "LJ": "LOJA", "LOJA": "LOJA", "SL": "SALA", "SALA": "SALA",
+    "AP": "APTO", "APT": "APTO", "APTO": "APTO", "APARTAMENTO": "APTO",
+    "CS": "CASA", "CASA": "CASA", "BL": "BLOCO", "BLOCO": "BLOCO",
+    "AND": "ANDAR", "ANDAR": "ANDAR", "GAL": "GALPAO", "GALPAO": "GALPAO",
+    "QD": "QUADRA", "LT": "LOTE", "LOTE": "LOTE", "SOBRELOJA": "SOBRELOJA",
+}
+_TIPOS_LOGRADOURO = {
+    "R": "RUA", "RUA": "RUA",
+    "AV": "AVENIDA", "AVE": "AVENIDA", "AVENIDA": "AVENIDA",
+    "TV": "TRAVESSA", "TRAV": "TRAVESSA", "TRAVESSA": "TRAVESSA",
+    "ROD": "RODOVIA", "RODOVIA": "RODOVIA",
+    "EST": "ESTRADA", "ESTR": "ESTRADA", "ESTRADA": "ESTRADA",
+    "PC": "PRACA", "PCA": "PRACA", "PRACA": "PRACA",
+    "AL": "ALAMEDA", "ALAMEDA": "ALAMEDA",
+    "LG": "LARGO", "LARGO": "LARGO",
+    "VL": "VILA", "VILA": "VILA",
+    "CJ": "CONJUNTO", "CONJ": "CONJUNTO", "CONJUNTO": "CONJUNTO",
+    "JD": "JARDIM", "JDIM": "JARDIM", "JARDIM": "JARDIM",
+    "QD": "QUADRA", "QUADRA": "QUADRA",
+    "LT": "LOTE", "LOTE": "LOTE",
+}
+ 
+_ABREVIACOES = {
+    "PRES": "PRESIDENTE", "PRESID": "PRESIDENTE",
+    "DR": "DOUTOR", "DRA": "DOUTORA",
+    "PROF": "PROFESSOR", "PROFA": "PROFESSORA",
+    "CEL": "CORONEL", "CAP": "CAPITAO", "GEN": "GENERAL", "MAJ": "MAJOR",
+    "GOV": "GOVERNADOR", "SEN": "SENADOR", "DEP": "DEPUTADO",
+    "MIN": "MINISTRO", "MAL": "MARECHAL", "ENG": "ENGENHEIRO",
+    "S": "SAO", "STA": "SANTA", "STO": "SANTO", "SA": "SAO",
+    "N": "NOSSA", "NSA": "NOSSA", "SRA": "SENHORA",
+    "PE": "PADRE", "MONS": "MONSENHOR", "IRM": "IRMAO",
+    "VER": "VEREADOR", "DES": "DESEMBARGADOR", "COM": "COMENDADOR",
+}
+ 
+# datas viram por extenso na Receita e em algarismo no DFV (e vice-versa)
+_NUMERAIS = {
+    "1": "PRIMEIRO", "2": "DOIS", "3": "TRES", "4": "QUATRO", "5": "CINCO",
+    "6": "SEIS", "7": "SETE", "8": "OITO", "9": "NOVE", "10": "DEZ",
+    "11": "ONZE", "12": "DOZE", "13": "TREZE", "14": "QUATORZE",
+    "15": "QUINZE", "16": "DEZESSEIS", "17": "DEZESSETE", "18": "DEZOITO",
+    "19": "DEZENOVE", "20": "VINTE", "21": "VINTEEUM", "25": "VINTEECINCO",
+    "28": "VINTEEOITO", "29": "VINTEENOVE", "30": "TRINTA", "31": "TRINTAEUM",
+    "I": "PRIMEIRO", "II": "DOIS", "III": "TRES", "IV": "QUATRO", "V": "CINCO",
+    "1O": "PRIMEIRO", "1º": "PRIMEIRO", "7O": "SETE", "7º": "SETE",
+}
+ 
+_STOPWORDS = {"DE", "DA", "DO", "DAS", "DOS", "E", "EM", "A", "O"}
+
+#################################################################
+########################### HELPERS #############################
+#################################################################
+def _sem_acento(s: str) -> str:
+    return "".join(c for c in unicodedata.normalize("NFKD", s)
+                   if not unicodedata.combining(c))
+
+def normaliza_numero(serie: pd.Series) -> pd.Series:
+    """Primeiro grupo numérico, sem zero à esquerda. '84 A'->'84', '0084'->'84',
+    '123/125'->'123', 'S/N'->''. (o \\D atual transformaria '123/125' em '123125')"""
+    s = serie.astype("string").fillna("")
+    s = s.str.replace(r"\.0$", "", regex=True)
+    s = s.str.extract(r"(\d+)", expand=False).fillna("")
+    return s.str.replace(r"^0+(?=\d)", "", regex=True)
+
+def normaliza_logradouro(serie: pd.Series) -> pd.Series:
+    """'AVENIDA PRES MEDICE CONJ CANAA' -> 'AVENIDA CANAA CONJUNTO MEDICE PRESIDENTE'
+    (tokens ordenados: imune a ordem, abreviação, acento, pontuação e stopword)"""
+    def _norm(v):
+        if v is None or (isinstance(v, float) and pd.isna(v)):
+            return ""
+        t = _sem_acento(str(v)).upper()
+        t = re.sub(r"[^A-Z0-9 ]", " ", t)
+        toks = []
+        for i, tok in enumerate(t.split()):
+            if i == 0 and tok in _TIPOS_LOGRADOURO:
+                toks.append(_TIPOS_LOGRADOURO[tok])
+                continue
+            tok = _ABREVIACOES.get(tok, tok)
+            tok = _TIPOS_LOGRADOURO.get(tok, tok)
+            tok = _NUMERAIS.get(tok, tok)
+            if tok and tok not in _STOPWORDS:
+                toks.append(tok)
+        return " ".join(sorted(set(toks)))
+    return serie.map(_norm).astype("string")
+
+def normaliza_cep(serie: pd.Series) -> pd.Series:
+    """Só dígitos, 8 posições, zero à esquerda. '69906-107'/'69906107.0' -> '69906107'."""
+    s = serie.astype("string").fillna("")
+    s = s.str.replace(r"\.0$", "", regex=True)          # float virado string
+    s = s.str.replace(r"\D", "", regex=True)
+    s = s.where(s.str.len().between(7, 8), "")          # descarta lixo
+    return s.str.zfill(8).replace("00000000", "")
+
+def normaliza_complemento(serie: pd.Series) -> pd.Series:
+    """'LJ 2' -> 'LOJA2' ; 'SALA 301' -> 'SALA301' ; vazio -> ''."""
+    def _norm(v):
+        if v is None or (isinstance(v, float) and pd.isna(v)):
+            return ""
+        t = _sem_acento(str(v)).upper()
+        if t in ("NAN", "NONE"):
+            return ""
+        t = re.sub(r"[^A-Z0-9 ]", " ", t)
+        m = re.search(r"\b([A-Z]+)\.?\s*0*(\d+)", t)
+        if not m:
+            return ""
+        tipo = _UNIDADES.get(m.group(1))
+        return f"{tipo}{m.group(2)}" if tipo else ""
+    return serie.map(_norm).astype("string")
+
+def padroniza(df:pd.DataFrame, cep:str, numero:str, logradouro:str, complemento=None, prefixo="") -> pd.DataFrame:
+    df[cep] = normaliza_cep(df[cep])
+    df[numero] = normaliza_numero(df[numero])
+    df[logradouro] = normaliza_logradouro(df[logradouro])
+    df[complemento] = normaliza_complemento(df[complemento])
+
+    return df
+
 def gera_campos_cep(df:pd.DataFrame, campo_cep, campo_numero, campo_logradouro)-> pd.DataFrame:
+    df["CHAVE_ESPECIFICA"] = df[campo_cep].astype(str) + df[campo_numero].astype(str)
+    df["CHAVE_GERAL"] = df[campo_cep].astype(str) + df[campo_logradouro].astype(str).str[-5:] + df[campo_numero].astype(str)
+
+    for index, row in df.iterrows():
+        if str(row[campo_cep]).endswith("000") or len(row["CHAVE_ESPECIFICA"].strip()) < 9:
+            df.at[index, "CHAVE_ESPECIFICA"] = ""
+        
+        if not str(row[campo_cep]).endswith("000") or len(str(row["CHAVE_GERAL"])) < 10:
+            df.at[index, "CHAVE_GERAL"] = ""
+
+    return df
+
+
+def gera_campo_chave(df:pd.DataFrame, campo_cep, campo_numero, campo_logradouro)-> pd.DataFrame:
     df[campo_numero] = df[campo_numero].apply(lambda x: re.sub(r'\D', '', str(x))) #tirando letras do número
 
     df["CHAVE_ESPECIFICA"] = df[campo_cep].astype(str) + df[campo_numero].astype(str)
@@ -18,9 +157,9 @@ def gera_campos_cep(df:pd.DataFrame, campo_cep, campo_numero, campo_logradouro)-
         if not str(row[campo_cep]).endswith("000") or len(str(row["CHAVE_GERAL"])) < 10:
             df.at[index, "CHAVE_GERAL"] = ""
 
-    
-
     return df
+
+
 
 def pega_lote(string) ->str:
     padrao = r'\bLOTE\s*\w+'
@@ -31,9 +170,90 @@ def pega_lote(string) ->str:
         return lote
     return ""
 
+def fase_2_concatenador_DB(sistema, nova_execucao:Status_Execucoe_DB):
+    pasta_receita_federal = os.path.join(os.getcwd(), "media", "arquivos_receita_federal")
+    salva_status(nova_execucao, f"Iniciando processo para salvar viabilidades no banco", status="Em Andamento")
+
+    dtype={"HP_LIVRE": int, "CEP": "string"}
+    path_arquivos_dfv = os.path.join(os.getcwd(), "media", "arquivos_dfv")
+
+    for estado in ESTADOS_BR:        
+        salva_status(nova_execucao, f"Iniciando análise de viabilidades no estado {estado}", status="Em Andamento")
+        df_receita = pd.DataFrame(Empresa.objects.filter(municipio__uf=estado).values("cnpj", "cep", "numero", "logradouro", "complemento"))
+        df_receita = padroniza(df_receita, "cep","numero", "logradouro", "complemento")        
+        df_receita = gera_campos_cep(df_receita, "cep", "numero", "logradouro")        
+
+
+        dfs_dfv = []
+        for file in os.listdir(path_arquivos_dfv):
+            if estado in file:
+                df_dfv_estado = pd.read_excel(os.path.join(path_arquivos_dfv, file), dtype=dtype)
+                dfs_dfv.append(df_dfv_estado)
+
+        campo_complemento_dfv = "COMPLEMENTO1" if estado != "GO" else "COMPLEMENTO2"
+        df_dfv = padroniza(pd.concat(dfs_dfv), "CEP", "NO_FACHADA", "LOGRADOURO", campo_complemento_dfv)
+
+        df_dfv = df_dfv[df_dfv["HP_LIVRE"] >= 1]
+
+
+
+        df_dfv = gera_campos_cep(df_dfv, "CEP", "NO_FACHADA", "LOGRADOURO")
+
+        if estado in ["DF", "GO"]:
+
+            df_receita["lote"] = df_receita["complemento"].apply(lambda x: pega_lote(str(x)))
+            df_receita["CHAVE_ESPECIFICA"] = df_receita["cep"] + df_receita["lote"]
+            df_receita["CHAVE_GERAL"] = df_receita["cep"] + df_receita["logradouro"].astype(str).str.replace(" ", "").str[-3:] + df_receita["numero"]
+
+            df_dfv["CHAVE_ESPECIFICA"] = df_dfv["CEP"] + df_dfv[campo_complemento_dfv].astype(str).str.replace(" ", "").replace("nan", "")
+            df_dfv["CHAVE_GERAL"] = df_dfv["CEP"] + df_dfv["LOGRADOURO"].astype(str).str.replace(" ", "").str[-3:] + df_dfv["NO_FACHADA"]
+
+        salva_status(nova_execucao,f"Total de chaves específicas no estado {estado} -> {len(df_dfv['CHAVE_ESPECIFICA'].tolist())}", status="Em Andamento")
+        salva_status(nova_execucao,f"Total de chaves específicas ÚNICAS no estado {estado} -> {len(df_dfv['CHAVE_ESPECIFICA'].unique().tolist())}", status="Em Andamento")
+        
+        chaves_especificas_dfv = df_dfv[~df_dfv["CEP"].astype(str).str.endswith("000")]["CHAVE_ESPECIFICA"].unique().tolist()
+        chaves_especificas_dfv = [c for c in chaves_especificas_dfv if len(c)>4]
+
+        chaves_geral_dfv = df_dfv[df_dfv["CEP"].astype(str).str.endswith("000")]["CHAVE_GERAL"].unique().tolist()
+        chaves_geral_dfv = [c for c in chaves_geral_dfv if len(c)>4]
+
+        df_receita_cep_especifico = df_receita[df_receita["CHAVE_ESPECIFICA"].isin(chaves_especificas_dfv)]
+        df_receita_cep_geral = df_receita[df_receita["CHAVE_GERAL"].isin(chaves_geral_dfv)]
+
+        df_receita_viaveis:pd.DataFrame = pd.concat([df_receita_cep_especifico, df_receita_cep_geral])
+        cnpjs_viabilidade_primaria = df_receita_viaveis["cnpj"].unique().tolist()
+
+        print(f"Empresas com Viabilidade Primária Antes: {Empresa.objects.filter(viabilidade=Empresa.VIABILIDADE_PRIMARIA).count()}")
+        Empresa.objects.filter(cnpj__in=cnpjs_viabilidade_primaria).update(viabilidade=Empresa.VIABILIDADE_PRIMARIA)
+        print(f"Empresas com Viabilidade Primária Depois: {Empresa.objects.filter(viabilidade=Empresa.VIABILIDADE_PRIMARIA).count()}")
+
+        # df_receita_viaveis.to_csv(os.path.join(path_viabilidades, f"Viabilidade_Primaria_{estado}.csv"), sep=";", index=False)
+
+        ceps_especificos_dfv = df_dfv[~df_dfv["CEP"].astype(str).str.endswith("000")]["CEP"].unique().tolist()
+
+        df_receita_nao_coletados = df_receita[~df_receita["cnpj"].isin(df_receita_viaveis["cnpj"].unique().tolist())]
+
+        df_receita_mailing_secundario = df_receita_nao_coletados[df_receita_nao_coletados["cep"].isin(ceps_especificos_dfv)]
+        padrao = r'\b(apto|apartamento|sala|bloco)\b'
+        df_receita_mailing_secundario = df_receita_mailing_secundario[
+            ~df_receita_mailing_secundario['complemento']
+            .fillna('')
+            .str.contains(padrao, case=False, regex=True)
+        ]
+        cnpjs_viabilidade_secundaria = df_receita_mailing_secundario["cnpj"].unique().tolist()
+
+        print(f"Empresas com Viabilidade Secundária Antes: {Empresa.objects.filter(viabilidade=Empresa.VIABILIDADE_SECUNDARIA).count()}")
+        Empresa.objects.filter(cnpj__in=cnpjs_viabilidade_secundaria).update(viabilidade=Empresa.VIABILIDADE_SECUNDARIA)
+        print(f"Empresas com Viabilidade Secundária Depois: {Empresa.objects.filter(viabilidade=Empresa.VIABILIDADE_SECUNDARIA).count()}")
+    
+    
+                
+
 def fase_2_concatenador(sistema, nova_execucao:Status_Execucoe_DB):
     pasta_receita_federal = os.path.join(os.getcwd(), "media", "arquivos_receita_federal")
     salva_status(nova_execucao, f"Iniciando análise de viabilidades para o sistema {sistema}", status="Em Andamento")
+    fase_2_concatenador_DB(sistema, nova_execucao)
+
     if sistema == "oi":
         try:
             # COLUNAS_DFV=["UF","MUNICIPIO","LOCALIDADE","BAIRRO","LOGRADOURO","CEP","CELULA","TIPO_CDO","COMPLEMENTO2","COMPLEMENTO3","CODIGO_LOGRADOURO","NO_FACHADA","COMPLEMENTO1","VIABILIDADE_ATUAL","HP_TOTAL","HP_LIVRE","OPB_CEL","DT_ATUALIZACAO"]

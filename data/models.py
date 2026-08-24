@@ -1,6 +1,7 @@
 from django.db import models
 from datetime import datetime
 import requests
+
 OPCOES_SISTEMA = (
         ("oi", "oi"),
         ("geral", "geral"),

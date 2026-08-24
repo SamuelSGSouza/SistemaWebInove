@@ -55,6 +55,10 @@ ESTADOS_NOMES = {
     "SP": "São Paulo", "SE": "Sergipe", "TO": "Tocantins",
 }
 
+from corpdata.models import Empresa
+
+# print(Empresa.objects.filter(municipio__uf="AC").values())
+
 # from django.utils import timezone
 # imprime_relatorio()
 # telefones_achados = TelefonesDiscados.objects.values_list("telefone", flat=True)
@@ -1086,61 +1090,30 @@ def filtro_geral_view(request):
 
     return render(request, 'filtro_geral.html', context)
 
-def _extrai_token(request):
-    """
-    Extrai o token da requisição. Aceita:
-      Header:  Authorization: Bearer <token>
-      Header:  X-Api-Token: <token>
-    """
-    auth = request.META.get("HTTP_AUTHORIZATION", "")
-    if auth.startswith("Bearer "):
-        return auth[len("Bearer "):].strip()
- 
-    return request.META.get("HTTP_X_API_TOKEN", "").strip() or None
- 
- 
-IPS_PERMITIDOS = ["181.191.204.62", "177.39.236.250" ]          # ex.: ["203.0.113.10", "198.51.100.7"]
+
+IPS_PERMITIDOS = [ "177.39.236.250", ]          # ex.: ["203.0.113.10", "198.51.100.7"]
  
  
 def exige_token(view_func):
-    """Versao do decorator com log de IP e whitelist opcional."""
     def wrapper(request, *args, **kwargs):
-        ip = get_client_ip(request)
- 
-        # 1) Whitelist de IP (se configurada)
-        if IPS_PERMITIDOS and ip not in IPS_PERMITIDOS:
-            return JsonResponse({"erro": "Acesso negado."}, status=403)
- 
+
+        token = request.headers.get("API-Token")
+        if not token:
+            return JsonResponse(
+                {"erro": "Token não informado."},
+                status=401
+            )
+
+        if token != os.getenv("API_TOKEN"):
+            return JsonResponse(
+                {"erro": "Token inválido."},
+                status=401
+            )
+
         return view_func(request, *args, **kwargs)
- 
+
     return wrapper
 
- 
-
-def get_client_ip(request) -> str:
-    """
-    Retorna o IP real do cliente.
- 
-    Ordem de preferencia:
-      1. X-Real-IP        -> setado pelo SEU Nginx, nao forjavel pelo cliente
-      2. X-Forwarded-For  -> pega o ULTIMO valor (o que o seu Nginx acrescentou)
-      3. REMOTE_ADDR      -> fallback (sera 127.0.0.1 atras de proxy)
- 
-    IMPORTANTE: nunca use o PRIMEIRO valor de X-Forwarded-For sem validacao.
-    O cliente pode enviar "X-Forwarded-For: 1.2.3.4" e o Nginx apenas
-    acrescenta o IP real no final, virando "1.2.3.4, IP_REAL".
-    """
-    ip = request.META.get("HTTP_X_REAL_IP")
-    if ip:
-        return ip.strip()
- 
-    xff = request.META.get("HTTP_X_FORWARDED_FOR")
-    if xff:
-        # O ultimo da lista foi acrescentado pelo proxy confiavel
-        return xff.split(",")[-1].strip()
- 
-    return request.META.get("REMOTE_ADDR", "")
- 
 
 @exige_token
 @require_http_methods(["GET"])
@@ -1165,7 +1138,7 @@ def api_consulta_telefone(request, telefone=None):
         resultado = consulta_operadora(telefone, conn=get_conn_persistente())
     except ValueError as e:
         return JsonResponse({"erro": str(e)}, status=400)
-    except Exception:
+    except Exception as e:
         return JsonResponse(
             {"erro": "Falha ao consultar o banco de dados."}, status=500
         )
