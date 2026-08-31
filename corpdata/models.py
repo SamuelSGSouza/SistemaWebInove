@@ -2,6 +2,7 @@ from django.db import models
 from django.db.models import Aggregate, TextField
 
 
+
 class NaturezaJuridica(models.Model):
     codigo = models.CharField(max_length=4, unique=True, primary_key=True)
     descricao = models.CharField(max_length=255)
