@@ -137,7 +137,7 @@ def gera_campos_cep(df: pd.DataFrame,
                     campo_cep: str,
                     campo_numero: str,
                     campo_logradouro: str,
-                    campo_especifico: str | None = None,
+                    campo_especifico = None,
                     usar_chave_geral=True) -> pd.DataFrame:
     """
     CHAVE_ESPECIFICA = cep + <campo_especifico>          (só quando o CEP é específico)
