@@ -1,5 +1,4 @@
 from django.db import models
-from pydantic import BaseModel
 from django.db.models import Aggregate, TextField
 
 
