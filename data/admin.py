@@ -16,3 +16,9 @@ class ExecucaoSistema_Admin(admin.ModelAdmin):
     pass
 
 admin.site.register(ExecucaoSistema, ExecucaoSistema_Admin)
+
+
+class Log_Admin(admin.ModelAdmin):
+    pass
+
+admin.site.register(Log, Log_Admin)

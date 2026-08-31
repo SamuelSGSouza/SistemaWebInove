@@ -12,7 +12,7 @@ from functions.contantes import *
 import pandas
 from corpdata.models import Cnae, Municipio, NaturezaJuridica, Empresa
 from django.db import transaction
-
+import numpy as np
 
 COLUNAS_TIPOS_ARQUIVOS = {
     "empresa": ['cnpj_basico','razao_social','natureza_juridica','qualificacao_responsavel','capital_social','porte_empresa','ente_federativo_responsavel',],
@@ -25,7 +25,7 @@ COLUNAS_TIPOS_ARQUIVOS = {
 }
 DTYPES = {
     'empresa':{
-        'cnpj_basico': 'string',
+        'cnpj_basico': 'int32',
         'razao_social': 'string',
         'natureza_juridica': 'category',
         'qualificacao_responsavel': 'category',
@@ -538,11 +538,29 @@ def unifica_dados(nova_execucao):
         del df_list
         return df_concat
     
+    pasta_estabelecimentos = os.path.join(pasta_destino, "estabelecimentos")
+    #PRIMEIRO EU LISTO AS EMPRESAS QUE ESTÃO ATIVAS
+    cnpjs_ativos = np.zeros(100_000_000, dtype=bool)
+
+    for file in os.listdir(pasta_estabelecimentos):
+        caminho = os.path.join(pasta_estabelecimentos, file)
+        chunks = pandas.read_csv(
+            caminho, sep=';', names=COLUNAS_TIPOS_ARQUIVOS["estabelecimentos"],
+            usecols=['cnpj_basico', 'situacao_cadastral'], encoding='latin-1',
+            dtype={'cnpj_basico': 'int32', 'situacao_cadastral': 'int8'},
+            skipinitialspace=True, quotechar='"', chunksize=300_000,
+        )
+        for df in chunks:
+            base = df['cnpj_basico'].to_numpy()
+            sit = df['situacao_cadastral'].to_numpy()
+            cnpjs_ativos[base[sit == 2]] = True
 
     #FIM DAS FUNÇÕES DE APOIO
     df_empre = criar_dataframe("empresa", COLUNAS_TIPOS_ARQUIVOS["empresa"], DTYPES["empresa"],['cnpj_basico','razao_social','natureza_juridica',])
     df_empre['razao_social'] = df_empre['razao_social'].apply(tratar_string)
-    df_empre["cnpj_basico"] = df_empre["cnpj_basico"].astype("string")
+    base = df_empre['cnpj_basico'].astype('int32').to_numpy()
+    df_empre = df_empre[cnpjs_ativos[base]]
+    df_empre["cnpj_basico"] = ( df_empre["cnpj_basico"] .astype("string") .str.zfill(8) )
     memoria_consumida = df_empre.memory_usage(deep=True).sum() / (1024 * 1024)
     salva_log_geral(f"EMPRESAS CONFIGURADO! Total de registros: {len(df_empre)} Total de memória consumida: {int(memoria_consumida)} MB")
     #EMPRESAS CONFIGURADO! Total de registros: 63235730 Total de memória consumida: 13612 MB
@@ -572,13 +590,16 @@ def unifica_dados(nova_execucao):
     salva_log_geral(f"MUNICIPIOS CONFIGURADO! Total de registros: {len(df_mun)} Total de memória consumida: {int(memoria_consumida)} MB")
 
     df_socio = criar_dataframe("socios", COLUNAS_TIPOS_ARQUIVOS["socios"],DTYPES["socios"],['cnpj_basico','identificador_de_socio','nome_socio','cnpj_cpf_socio','qualificacao_socio','faixa_etaria', "nome_representante"])
+    base = df_socio['cnpj_basico'].astype('int32').to_numpy()
+    df_socio = df_socio[cnpjs_ativos[base]]
+    df_socio["cnpj_basico"] = ( df_socio["cnpj_basico"].astype("string").str.zfill(8) )
     df_socio['nome_socio'] = df_socio['nome_socio'].apply(tratar_string)
     df_socio['nome_representante'] = df_socio['nome_representante'].apply(tratar_string)
     memoria_consumida = df_socio.memory_usage(deep=True).sum() / (1024 * 1024)
     salva_log_geral(f"SOCIOS CONFIGURADO! Total de registros: {len(df_socio)} Total de memória consumida: {int(memoria_consumida)} MB")
 
-    pasta_estabelecimentos = os.path.join(pasta_destino, "estabelecimentos")
-
+    
+    
     cnpjs_usados = []
     i = 1
     for file in os.listdir(pasta_estabelecimentos):
@@ -586,15 +607,9 @@ def unifica_dados(nova_execucao):
         chunks = pandas.read_csv(csv, sep = ';', names = COLUNAS_TIPOS_ARQUIVOS["estabelecimentos"], usecols=['cnpj_basico', 'cnpj_ordem', 'cnpj_dv', 'matriz_filial', 'nome_fantasia','situacao_cadastral', 'data_situacao_cadastral', 'pais', 'data_inicio_atividades', 'cnae_fiscal', 'cnae_fiscal_secundaria', 'tipo_logradouro', 'logradouro','numero', 'complemento', 'bairro', 'cep', 'uf', 'municipio', 'ddd1', 'telefone1', 'ddd2', 'telefone2', 'ddd_fax', 'fax', 'correio_eletronico',], encoding = 'latin-1', dtype = DTYPES["estabelecimentos"], skipinitialspace=True, quotechar='"', chunksize=3_000_000)
         for df_estab in chunks:
             df_estab = df_estab[df_estab['situacao_cadastral'].isin(['2', '02'])]
-            df_estab = fillna_categoricals(df_estab)
+            df_estab = fillna_categoricals(df_estab)            
 
             #CONCATENANDO COM EMPRESAS
-            print("formato dados:", df_empre["cnpj_basico"].head())
-            print("formato dados:", df_estab["cnpj_basico"].head())
-            df_estab_filtr = df_estab[df_estab["cnpj_basico"].isin(df_empre["cnpj_basico"].unique().tolist())]
-            print(f"Um total de {len(df_estab_filtr['cnpj_basico'].unique().tolist())}/{len(df_estab['cnpj_basico'].unique().tolist())} possuem infos nas empresas")
-            
-
             df_unificado = pandas.merge(df_estab, df_empre, on='cnpj_basico', how='left')
             df_unificado = fillna_categoricals(df_unificado)
             df_unificado["razao_social_na"] = df_unificado["razao_social"].isna()
@@ -680,6 +695,7 @@ def unifica_dados(nova_execucao):
             df_unificado['TEL3'] = df_unificado['TEL3'].apply(lambda x: clean_phone_number(x))
 
             df_unificado.dropna(subset=["uf",], inplace=True)
+            
             df_unificado["uf"] = df_unificado["uf"].apply(lambda x: x if x != "EX" else "ES")
             
             
@@ -689,8 +705,6 @@ def unifica_dados(nova_execucao):
                 regex=True
             )
 
-            df_unificado = df_unificado[~df_unificado["cnpj"].isin(cnpjs_usados)]
-            cnpjs_usados += df_unificado["cnpj"].unique().tolist()
             # Agrupa por estado e salva em arquivos separados
             for uf in df_unificado["uf"].unique().tolist():
                 nome_arquivo_uf = os.path.join(pasta_destino, f"{uf}.csv")
@@ -825,7 +839,6 @@ def limpa(valor):
 
     return valor
 
-
 def converte_data(valor):
     valor = limpa(valor)
 
@@ -850,14 +863,22 @@ def cadastra_atualiza_empresas(nova_execucao):
     dict_mun = {}
     for dado in lista_estados:
         dict_mun[f"{dado[0]}-{dado[1]}"]=dado[2]
-    start_time = time.time()
-    campos_editar = []
+
+    CAMPOS_EDITAR = [
+        "data_inicio_atividades", "natureza_juridica_id", "cnae_fiscal_id",
+        "razao_social", "nome_fantasia", "matriz_filial", "decisor",
+        "situacao_cadastral", "correio_eletronico", "logradouro", "numero",
+        "complemento", "bairro", "cep", "municipio_id", "eh_mei",
+        "telefone_receita_1", "telefone_receita_2", "telefone_receita_3",
+    ]
     for estado in ESTADOS_BR:
         nome_arquivo_uf = os.path.join(pasta_destino, f"{estado}.csv")
         partes:list[pd.DataFrame] = pd.read_csv(nome_arquivo_uf, sep=";", dtype=DTYPES_RECEITA_FEDERAL, chunksize=1_000_000)
+
+        start_time = time.time()
         for chunk in partes:
             para_cadastrar = []
-            
+
             
             
             for row in chunk.itertuples(index=False):
@@ -885,14 +906,13 @@ def cadastra_atualiza_empresas(nova_execucao):
                     "complemento": limpa(row.complemento1),
                     "bairro": limpa(row.bairro),
                     "cep": limpa(row.cep),
-                    "municipio": dict_mun[chave_municipio],
-                    "cpf": limpa(row.CPF),
-                    "mei_nome_mei": limpa(row.MEINAOMEI),
+                    "municipio_id": dict_mun[chave_municipio],
+                    "eh_mei": row.MEINAOMEI == 'S',
                     "telefone_receita_1": telefones[0] if len(telefones) > 0 else "",
                     "telefone_receita_2": telefones[1] if len(telefones) > 1 else "",
                     "telefone_receita_3": telefones[2] if len(telefones) > 2 else "",
                 }
-                campos_editar = [k for k in list(dados.keys()) if k!= "cnpj"]
+                
                 para_cadastrar.append(
                     Empresa(**dados)
                 )
@@ -905,17 +925,13 @@ def cadastra_atualiza_empresas(nova_execucao):
                         para_cadastrar,
                         batch_size=10_000,
                         unique_fields=["cnpj",],
-                        update_fields=campos_editar,
-                        update_conflicts=True
+                        update_fields=CAMPOS_EDITAR,
+                        update_conflicts=True,
                     )
-            salva_status(nova_execucao, titulo=f"Tempo para salvar os dados do estado {estado} = {time.time() - start_time}",status="Concluido")
-        print()
         salva_status(nova_execucao, titulo=f"Tempo para salvar os dados do estado {estado} = {time.time() - start_time}",status="Concluido")
 
     print(f"Total de empresas cadastradas no banco até o estado {estado}: {Empresa.objects.count()}")
     
-
-
 def salvar_infos_base(nova_execucao):
     pasta_raiz = os.path.join(os.getcwd(), "media", "arquivos_receita_federal")
 
@@ -1015,7 +1031,9 @@ def salvar_infos_base(nova_execucao):
     total_cadastrados = Municipio.objects.count()
     salva_status(nova_execucao, titulo=f"Total de {total_cadastrados} Municípios Cadastrados",status="Concluido")
 
-
+    del df_municipios
+    del df_natureza_juridica
+    del df_cnaes
 
 @fecha_conexoes
 def fase_1_gerador():
@@ -1037,10 +1055,10 @@ def fase_1_gerador():
 
         salva_status(nova_execucao, titulo="Iniciando Unificação e limpeza dos Arquivos da Receita Federal",status="Em Andamento")
 
-
-        unifica_dados(nova_execucao)
         salvar_infos_base(nova_execucao)
-        cadastra_atualiza_empresas()
+        unifica_dados(nova_execucao)
+        
+        cadastra_atualiza_empresas(nova_execucao)
         realiza_limpeza()
 
         salva_status(nova_execucao, titulo="Finalização dos Dados da Receita Federal",status="Concluido")
@@ -1102,13 +1120,8 @@ def verificador_fase_1(nova_execucao):
 
             return False
         
-        df_repetidos = df[df["cnpj"].isin(cnpjs_encontrados)]
-        if len(df_repetidos.index) > 1:
-            salva_status(nova_execucao, titulo=f"Erro ao Tratar Base da Receita: Arquivo {file} possui cnpjs repetidos com outro arquivo",status="Erro")            
-            return False
+        del df
         
-        
-        cnpjs_encontrados += df["cnpj"].unique().tolist()
 
         # colunas_telefone = ["TEL1", "TEL2", "TEL3"]
         # df_telefones = df[colunas_telefone]

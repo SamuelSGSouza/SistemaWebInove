@@ -1,4 +1,7 @@
 from django.db import models
+from pydantic import BaseModel
+from django.db.models import Aggregate, TextField
+
 
 class NaturezaJuridica(models.Model):
     codigo = models.CharField(max_length=4, unique=True, primary_key=True)
@@ -12,7 +15,6 @@ class NaturezaJuridica(models.Model):
     def __str__(self):
         return f"{self.codigo} - {self.descricao}"
 
-
 class Cnae(models.Model):
     codigo = models.CharField(max_length=7, unique=True, primary_key=True)
     descricao = models.CharField(max_length=255)
@@ -24,7 +26,6 @@ class Cnae(models.Model):
 
     def __str__(self):
         return f"{self.codigo} - {self.descricao}"
-
 
 class Municipio(models.Model):
     codigo = models.CharField(max_length=7, unique=True, primary_key=True)
@@ -154,14 +155,7 @@ class Empresa(models.Model):
         blank=True,
     )
 
-    cpf = models.CharField(
-        max_length=11,
-        null=True,
-        blank=True,
-        db_index=True,
-    )
-
-    mei_nome_mei = models.CharField(
+    eh_mei = models.BooleanField(
         max_length=255,
         null=True,
         blank=True,
@@ -208,5 +202,16 @@ class Empresa(models.Model):
 
     def __str__(self):
         return f"{self.cnpj} - {self.razao_social or 'Sem razão social'}"
+
+
+#######################################
+# MODEL DOS MAILINGS                  #
+#######################################
+class SQLiteGroupConcat(Aggregate):
+    function = "GROUP_CONCAT"
+    template = "%(function)s(%(expressions)s, ',')"
+    output_field = TextField()
+    
+
 
 
