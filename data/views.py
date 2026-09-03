@@ -1,29 +1,41 @@
-from django.shortcuts import render
+################################################
+# DJANGO IMPORTS                               #
+################################################
 from django.shortcuts import render, redirect
 from django.urls import reverse
-from .models import *
-from functions.utils import *
 from django.views.generic import TemplateView
-from django.http import JsonResponse
-import os, datetime,threading, pandas as pd
-from django.http import StreamingHttpResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
+from django.http import JsonResponse, StreamingHttpResponse, FileResponse
+from django.db.models import Max
+from django.db.models.functions import TruncDate
 from django.contrib.auth.mixins import LoginRequiredMixin
-import traceback, shutil
-from django.http import FileResponse
+
+
+################################################
+# DEFAULT LIBS                                 #
+################################################
+import os, datetime,threading, traceback, shutil, json, re, unicodedata 
+from collections import defaultdict
+
+################################################
+# EXTERNAL LIBS                                #
+################################################
+from dotenv import load_dotenv
+import os
+load_dotenv()
+
+
+
+################################################
+# OUTROS APPS                                  #
+################################################
+from .models import *
+from corpdata import models as corp_data_model
+from functions.utils import *
 from functions.contantes import *
 from functions.gerador import inicia_gerador, inicia_gerador_mailing_2026, inicia_gerador_arquivos_cpf
 from functions.finaliza_analise_de_dados import conta_dados
-import json
-import re
-import unicodedata
-from collections import defaultdict
-
-from django.db.models import Max
-from django.views.generic import TemplateView
-from django.contrib.auth.mixins import LoginRequiredMixin
-from django.db.models.functions import TruncDate
-from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_http_methods
 from functions.importa_dados_telefones import cadastra_telefones_dia, cadastra_telefones_antigos, pesquisa_telefones, imprime_relatorio
 from functions.pesquisa_operadora import (
     consulta_operadora,
@@ -31,10 +43,7 @@ from functions.pesquisa_operadora import (
     get_conn_persistente,
 )
 
-import hmac
-from dotenv import load_dotenv
-import os
-load_dotenv()
+
 
 titulos = {
     'oi': "Mailing Original (Nio)",
@@ -55,195 +64,154 @@ ESTADOS_NOMES = {
     "SP": "São Paulo", "SE": "Sergipe", "TO": "Tocantins",
 }
 
-from corpdata.models import Empresa
+def transforma_empresa(json_data):
+    data = json_data.get("data", {})
 
-# print(Empresa.objects.filter(municipio__uf="AC").values())
+    natureza = data.get("natureza_juridica") or {}
+    cnae = data.get("cnae_fiscal") or {}
+    endereco = data.get("endereco") or {}
+    municipio = endereco.get("municipio") or {}
 
-# from django.utils import timezone
-# imprime_relatorio()
-# telefones_achados = TelefonesDiscados.objects.values_list("telefone", flat=True)
-# print("Telefones: ", len(telefones_achados))
-# print("Telefones filtrados: ", len(set(telefones_achados)))
+    telefones = data.get("telefones") or []
 
-# limite = timezone.now() - datetime.timedelta(days=90)
-# TelefonesDiscados.objects.filter(momento_chamada__lt=limite)
-# print("Telefones Antigos: ", TelefonesDiscados.objects.filter(momento_chamada__lt=limite).count())
-def _normaliza(texto: str) -> str:
-    """Remove acentos e baixa a caixa para casar títulos de forma robusta."""
-    texto = unicodedata.normalize("NFKD", texto or "")
-    return texto.encode("ascii", "ignore").decode("ascii").lower()
+    return {
+        "cnpj": data.get("cnpj"),
+        "data_inicio_atividades": data.get("data_inicio_atividades"),
 
+        "natureza_juridica_codigo": natureza.get("codigo"),
+        "natureza_juridica_descricao": natureza.get("descricao"),
 
-def _classifica_titulo(titulo: str):
-    """
-    Lê um título de DadoExtracao e devolve (estado, segmento, viabilidade, credito)
-    quando ele descreve uma contagem de CNPJs por status de crédito.
-    Devolve None para qualquer outra linha (totais, viabilidade agregada, etc).
+        "cnae_fiscal_codigo": cnae.get("codigo"),
+        "cnae_fiscal_descricao": cnae.get("descricao"),
 
-        segmento   -> 'mei' | 'nmei'
-        viabilidade-> 'primaria' | 'secundaria'
-        credito    -> 'aprovado' | 'negado' | 'sem_info'
-    """
-    t = _normaliza(titulo)
+        "cnaes_secundarios": data.get("cnaes_secundarios", []),
 
-    if "cnpjs com viabilidade" not in t:
-        return None
+        "razao_social": data.get("razao_social"),
+        "nome_fantasia": data.get("nome_fantasia"),
+        "matriz_filial": data.get("matriz_filial"),
+        "decisor": data.get("decisor"),
+        "situacao_cadastral": data.get("situacao_cadastral"),
+        "correio_eletronico": data.get("correio_eletronico"),
 
-    m_estado = re.search(r"estado\s+([a-z]{2})\b", t)
-    if not m_estado:
-        return None
-    estado = m_estado.group(1).upper()
+        "logradouro": endereco.get("logradouro"),
+        "numero": endereco.get("numero"),
+        "complemento": endereco.get("complemento"),
+        "bairro": endereco.get("bairro"),
+        "cep": endereco.get("cep"),
 
-    if "nao mei" in t:          # precisa vir antes de "mei"
-        segmento = "nmei"
-    elif "mei" in t:
-        segmento = "mei"
-    else:
-        return None
+        "municipio_codigo": municipio.get("codigo"),
+        "municipio_nome": municipio.get("nome"),
+        "uf": municipio.get("uf"),
 
-    if "primaria" in t:
-        viabilidade = "primaria"
-    elif "secundaria" in t:
-        viabilidade = "secundaria"
-    else:
-        return None
+        "eh_mei": data.get("eh_mei"),
 
-    if "credito aprovado" in t:
-        credito = "aprovado"
-    elif "credito negado" in t:
-        credito = "negado"
-    elif "sem info" in t:       # "sem infos de credito"
-        credito = "sem_info"
-    else:
-        return None
+        "telefone_1": telefones[0] if len(telefones) > 0 else None,
+        "telefone_2": telefones[1] if len(telefones) > 1 else None,
+        "telefone_3": telefones[2] if len(telefones) > 2 else None,
 
-    return estado, segmento, viabilidade, credito
-
-
-def monta_payload_dashboard(registros):
-    """
-    Recebe a lista de DadoExtracao (mais recentes por título) e devolve a
-    estrutura consumida pelo front:
-
-        {
-          "mei":  {"estados": [ {uf, nome, primaria, secundaria,
-                                 aprovado, negado, sem_info, total,
-                                 viab_primaria, viab_secundaria}, ... ],
-                   "totais":  { ...mesmos campos do estado... }},
-          "nmei": { ... }
-        }
-    """
-    def _credito_zero():
-        return {"aprovado": 0, "negado": 0, "sem_info": 0}
-
-    bruto = {
-        "mei": defaultdict(lambda: {"primaria": _credito_zero(), "secundaria": _credito_zero()}),
-        "nmei": defaultdict(lambda: {"primaria": _credito_zero(), "secundaria": _credito_zero()}),
+        "viabilidade": data.get("viabilidade"),
+        "credito": data.get("credito"),
     }
 
-    for reg in registros:
-        info = _classifica_titulo(reg.titulo)
-        if not info:
-            continue
-        estado, seg, viab, cred = info
-        bruto[seg][estado][viab][cred] += reg.quantidade or 0
 
+def monta_payload_dashboard():
+    """
+    monta um dicionário com as informações dos resumos e resumos por estado
+    """
+    #pegando o mais recente
     payload = {}
-    for seg in ("mei", "nmei"):
-        estados_lista = []
-        tot_prim = _credito_zero()
-        tot_sec = _credito_zero()
+    dados_gerais = corp_data_model.ResumoDados.objects.order_by("-id").first()
 
-        for uf, dados_uf in bruto[seg].items():
-            prim, sec = dados_uf["primaria"], dados_uf["secundaria"]
-            for c in ("aprovado", "negado", "sem_info"):
-                tot_prim[c] += prim[c]
-                tot_sec[c] += sec[c]
+    #se não houver dados gerais, retorna um dicionário vazio
+    if not dados_gerais:
+        return payload
 
-            aprovado = prim["aprovado"] + sec["aprovado"]
-            negado = prim["negado"] + sec["negado"]
-            sem_info = prim["sem_info"] + sec["sem_info"]
-            estados_lista.append({
-                "uf": uf,
-                "nome": ESTADOS_NOMES.get(uf, uf),
-                "primaria": prim,
-                "secundaria": sec,
-                "aprovado": aprovado,
-                "negado": negado,
-                "sem_info": sem_info,
-                "total": aprovado + negado + sem_info,
-                "viab_primaria": sum(prim.values()),
-                "viab_secundaria": sum(sec.values()),
-            })
+    #inserindo os dados gerais no payload
+    payload["dados_gerais"] = {
+        "total_empresas": dados_gerais.total_empresas,
+        "total_empresas_mei": dados_gerais.total_empresas_mei,
+        "total_empresas_nmei": dados_gerais.total_empresas_nmei,
+        "total_empresas_viabilidade_primaria": dados_gerais.total_empresas_viabilidade_primaria,
+        "total_empresas_viabilidade_secundaria": dados_gerais.total_empresas_viabilidade_secundaria,
+        "total_empresas_viabilidade_nao_informada": dados_gerais.total_empresas_viabilidade_nao_informada,
+        "total_empresas_mei_viabilidade_primaria": dados_gerais.total_empresas_mei_viabilidade_primaria,
+        "total_empresas_mei_viabilidade_secundaria": dados_gerais.total_empresas_mei_viabilidade_secundaria,
+        "total_empresas_mei_viabilidade_nao_informada": dados_gerais.total_empresas_mei_viabilidade_nao_informada,
+        "total_empresas_nmei_viabilidade_primaria": dados_gerais.total_empresas_nmei_viabilidade_primaria,
+        "total_empresas_nmei_viabilidade_secundaria": dados_gerais.total_empresas_nmei_viabilidade_secundaria,
+        "total_empresas_nmei_viabilidade_nao_informada": dados_gerais.total_empresas_nmei_viabilidade_nao_informada,
+        "total_empresas_credito_aprovado": dados_gerais.total_empresas_credito_aprovado,
+        "total_empresas_credito_negado": dados_gerais.total_empresas_credito_negado,
+        "total_empresas_credito_sem_info": dados_gerais.total_empresas_credito_sem_info,
+        "total_empresas_credito_aprovado_mei": dados_gerais.total_empresas_credito_aprovado_mei,
+        "total_empresas_credito_negado_mei": dados_gerais.total_empresas_credito_negado_mei,
+        "total_empresas_credito_sem_info_mei": dados_gerais.total_empresas_credito_sem_info_mei,
+        "total_empresas_credito_aprovado_nmei": dados_gerais.total_empresas_credito_aprovado_nmei,
+        "total_empresas_credito_negado_nmei": dados_gerais.total_empresas_credito_negado_nmei,
+        "total_empresas_credito_sem_info_nmei": dados_gerais.total_empresas_credito_sem_info_nmei,
+    }
 
-        estados_lista.sort(key=lambda x: x["total"], reverse=True)
+    #inserindo os dados por estado no payload
+    
+    for uf in list(ESTADOS_NOMES.keys()):
+        resumo_uf = corp_data_model.ResumoDadosUF.objects.filter(resumo=dados_gerais, uf=uf).first()
+        if resumo_uf:
+            payload[uf] = {
+                "total_empresas": resumo_uf.total_empresas,
+                "total_empresas_mei": resumo_uf.total_empresas_mei,
+                "total_empresas_nmei": resumo_uf.total_empresas_nmei,
+                "total_empresas_viabilidade_primaria": resumo_uf.total_empresas_viabilidade_primaria,
+                "total_empresas_viabilidade_secundaria": resumo_uf.total_empresas_viabilidade_secundaria,
+                "total_empresas_viabilidade_nao_informada": resumo_uf.total_empresas_viabilidade_nao_informada,
+                "total_empresas_mei_viabilidade_primaria": resumo_uf.total_empresas_mei_viabilidade_primaria,
+                "total_empresas_mei_viabilidade_secundaria": resumo_uf.total_empresas_mei_viabilidade_secundaria,
+                "total_empresas_mei_viabilidade_nao_informada": resumo_uf.total_empresas_mei_viabilidade_nao_informada,
+                "total_empresas_nmei_viabilidade_primaria": resumo_uf.total_empresas_nmei_viabilidade_primaria,
+                "total_empresas_nmei_viabilidade_secundaria": resumo_uf.total_empresas_nmei_viabilidade_secundaria,
+                "total_empresas_nmei_viabilidade_nao_informada": resumo_uf.total_empresas_nmei_viabilidade_nao_informada,
+                "total_empresas_credito_aprovado": resumo_uf.total_empresas_credito_aprovado,
+                "total_empresas_credito_negado": resumo_uf.total_empresas_credito_negado,
+                "total_empresas_credito_sem_info": resumo_uf.total_empresas_credito_sem_info,
+                "total_empresas_credito_aprovado_mei": resumo_uf.total_empresas_credito_aprovado_mei,
+                "total_empresas_credito_negado_mei": resumo_uf.total_empresas_credito_negado_mei,
+                "total_empresas_credito_sem_info_mei": resumo_uf.total_empresas_credito_sem_info_mei,
+                "total_empresas_credito_aprovado_nmei": resumo_uf.total_empresas_credito_aprovado_nmei,
+                "total_empresas_credito_negado_nmei": resumo_uf.total_empresas_credito_negado_nmei,
+                "total_empresas_credito_sem_info_nmei": resumo_uf.total_empresas_credito_sem_info_nmei
+            }
 
-        aprovado = tot_prim["aprovado"] + tot_sec["aprovado"]
-        negado = tot_prim["negado"] + tot_sec["negado"]
-        sem_info = tot_prim["sem_info"] + tot_sec["sem_info"]
-        payload[seg] = {
-            "estados": estados_lista,
-            "totais": {
-                "uf": "",
-                "nome": "Todos os estados",
-                "primaria": tot_prim,
-                "secundaria": tot_sec,
-                "aprovado": aprovado,
-                "negado": negado,
-                "sem_info": sem_info,
-                "total": aprovado + negado + sem_info,
-                "viab_primaria": sum(tot_prim.values()),
-                "viab_secundaria": sum(tot_sec.values()),
-            },
-        }
+    
 
     return payload
-
 
 class Dashboard(LoginRequiredMixin, TemplateView):
     template_name = "dashboard.html"
 
     def get_context_data(self, **kwargs):
+        df = pd.read_excel("to_p.xlsx")
+        cnpjs = df["CNPJ"].unique().tolist()
+        todos_dados = []
+        for cnpj in cnpjs:
+            cnpj = str(cnpj).zfill(14)
+            url = "http://127.0.0.1:8000/corpdata/pesquisa_empresa"
+            params = {
+                "cnpj": cnpj
+            }
+
+            inicio = time.time( )
+            response = requests.get(url, params=params, timeout=120)
+            try:
+                dados = transforma_empresa(response.json())
+                todos_dados.append(dados)
+            except Exception as e:
+                print(f"Erro ao processar CNPJ {cnpj}: {e}")
+
+        df = pd.DataFrame(todos_dados)
+        df.to_excel("Empresas Completas.xlsx", index=False)
+
         verifica_atualizacao_receita()
         ctx = super().get_context_data(**kwargs)
-        sistema = "oi"
-
-        # limpeza herdada do código antigo
-        DadoExtracao.objects.filter(
-            titulo="Total Empresas Receita Federal", sistema=sistema
-        ).delete()
-
-        # ---- 1 query: pega o registro mais recente de cada título -----------
-        ids_recentes = (
-            DadoExtracao.objects
-            .filter(sistema=sistema)
-            .values("titulo")
-            .annotate(ult=Max("id"))
-            .values_list("ult", flat=True)
-        )
-        registros = list(DadoExtracao.objects.filter(id__in=list(ids_recentes)))
-
-        # ---- estrutura segmentada (MEI / NMEI) pro front --------------------
-        payload = monta_payload_dashboard(registros)
-        ctx["dashboard_json"] = json.dumps(payload)
-
-        # KPIs gerais (RF)
-        total_rf = next(
-            (r for r in registros
-             if r.titulo == "Total de Empresas ATIVAS somantos TODOS os estados"),
-            None,
-        )
-        ctx["total_empresas"] = total_rf.quantidade if total_rf else 0
-
-        # tabela de referência: só os registros mais recentes, ordenados
-        ctx["dados"] = sorted(registros, key=lambda r: r.titulo)
-
-        status = (
-            Status_Execucoe_DB.objects
-            .filter(sistema="geral").order_by("-id").first()
-        )
-        if status:
-            ctx["ultima_exec"] = status.momento_inicializacao
+        ctx["payload"] = monta_payload_dashboard()
 
         return ctx
 

@@ -1,8 +1,78 @@
 from django.db import models
 from django.db.models import Aggregate, TextField
 
+#######################################
+# RESUMO DOS DADOS                    #
+#######################################
+class ResumoDados(models.Model):
+    total_empresas = models.IntegerField(default=0)
+    total_empresas_mei = models.IntegerField(default=0)
+    total_empresas_nmei = models.IntegerField(default=0)
+
+    total_empresas_viabilidade_primaria = models.IntegerField(default=0)
+    total_empresas_viabilidade_secundaria = models.IntegerField(default=0)
+    total_empresas_viabilidade_nao_informada = models.IntegerField(default=0)
+
+    total_empresas_mei_viabilidade_primaria = models.IntegerField(default=0)
+    total_empresas_mei_viabilidade_secundaria = models.IntegerField(default=0)
+    total_empresas_mei_viabilidade_nao_informada = models.IntegerField(default=0)
+
+    total_empresas_nmei_viabilidade_primaria = models.IntegerField(default=0)
+    total_empresas_nmei_viabilidade_secundaria = models.IntegerField(default=0)
+    total_empresas_nmei_viabilidade_nao_informada = models.IntegerField(default=0)
 
 
+    #infos_credito (por enquanto não utilizado)
+    total_empresas_credito_aprovado = models.IntegerField(default=0)
+    total_empresas_credito_negado = models.IntegerField(default=0)
+    total_empresas_credito_sem_info = models.IntegerField(default=0)
+
+    total_empresas_credito_aprovado_mei = models.IntegerField(default=0)
+    total_empresas_credito_negado_mei = models.IntegerField(default=0)
+    total_empresas_credito_sem_info_mei = models.IntegerField(default=0)
+
+    total_empresas_credito_aprovado_nmei = models.IntegerField(default=0)
+    total_empresas_credito_negado_nmei = models.IntegerField(default=0)
+    total_empresas_credito_sem_info_nmei = models.IntegerField(default=0)
+
+class ResumoDadosUF(models.Model):
+    resumo = models.ForeignKey(ResumoDados, on_delete=models.CASCADE, related_name="resumo_ufs")
+
+    uf = models.CharField(max_length=2)
+
+    total_empresas = models.IntegerField(default=0)
+
+    total_empresas_mei = models.IntegerField(default=0)
+    total_empresas_nmei = models.IntegerField(default=0)
+
+    total_empresas_viabilidade_primaria = models.IntegerField(default=0)
+    total_empresas_viabilidade_secundaria = models.IntegerField(default=0)
+    total_empresas_viabilidade_nao_informada = models.IntegerField(default=0)
+
+    total_empresas_mei_viabilidade_primaria = models.IntegerField(default=0)
+    total_empresas_mei_viabilidade_secundaria = models.IntegerField(default=0)
+    total_empresas_mei_viabilidade_nao_informada = models.IntegerField(default=0)
+
+    total_empresas_nmei_viabilidade_primaria = models.IntegerField(default=0)
+    total_empresas_nmei_viabilidade_secundaria = models.IntegerField(default=0)
+    total_empresas_nmei_viabilidade_nao_informada = models.IntegerField(default=0)
+
+    total_empresas_credito_aprovado = models.IntegerField(default=0)
+    total_empresas_credito_negado = models.IntegerField(default=0)
+    total_empresas_credito_sem_info = models.IntegerField(default=0)
+
+    total_empresas_credito_aprovado_mei = models.IntegerField(default=0)
+    total_empresas_credito_negado_mei = models.IntegerField(default=0)
+    total_empresas_credito_sem_info_mei = models.IntegerField(default=0)
+    
+    total_empresas_credito_aprovado_nmei = models.IntegerField(default=0)
+    total_empresas_credito_negado_nmei = models.IntegerField(default=0)
+    total_empresas_credito_sem_info_nmei = models.IntegerField(default=0)
+
+
+#######################################
+# CORE                                #
+#######################################
 class NaturezaJuridica(models.Model):
     codigo = models.CharField(max_length=4, unique=True, primary_key=True)
     descricao = models.CharField(max_length=255)
@@ -46,6 +116,8 @@ class Municipio(models.Model):
 class Empresa(models.Model):
     VIABILIDADE_PRIMARIA = "Primaria"
     VIABILIDADE_SECUNDARIA = "Secundaria"
+    CREDITO_APROVADO = "Aprovado"
+    CREDITO_NEGADO = "Negado"
 
     cnpj = models.CharField(
         max_length=18,
@@ -183,6 +255,14 @@ class Empresa(models.Model):
         ("", ""),
         (VIABILIDADE_PRIMARIA, VIABILIDADE_PRIMARIA),
         (VIABILIDADE_SECUNDARIA, VIABILIDADE_SECUNDARIA)
+        ),
+        null=True,
+        blank=True,
+    )
+    credito = models.CharField(max_length=len(CREDITO_APROVADO)+10, choices=(
+        ("", ""),
+        (CREDITO_APROVADO, CREDITO_APROVADO),
+        (CREDITO_NEGADO, CREDITO_NEGADO)
         ),
         null=True,
         blank=True,

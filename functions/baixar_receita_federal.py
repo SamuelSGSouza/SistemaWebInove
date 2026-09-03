@@ -886,7 +886,6 @@ def cadastra_atualiza_empresas(nova_execucao):
                 telefones = [tel for tel in telefones if len(tel)>5]
                 chave_municipio = row.municipio+"-"+row.uf
                 if chave_municipio not in dict_mun:
-                    print(f"Chave não encontrada: {chave_municipio}")
                     continue
                 dados = {
                     "cnpj": limpa(row.cnpj),

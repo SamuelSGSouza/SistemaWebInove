@@ -5,6 +5,7 @@
 <style>
   /* ===== Escopo: tudo abaixo vive dentro de #dashRoot p/ não vazar no base ===== */
   #dashRoot{
+    --ger:#0ea5e9; --ger-soft:#e0f2fe;
     --mei:#6366f1; --mei-soft:#eef2ff;
     --nmei:#f59e0b; --nmei-soft:#fff7ed;
     --ok:#16a34a; --ok-soft:#e8f7ee;
@@ -29,11 +30,13 @@
     font-weight:600;font-size:.86rem;color:var(--muted);cursor:pointer;transition:.18s;white-space:nowrap}
   #dashRoot .seg button:hover{color:var(--ink)}
   #dashRoot .seg button.active{background:var(--card);color:var(--ink);box-shadow:0 1px 4px rgba(15,23,42,.12)}
+  #dashRoot .seg button[data-seg="geral"].active{color:var(--ger)}
   #dashRoot .seg button[data-seg="mei"].active{color:var(--mei)}
   #dashRoot .seg button[data-seg="nmei"].active{color:var(--nmei)}
 
   /* faixa de identidade do segmento ativo */
   #dashRoot .seg-flag{height:4px;border-radius:4px;width:100%;margin:14px 0 22px;background:var(--line);transition:.2s}
+  #dashRoot.is-geral .seg-flag{background:linear-gradient(90deg,var(--ger),#7dd3fc)}
   #dashRoot.is-mei .seg-flag{background:linear-gradient(90deg,var(--mei),#a5b4fc)}
   #dashRoot.is-nmei .seg-flag{background:linear-gradient(90deg,var(--nmei),#fcd34d)}
   #dashRoot.is-comp .seg-flag{background:linear-gradient(90deg,var(--mei),var(--nmei))}
@@ -43,6 +46,14 @@
     padding:9px 12px;font-size:.86rem;color:var(--ink);min-width:210px;font-weight:500}
   #dashRoot select.uf:focus{outline:none;border-color:#c7d2fe;box-shadow:0 0 0 3px rgba(99,102,241,.15)}
 
+  /* Escopo atual (Brasil x UF selecionada) */
+  #dashRoot .scope{display:flex;align-items:center;gap:10px;margin:-8px 0 18px;font-size:.85rem;color:var(--muted)}
+  #dashRoot .scope b{color:var(--ink)}
+  #dashRoot .scope button{
+    border:1px solid var(--line);background:var(--card);border-radius:999px;
+    padding:4px 12px;font-size:.78rem;font-weight:600;color:var(--muted);cursor:pointer}
+  #dashRoot .scope button:hover{color:var(--ink);border-color:#cbd5e1}
+
   /* Cards KPI */
   #dashRoot .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:22px}
   #dashRoot .kpi{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;position:relative;overflow:hidden}
@@ -50,7 +61,9 @@
   #dashRoot .kpi .val{font-size:1.7rem;font-weight:800;letter-spacing:-.02em;margin-top:6px;line-height:1}
   #dashRoot .kpi .meta{font-size:.78rem;color:var(--muted);margin-top:7px}
   #dashRoot .kpi .tag{position:absolute;top:16px;right:16px;width:34px;height:34px;border-radius:10px;display:grid;place-items:center;font-size:.9rem}
-  #dashRoot .kpi.k-total .tag{background:var(--mei-soft);color:var(--mei)}
+  #dashRoot .kpi.k-total .tag{background:var(--ger-soft);color:var(--ger)}
+  #dashRoot .kpi.k-mei .tag{background:var(--mei-soft);color:var(--mei)}
+  #dashRoot .kpi.k-nmei .tag{background:var(--nmei-soft);color:var(--nmei)}
   #dashRoot .kpi.k-ok .val{color:var(--ok)} #dashRoot .kpi.k-ok .tag{background:var(--ok-soft);color:var(--ok)}
   #dashRoot .kpi.k-no .val{color:var(--no)} #dashRoot .kpi.k-no .tag{background:var(--no-soft);color:var(--no)}
   #dashRoot .kpi.k-na .val{color:#475569} #dashRoot .kpi.k-na .tag{background:var(--na-soft);color:var(--na)}
@@ -71,7 +84,8 @@
   #dashRoot table.tbl th:first-child,#dashRoot table.tbl td:first-child{text-align:left}
   #dashRoot table.tbl thead th{font-size:.7rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);border-bottom:2px solid var(--line);cursor:pointer;user-select:none}
   #dashRoot table.tbl thead th:hover{color:var(--ink)}
-  #dashRoot table.tbl tbody tr{border-bottom:1px solid #f1f4f8}
+  #dashRoot table.tbl thead th.sorted{color:var(--ink)}
+  #dashRoot table.tbl tbody tr{border-bottom:1px solid #f1f4f8;cursor:pointer}
   #dashRoot table.tbl tbody tr:hover{background:#fafbfe}
   #dashRoot table.tbl td .uf{display:inline-block;min-width:30px;font-weight:700;color:var(--ink)}
   #dashRoot table.tbl td .nm{color:var(--muted);font-size:.78rem;margin-left:6px}
@@ -97,244 +111,395 @@
   #dashRoot .raw input{width:100%;max-width:320px;padding:9px 14px;border:1px solid var(--line);border-radius:999px;font-size:.85rem;margin-bottom:12px}
   #dashRoot .raw input:focus{outline:none;border-color:#c7d2fe;box-shadow:0 0 0 3px rgba(99,102,241,.15)}
   #dashRoot .raw table{width:100%;border-collapse:collapse;font-size:.83rem}
-  #dashRoot .raw th,#dashRoot .raw td{padding:9px 10px;border-bottom:1px solid #f1f4f8;text-align:left}
-  #dashRoot .raw th{font-size:.7rem;text-transform:uppercase;color:var(--muted);letter-spacing:.04em}
+  #dashRoot .raw th,#dashRoot .raw td{padding:9px 10px;border-bottom:1px solid #f1f4f8;text-align:right;white-space:nowrap}
+  #dashRoot .raw th:first-child,#dashRoot .raw td:first-child{text-align:left}
+  #dashRoot .raw th{font-size:.7rem;text-transform:uppercase;color:var(--muted);letter-spacing:.04em;position:sticky;top:0;background:var(--card)}
+  #dashRoot .raw tr.br td{background:#f8fafc;font-weight:700}
+
+  /* estado vazio */
+  #dashRoot .empty{text-align:center;padding:60px 24px}
+  #dashRoot .empty h5{font-size:1.05rem;margin-bottom:6px}
 
   #dashRoot .hide{display:none!important}
 </style>
 {% endblock %}
 
 {% block main_body %}
-<div id="dashRoot" class="is-mei">
+
+{# payload cru serializado com segurança — evita repr() do dict Python no JS #}
+{{ payload|json_script:"payloadData" }}
+
+<div id="dashRoot" class="is-geral">
 
   <!-- ===== Cabeçalho + controles ===== -->
   <div class="dash-head">
     <div>
       <h2>Painel de Viabilidade &amp; Crédito</h2>
       <div class="dash-sub">
-        {{ total_empresas|intcomma }} empresas ativas na Receita Federal
+        {% if payload.dados_gerais %}
+          {{ payload.dados_gerais.total_empresas|intcomma }} empresas ativas na Receita Federal
+        {% else %}
+          Sem resumo consolidado disponível
+        {% endif %}
         {% if ultima_exec %}· última extração <b>{{ ultima_exec }}</b>{% endif %}
       </div>
     </div>
     <div class="d-flex align-items-center gap-3 flex-wrap">
       <div class="seg" id="segSwitch">
-        <button data-seg="mei" class="active">MEI</button>
+        <button data-seg="geral" class="active">Geral</button>
+        <button data-seg="mei">MEI</button>
         <button data-seg="nmei">NMEI</button>
         <button data-seg="comp">Comparativo</button>
       </div>
       <select class="uf" id="ufFilter">
-        <option value="">Todos os estados</option>
+        <option value="">Brasil (todos os estados)</option>
       </select>
     </div>
   </div>
 
   <div class="seg-flag"></div>
 
-  <!-- ===== KPIs ===== -->
-  <div class="kpis" id="kpiRow"></div>
-
-  <!-- ===== Visão por segmento (MEI ou NMEI) ===== -->
-  <div id="viewSingle">
-    <div class="grid-37">
-      <div class="panel">
-        <h5>Distribuição de crédito</h5>
-        <div class="hint" id="donutHint">Aprovado · negado · sem informação</div>
-        <canvas id="chDonut" height="240"></canvas>
-        <div class="legend">
-          <span><i style="background:var(--ok)"></i>Aprovado</span>
-          <span><i style="background:var(--no)"></i>Negado</span>
-          <span><i style="background:var(--na)"></i>Sem info</span>
-        </div>
-      </div>
-      <div class="panel">
-        <h5>Crédito por nível de viabilidade</h5>
-        <div class="hint">Como aprovados, negados e sem-info se dividem entre viabilidade primária e secundária</div>
-        <canvas id="chStack" height="240"></canvas>
-      </div>
-    </div>
-
-    <div class="panel" style="margin-bottom:20px">
-      <h5>Ranking por estado</h5>
-      <div class="hint">Estados ordenados por volume de CNPJs analisados — clique numa barra para filtrar</div>
-      <canvas id="chStates" height="300"></canvas>
-    </div>
+  <!-- ===== Estado vazio ===== -->
+  <div id="emptyState" class="panel empty hide">
+    <h5>Nenhum resumo consolidado ainda</h5>
+    <div class="hint">Rode a extração da Receita Federal para gerar o primeiro <code>ResumoDados</code>. O painel aparece assim que houver um registro.</div>
   </div>
 
-  <!-- ===== Comparativo MEI x NMEI ===== -->
-  <div id="viewComp" class="hide">
-    <div class="grid-2">
-      <div class="panel">
-        <h5>MEI x NMEI por status de crédito</h5>
-        <div class="hint">Volume absoluto de CNPJs em cada status</div>
-        <canvas id="chCompBar" height="260"></canvas>
-        <div class="legend">
-          <span><i style="background:var(--mei)"></i>MEI</span>
-          <span><i style="background:var(--nmei)"></i>NMEI</span>
+  <!-- ===== Conteúdo ===== -->
+  <div id="dashContent">
+
+    <div class="scope" id="scopeBar"></div>
+
+    <!-- KPIs -->
+    <div class="kpis" id="kpiRow"></div>
+
+    <!-- Visão por segmento (Geral, MEI ou NMEI) -->
+    <div id="viewSingle">
+      <div class="grid-37">
+        <div class="panel">
+          <h5>Distribuição de crédito</h5>
+          <div class="hint" id="donutHint">Aprovado · negado · sem informação</div>
+          <canvas id="chDonut" height="240"></canvas>
+          <div class="legend">
+            <span><i style="background:var(--ok)"></i>Aprovado</span>
+            <span><i style="background:var(--no)"></i>Negado</span>
+            <span><i style="background:var(--na)"></i>Sem info</span>
+          </div>
+        </div>
+        <div class="panel">
+          <h5>Distribuição por viabilidade</h5>
+          <div class="hint" id="viabHint">Quantas empresas estão em viabilidade primária, secundária ou não informada</div>
+          <canvas id="chViab" height="240"></canvas>
         </div>
       </div>
-      <div class="panel">
-        <h5>Participação no total analisado</h5>
-        <div class="hint">Quanto cada segmento representa do volume total</div>
-        <canvas id="chCompShare" height="260"></canvas>
-        <div class="legend">
-          <span><i style="background:var(--mei)"></i>MEI</span>
-          <span><i style="background:var(--nmei)"></i>NMEI</span>
-        </div>
+
+      <div class="panel" style="margin-bottom:20px">
+        <h5>Ranking por estado</h5>
+        <div class="hint">Estados ordenados por volume de empresas — clique numa barra para filtrar o painel</div>
+        <canvas id="chStates" height="300"></canvas>
       </div>
     </div>
-  </div>
 
-  <!-- ===== Tabela por estado ===== -->
-  <div class="panel">
-    <h5 id="tblTitle">Detalhamento por estado</h5>
-    <div class="hint">Clique nos cabeçalhos para ordenar</div>
-    <div style="overflow-x:auto">
-      <table class="tbl" id="stateTable"></table>
+    <!-- Comparativo MEI x NMEI -->
+    <div id="viewComp" class="hide">
+      <div class="grid-2">
+        <div class="panel">
+          <h5>MEI x NMEI por status de crédito</h5>
+          <div class="hint">Volume absoluto de empresas em cada status</div>
+          <canvas id="chCompBar" height="260"></canvas>
+          <div class="legend">
+            <span><i style="background:var(--mei)"></i>MEI</span>
+            <span><i style="background:var(--nmei)"></i>NMEI</span>
+          </div>
+        </div>
+        <div class="panel">
+          <h5>Participação no total</h5>
+          <div class="hint">Quanto cada segmento representa do volume de empresas</div>
+          <canvas id="chCompShare" height="260"></canvas>
+          <div class="legend">
+            <span><i style="background:var(--mei)"></i>MEI</span>
+            <span><i style="background:var(--nmei)"></i>NMEI</span>
+          </div>
+        </div>
+      </div>
+      <div class="panel" style="margin-bottom:20px">
+        <h5>MEI x NMEI por nível de viabilidade</h5>
+        <div class="hint">Como cada segmento se distribui entre primária, secundária e não informada</div>
+        <canvas id="chCompViab" height="240"></canvas>
+      </div>
     </div>
-  </div>
 
-  <!-- ===== Tabela bruta (referência) ===== -->
-  <details class="raw">
-    <summary>Dados brutos da extração ({{ dados|length }} registros)</summary>
-    <input type="text" id="rawFilter" placeholder="🔍 Filtrar por título...">
-    <div style="overflow-x:auto;max-height:460px">
-      <table id="rawTable">
-        <thead><tr><th>Título</th><th style="text-align:right">Quantidade</th><th>Atualização</th></tr></thead>
-        <tbody>
-          {% for dado in dados %}
-          <tr>
-            <td>{{ dado.titulo }}</td>
-            <td style="text-align:right">{{ dado.quantidade|intcomma }}</td>
-            <td>{{ dado.momento_criacao }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+    <!-- Tabela por estado -->
+    <div class="panel">
+      <h5 id="tblTitle">Detalhamento por estado</h5>
+      <div class="hint">Clique nos cabeçalhos para ordenar, ou numa linha para filtrar o painel por aquele estado</div>
+      <div style="overflow-x:auto">
+        <table class="tbl" id="stateTable"></table>
+      </div>
     </div>
-  </details>
+
+    <!-- Tabela bruta (referência) -->
+    <details class="raw">
+      <summary id="rawSummary">Dados brutos da extração</summary>
+      <input type="text" id="rawFilter" placeholder="🔍 Filtrar por UF ou nome do estado...">
+      <div style="overflow-x:auto;max-height:460px">
+        <table id="rawTable"></table>
+      </div>
+    </details>
+
+  </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 (function(){
-  const DADOS = {{ dashboard_json|safe }};
-  const C = {ok:'#16a34a', no:'#dc2626', na:'#94a3b8', mei:'#6366f1', nmei:'#f59e0b'};
-  const NOMES_SEG = {mei:'MEI', nmei:'NMEI'};
+  /* ================= dados ================= */
+  const el = document.getElementById('payloadData');
+  let RAW = {};
+  try { RAW = JSON.parse(el.textContent || '{}') || {}; } catch(e){ RAW = {}; }
+
+  const GERAIS = RAW.dados_gerais || null;
+  const root = document.getElementById('dashRoot');
+
+  if(!GERAIS){
+    document.getElementById('emptyState').classList.remove('hide');
+    document.getElementById('dashContent').classList.add('hide');
+    return;
+  }
+
+  const ESTADOS = {
+    AC:'Acre', AL:'Alagoas', AP:'Amapá', AM:'Amazonas', BA:'Bahia', CE:'Ceará',
+    DF:'Distrito Federal', ES:'Espírito Santo', GO:'Goiás', MA:'Maranhão',
+    MT:'Mato Grosso', MS:'Mato Grosso do Sul', MG:'Minas Gerais', PA:'Pará',
+    PB:'Paraíba', PR:'Paraná', PE:'Pernambuco', PI:'Piauí', RJ:'Rio de Janeiro',
+    RN:'Rio Grande do Norte', RS:'Rio Grande do Sul', RO:'Rondônia', RR:'Roraima',
+    SC:'Santa Catarina', SP:'São Paulo', SE:'Sergipe', TO:'Tocantins'
+  };
+
+  const UFS = Object.keys(RAW).filter(k => k !== 'dados_gerais').sort();
+
+  /* mapeia cada segmento para as chaves correspondentes no payload */
+  const KEYS = {
+    geral: {
+      total:'total_empresas',
+      prim:'total_empresas_viabilidade_primaria',
+      sec:'total_empresas_viabilidade_secundaria',
+      ni:'total_empresas_viabilidade_nao_informada',
+      ap:'total_empresas_credito_aprovado',
+      ng:'total_empresas_credito_negado',
+      si:'total_empresas_credito_sem_info'
+    },
+    mei: {
+      total:'total_empresas_mei',
+      prim:'total_empresas_mei_viabilidade_primaria',
+      sec:'total_empresas_mei_viabilidade_secundaria',
+      ni:'total_empresas_mei_viabilidade_nao_informada',
+      ap:'total_empresas_credito_aprovado_mei',
+      ng:'total_empresas_credito_negado_mei',
+      si:'total_empresas_credito_sem_info_mei'
+    },
+    nmei: {
+      total:'total_empresas_nmei',
+      prim:'total_empresas_nmei_viabilidade_primaria',
+      sec:'total_empresas_nmei_viabilidade_secundaria',
+      ni:'total_empresas_nmei_viabilidade_nao_informada',
+      ap:'total_empresas_credito_aprovado_nmei',
+      ng:'total_empresas_credito_negado_nmei',
+      si:'total_empresas_credito_sem_info_nmei'
+    }
+  };
+
+  const C = { ok:'#16a34a', no:'#dc2626', na:'#94a3b8', ger:'#0ea5e9', mei:'#6366f1', nmei:'#f59e0b' };
+  const TOM = { geral:['#0ea5e9','#7dd3fc'], mei:['#6366f1','#a5b4fc'], nmei:['#f59e0b','#fcd34d'] };
+  const NOMES_SEG = { geral:'Geral', mei:'MEI', nmei:'NMEI' };
+  const ICONE_SEG = { geral:'fa-layer-group', mei:'fa-store', nmei:'fa-building' };
+
   const fmt = n => (n||0).toLocaleString('pt-BR');
   const pct = (p,t) => t>0 ? (p/t*100) : 0;
+  const alpha = (hex,a) => {
+    const n = parseInt(hex.slice(1),16);
+    return 'rgba(' + ((n>>16)&255) + ',' + ((n>>8)&255) + ',' + (n&255) + ',' + a + ')';
+  };
+  const num = (o,k) => {
+    const v = o ? o[k] : 0;
+    const p = typeof v === 'number' ? v : parseInt(v,10);
+    return isNaN(p) ? 0 : p;
+  };
 
-  const root = document.getElementById('dashRoot');
-  let seg = 'mei';      // 'mei' | 'nmei' | 'comp'
-  let uf  = '';         // '' = todos
+  let seg = 'geral';    // 'geral' | 'mei' | 'nmei' | 'comp'
+  let uf  = '';         // '' = Brasil
   let charts = {};
 
-  /* ---------- popular filtro de estados (união MEI+NMEI) ---------- */
+  /* ---------- bloco normalizado a partir do payload ---------- */
+  function bloco(s, code){
+    const src = code ? RAW[code] : GERAIS;
+    const K = KEYS[s];
+    const b = {
+      uf: code || 'BR',
+      nome: code ? (ESTADOS[code] || code) : 'Brasil',
+      total: num(src, K.total),
+      viab_primaria: num(src, K.prim),
+      viab_secundaria: num(src, K.sec),
+      viab_nao_informada: num(src, K.ni),
+      aprovado: num(src, K.ap),
+      negado: num(src, K.ng),
+      sem_info: num(src, K.si)
+    };
+    // fallback: se o total vier zerado, usa a soma dos status de crédito
+    if(!b.total) b.total = b.aprovado + b.negado + b.sem_info;
+    return b;
+  }
+
+  /* estados de um segmento, ordenados por volume (cacheado) */
+  const cacheEstados = {};
+  function estados(s){
+    if(!cacheEstados[s]){
+      cacheEstados[s] = UFS.map(u => bloco(s,u)).sort((a,b) => b.total - a.total);
+    }
+    return cacheEstados[s];
+  }
+
+  /* ---------- popular filtro de estados ---------- */
   (function(){
-    const ufs = {};
-    ['mei','nmei'].forEach(s => DADOS[s].estados.forEach(e => ufs[e.uf] = e.nome));
     const sel = document.getElementById('ufFilter');
-    Object.keys(ufs).sort().forEach(code => {
+    UFS.forEach(code => {
       const o = document.createElement('option');
-      o.value = code; o.textContent = code + ' — ' + ufs[code];
+      o.value = code;
+      o.textContent = code + ' — ' + (ESTADOS[code] || code);
       sel.appendChild(o);
     });
   })();
 
-  /* ---------- acesso unificado a um bloco de dados ---------- */
-  function bloco(s, code){
-    if(!code) return DADOS[s].totais;
-    return DADOS[s].estados.find(e => e.uf === code) || {
-      uf:code, nome:code, primaria:{aprovado:0,negado:0,sem_info:0},
-      secundaria:{aprovado:0,negado:0,sem_info:0},
-      aprovado:0,negado:0,sem_info:0,total:0,viab_primaria:0,viab_secundaria:0
-    };
-  }
+  function destroy(){ Object.values(charts).forEach(c => c && c.destroy()); charts = {}; }
 
-  function destroy(){ Object.values(charts).forEach(c=>c&&c.destroy()); charts={}; }
+  /* ================= escopo ================= */
+  function renderScope(){
+    const bar = document.getElementById('scopeBar');
+    if(uf){
+      bar.innerHTML = 'Exibindo <b>' + uf + ' — ' + (ESTADOS[uf]||uf) + '</b>' +
+        ' <button type="button" id="clearUf">voltar ao Brasil</button>';
+      document.getElementById('clearUf').onclick = () => {
+        uf = ''; document.getElementById('ufFilter').value = ''; renderAll();
+      };
+    } else {
+      bar.innerHTML = 'Exibindo <b>Brasil</b> — consolidado das ' + UFS.length + ' UFs disponíveis';
+    }
+  }
 
   /* ================= KPIs ================= */
   function renderKPIs(){
     const row = document.getElementById('kpiRow');
+
     if(seg === 'comp'){
-      const m = bloco('mei', uf), n = bloco('nmei', uf);
-      const grand = m.total + n.total || 1;
-      row.innerHTML = `
-        ${kpiCard('Total analisado', fmt(m.total+n.total), 'MEI + NMEI', 'k-total','fa-layer-group', null)}
-        ${kpiCard('Total MEI', fmt(m.total), pct(m.total,grand).toFixed(1)+'% do volume', 'k-total','fa-store', pct(m.total,grand), C.mei)}
-        ${kpiCard('Total NMEI', fmt(n.total), pct(n.total,grand).toFixed(1)+'% do volume', 'k-total','fa-building', pct(n.total,grand), C.nmei)}
-        ${kpiCard('Aprovação MEI', pct(m.aprovado,m.total).toFixed(1)+'%', fmt(m.aprovado)+' aprovados', 'k-ok','fa-circle-check', pct(m.aprovado,m.total), C.ok)}
-        ${kpiCard('Aprovação NMEI', pct(n.aprovado,n.total).toFixed(1)+'%', fmt(n.aprovado)+' aprovados', 'k-ok','fa-circle-check', pct(n.aprovado,n.total), C.ok)}
-      `;
+      const m = bloco('mei', uf), n = bloco('nmei', uf), g = bloco('geral', uf);
+      const grand = (m.total + n.total) || g.total || 1;
+      row.innerHTML =
+        kpiCard('Total de empresas', fmt(g.total), 'MEI + NMEI', 'k-total','fa-layer-group', null) +
+        kpiCard('Total MEI', fmt(m.total), pct(m.total,grand).toFixed(1) + '% do volume', 'k-mei','fa-store', pct(m.total,grand), C.mei) +
+        kpiCard('Total NMEI', fmt(n.total), pct(n.total,grand).toFixed(1) + '% do volume', 'k-nmei','fa-building', pct(n.total,grand), C.nmei) +
+        kpiCard('Aprovação MEI', pct(m.aprovado,m.total).toFixed(1) + '%', fmt(m.aprovado) + ' aprovados', 'k-ok','fa-circle-check', pct(m.aprovado,m.total), C.ok) +
+        kpiCard('Aprovação NMEI', pct(n.aprovado,n.total).toFixed(1) + '%', fmt(n.aprovado) + ' aprovados', 'k-ok','fa-circle-check', pct(n.aprovado,n.total), C.ok);
       return;
     }
+
     const d = bloco(seg, uf);
-    const taxa = pct(d.aprovado, d.total);
-    row.innerHTML = `
-      ${kpiCard('CNPJs com viabilidade', fmt(d.total), fmt(d.viab_primaria)+' prim. · '+fmt(d.viab_secundaria)+' sec.', 'k-total', seg==='mei'?'fa-store':'fa-building', null)}
-      ${kpiCard('Crédito aprovado', fmt(d.aprovado), taxa.toFixed(1)+'% do total', 'k-ok','fa-circle-check', taxa, C.ok)}
-      ${kpiCard('Crédito negado', fmt(d.negado), pct(d.negado,d.total).toFixed(1)+'% do total', 'k-no','fa-circle-xmark', pct(d.negado,d.total), C.no)}
-      ${kpiCard('Sem informação', fmt(d.sem_info), pct(d.sem_info,d.total).toFixed(1)+'% do total', 'k-na','fa-circle-question', pct(d.sem_info,d.total), C.na)}
-    `;
+    let primeiro;
+
+    if(seg === 'geral'){
+      const m = bloco('mei', uf), n = bloco('nmei', uf);
+      primeiro = kpiCard('Total de empresas', fmt(d.total),
+        fmt(m.total) + ' MEI · ' + fmt(n.total) + ' NMEI', 'k-total','fa-layer-group', null);
+    } else {
+      const g = bloco('geral', uf);
+      primeiro = kpiCard('Empresas ' + NOMES_SEG[seg], fmt(d.total),
+        pct(d.total, g.total).toFixed(1) + '% do total de empresas',
+        seg === 'mei' ? 'k-mei' : 'k-nmei', ICONE_SEG[seg], pct(d.total, g.total), C[seg]);
+    }
+
+    row.innerHTML =
+      primeiro +
+      kpiCard('Viabilidade primária', fmt(d.viab_primaria),
+        fmt(d.viab_secundaria) + ' sec. · ' + fmt(d.viab_nao_informada) + ' não informada',
+        'k-total','fa-diagram-project', pct(d.viab_primaria,d.total), TOM[seg][0]) +
+      kpiCard('Crédito aprovado', fmt(d.aprovado), pct(d.aprovado,d.total).toFixed(1) + '% do total', 'k-ok','fa-circle-check', pct(d.aprovado,d.total), C.ok) +
+      kpiCard('Crédito negado', fmt(d.negado), pct(d.negado,d.total).toFixed(1) + '% do total', 'k-no','fa-circle-xmark', pct(d.negado,d.total), C.no) +
+      kpiCard('Sem informação', fmt(d.sem_info), pct(d.sem_info,d.total).toFixed(1) + '% do total', 'k-na','fa-circle-question', pct(d.sem_info,d.total), C.na);
   }
+
   function kpiCard(lbl,val,meta,cls,icon,barPct,barColor){
-    const bar = (barPct!=null)
-      ? `<div class="bar"><i style="width:${Math.min(barPct,100)}%;background:${barColor}"></i></div>` : '';
-    return `<div class="kpi ${cls}">
-      <div class="tag"><i class="fas ${icon}"></i></div>
-      <div class="lbl">${lbl}</div><div class="val">${val}</div>
-      <div class="meta">${meta}</div>${bar}</div>`;
+    const bar = (barPct != null)
+      ? '<div class="bar"><i style="width:' + Math.min(barPct,100) + '%;background:' + barColor + '"></i></div>' : '';
+    return '<div class="kpi ' + cls + '">' +
+      '<div class="tag"><i class="fas ' + icon + '"></i></div>' +
+      '<div class="lbl">' + lbl + '</div><div class="val">' + val + '</div>' +
+      '<div class="meta">' + meta + '</div>' + bar + '</div>';
   }
 
   /* ================= gráficos de um segmento ================= */
   function renderSingle(){
     const d = bloco(seg, uf);
-    const cor = seg==='mei'?C.mei:C.nmei;
 
-    // donut
+    // donut de crédito
     charts.donut = new Chart(document.getElementById('chDonut'), {
       type:'doughnut',
-      data:{ labels:['Aprovado','Negado','Sem info'],
-        datasets:[{ data:[d.aprovado,d.negado,d.sem_info],
-          backgroundColor:[C.ok,C.no,C.na], borderWidth:2, borderColor:'#fff' }]},
-      options:{ cutout:'62%', plugins:{ legend:{display:false},
-        tooltip:{callbacks:{label:c=>` ${c.label}: ${fmt(c.raw)} (${pct(c.raw,d.total).toFixed(1)}%)`}}}}
+      data:{
+        labels:['Aprovado','Negado','Sem info'],
+        datasets:[{ data:[d.aprovado, d.negado, d.sem_info],
+          backgroundColor:[C.ok, C.no, C.na], borderWidth:2, borderColor:'#fff' }]
+      },
+      options:{ cutout:'62%', plugins:{ legend:{ display:false },
+        tooltip:{ callbacks:{ label: c => ' ' + c.label + ': ' + fmt(c.raw) + ' (' + pct(c.raw, d.total).toFixed(1) + '%)' } } } }
     });
     document.getElementById('donutHint').textContent =
-      `${fmt(d.total)} CNPJs analisados — ${pct(d.aprovado,d.total).toFixed(1)}% aprovados`;
+      fmt(d.total) + ' empresas — ' + pct(d.aprovado, d.total).toFixed(1) + '% com crédito aprovado';
 
-    // stacked: primária vs secundária
-    charts.stack = new Chart(document.getElementById('chStack'), {
+    // viabilidade: primária / secundária / não informada
+    charts.viab = new Chart(document.getElementById('chViab'), {
       type:'bar',
-      data:{ labels:['Primária','Secundária'],
-        datasets:[
-          {label:'Aprovado', data:[d.primaria.aprovado,d.secundaria.aprovado], backgroundColor:C.ok},
-          {label:'Negado',   data:[d.primaria.negado,d.secundaria.negado],     backgroundColor:C.no},
-          {label:'Sem info', data:[d.primaria.sem_info,d.secundaria.sem_info], backgroundColor:C.na},
-        ]},
-      options:{ responsive:true, scales:{x:{stacked:true,grid:{display:false}},
-        y:{stacked:true,ticks:{callback:v=>fmt(v)}}},
-        plugins:{legend:{position:'bottom',labels:{boxWidth:12,font:{size:11}}},
-          tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${fmt(c.raw)}`}}}}
+      data:{
+        labels:['Primária','Secundária','Não informada'],
+        datasets:[{
+          label:'Empresas',
+          data:[d.viab_primaria, d.viab_secundaria, d.viab_nao_informada],
+          backgroundColor:[TOM[seg][0], TOM[seg][1], C.na],
+          borderRadius:6, maxBarThickness:90
+        }]
+      },
+      options:{ responsive:true,
+        scales:{ x:{ grid:{ display:false } }, y:{ beginAtZero:true, ticks:{ callback: v => fmt(v) } } },
+        plugins:{ legend:{ display:false },
+          tooltip:{ callbacks:{ label: c => ' ' + fmt(c.raw) + ' (' + pct(c.raw, d.total).toFixed(1) + '%)' } } } }
     });
+    document.getElementById('viabHint').textContent =
+      'Base: ' + fmt(d.total) + ' empresas ' + (seg === 'geral' ? 'no escopo atual' : NOMES_SEG[seg]);
 
-    // ranking estados (top 12)
-    const top = DADOS[seg].estados.slice(0,12);
+    // ranking de estados (top 12 por volume)
+    const top = estados(seg).slice(0,12);
+    const corDe = base => top.map(e => (!uf || uf === e.uf) ? base : alpha(base, .22));
     charts.states = new Chart(document.getElementById('chStates'), {
       type:'bar',
-      data:{ labels: top.map(e=>e.uf),
+      data:{
+        labels: top.map(e => e.uf),
         datasets:[
-          {label:'Aprovado', data:top.map(e=>e.aprovado), backgroundColor:C.ok},
-          {label:'Negado',   data:top.map(e=>e.negado),   backgroundColor:C.no},
-          {label:'Sem info', data:top.map(e=>e.sem_info), backgroundColor:C.na},
-        ]},
+          { label:'Aprovado', data: top.map(e => e.aprovado), backgroundColor: corDe(C.ok) },
+          { label:'Negado',   data: top.map(e => e.negado),   backgroundColor: corDe(C.no) },
+          { label:'Sem info', data: top.map(e => e.sem_info), backgroundColor: corDe(C.na) }
+        ]
+      },
       options:{ indexAxis:'y', responsive:true,
-        scales:{x:{stacked:true,ticks:{callback:v=>fmt(v)}},y:{stacked:true,grid:{display:false}}},
-        plugins:{legend:{position:'bottom',labels:{boxWidth:12,font:{size:11}}},
-          tooltip:{callbacks:{title:i=>{const e=top[i[0].dataIndex];return e.uf+' — '+e.nome;},
-            label:c=>` ${c.dataset.label}: ${fmt(c.raw)}`}}},
-        onClick:(e,els)=>{ if(els.length){ const code=top[els[0].index].uf;
-          document.getElementById('ufFilter').value = (uf===code?'':code);
-          uf = (uf===code?'':code); renderAll(); } }
+        scales:{ x:{ stacked:true, ticks:{ callback: v => fmt(v) } }, y:{ stacked:true, grid:{ display:false } } },
+        plugins:{ legend:{ position:'bottom', labels:{ boxWidth:12, font:{ size:11 } } },
+          tooltip:{ callbacks:{
+            title: i => { const e = top[i[0].dataIndex]; return e.uf + ' — ' + e.nome; },
+            label: c => ' ' + c.dataset.label + ': ' + fmt(c.raw) } } },
+        onClick:(e, els) => {
+          if(els.length){
+            const code = top[els[0].index].uf;
+            uf = (uf === code ? '' : code);
+            document.getElementById('ufFilter').value = uf;
+            renderAll();
+          }
+        }
       }
     });
   }
@@ -342,119 +507,203 @@
   /* ================= comparativo ================= */
   function renderComp(){
     const m = bloco('mei', uf), n = bloco('nmei', uf);
+
     charts.compBar = new Chart(document.getElementById('chCompBar'), {
       type:'bar',
-      data:{ labels:['Aprovado','Negado','Sem info'],
+      data:{
+        labels:['Aprovado','Negado','Sem info'],
         datasets:[
-          {label:'MEI',  data:[m.aprovado,m.negado,m.sem_info], backgroundColor:C.mei, borderRadius:6},
-          {label:'NMEI', data:[n.aprovado,n.negado,n.sem_info], backgroundColor:C.nmei, borderRadius:6},
-        ]},
-      options:{ responsive:true, scales:{y:{ticks:{callback:v=>fmt(v)}},x:{grid:{display:false}}},
-        plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${c.dataset.label}: ${fmt(c.raw)}`}}}}
+          { label:'MEI',  data:[m.aprovado, m.negado, m.sem_info], backgroundColor:C.mei, borderRadius:6 },
+          { label:'NMEI', data:[n.aprovado, n.negado, n.sem_info], backgroundColor:C.nmei, borderRadius:6 }
+        ]
+      },
+      options:{ responsive:true,
+        scales:{ y:{ beginAtZero:true, ticks:{ callback: v => fmt(v) } }, x:{ grid:{ display:false } } },
+        plugins:{ legend:{ display:false },
+          tooltip:{ callbacks:{ label: c => ' ' + c.dataset.label + ': ' + fmt(c.raw) } } } }
     });
+
     charts.compShare = new Chart(document.getElementById('chCompShare'), {
       type:'doughnut',
-      data:{ labels:['MEI','NMEI'],
-        datasets:[{data:[m.total,n.total], backgroundColor:[C.mei,C.nmei], borderWidth:2, borderColor:'#fff'}]},
-      options:{ cutout:'62%', plugins:{legend:{display:false},
-        tooltip:{callbacks:{label:c=>` ${c.label}: ${fmt(c.raw)} (${pct(c.raw,m.total+n.total).toFixed(1)}%)`}}}}
+      data:{
+        labels:['MEI','NMEI'],
+        datasets:[{ data:[m.total, n.total], backgroundColor:[C.mei, C.nmei], borderWidth:2, borderColor:'#fff' }]
+      },
+      options:{ cutout:'62%', plugins:{ legend:{ display:false },
+        tooltip:{ callbacks:{ label: c => ' ' + c.label + ': ' + fmt(c.raw) + ' (' + pct(c.raw, m.total + n.total).toFixed(1) + '%)' } } } }
+    });
+
+    charts.compViab = new Chart(document.getElementById('chCompViab'), {
+      type:'bar',
+      data:{
+        labels:['Primária','Secundária','Não informada'],
+        datasets:[
+          { label:'MEI',  data:[m.viab_primaria, m.viab_secundaria, m.viab_nao_informada], backgroundColor:C.mei, borderRadius:6 },
+          { label:'NMEI', data:[n.viab_primaria, n.viab_secundaria, n.viab_nao_informada], backgroundColor:C.nmei, borderRadius:6 }
+        ]
+      },
+      options:{ responsive:true,
+        scales:{ y:{ beginAtZero:true, ticks:{ callback: v => fmt(v) } }, x:{ grid:{ display:false } } },
+        plugins:{ legend:{ position:'bottom', labels:{ boxWidth:12, font:{ size:11 } } },
+          tooltip:{ callbacks:{ label: c => ' ' + c.dataset.label + ': ' + fmt(c.raw) } } } }
     });
   }
 
   /* ================= tabela por estado ================= */
-  let sortKey='total', sortDir=-1;
+  let sortKey = 'total', sortDir = -1;
+
+  function valorDe(r, k){
+    if(k === 'taxa') return pct(r.aprovado, r.total);
+    return r[k];
+  }
+  function ordena(rows, k, dir){
+    return rows.sort((a,b) => {
+      const va = valorDe(a,k), vb = valorDe(b,k);
+      if(typeof va === 'string') return String(va).localeCompare(String(vb)) * dir;
+      return ((va||0) - (vb||0)) * dir;
+    });
+  }
+
   function renderTable(){
     const tbl = document.getElementById('stateTable');
+
     if(seg === 'comp'){
       document.getElementById('tblTitle').textContent = 'Comparativo por estado — MEI x NMEI';
-      const map = {};
-      DADOS.mei.estados.forEach(e => map[e.uf] = {uf:e.uf,nome:e.nome,mei:e.total,nmei:0});
-      DADOS.nmei.estados.forEach(e => { (map[e.uf]=map[e.uf]||{uf:e.uf,nome:e.nome,mei:0,nmei:0}).nmei=e.total; });
-      let rows = Object.values(map).map(r=>({...r, total:r.mei+r.nmei}));
-      const maxT = Math.max(...rows.map(r=>r.total),1);
-      rows.sort((a,b)=> (a[sortKey]-b[sortKey])*sortDir);
-      tbl.innerHTML = `
-        <thead><tr>
-          <th data-k="uf">Estado</th><th data-k="mei">MEI</th><th data-k="nmei">NMEI</th>
-          <th data-k="total">Total</th><th>Proporção MEI / NMEI</th></tr></thead>
-        <tbody>${rows.map(r=>`<tr>
-          <td><span class="uf">${r.uf}</span><span class="nm">${r.nome}</span></td>
-          <td>${fmt(r.mei)}</td><td>${fmt(r.nmei)}</td><td><b>${fmt(r.total)}</b></td>
-          <td><span class="minibar" title="${pct(r.mei,r.total).toFixed(0)}% MEI">
-            <i style="width:${pct(r.mei,r.total)}%;background:${C.mei};float:left"></i>
-            <i style="width:${pct(r.nmei,r.total)}%;background:${C.nmei};float:left"></i></span></td>
-        </tr>`).join('')}</tbody>`;
-      bindSort(tbl);
+      const mp = {}, np = {};
+      estados('mei').forEach(e => mp[e.uf] = e);
+      estados('nmei').forEach(e => np[e.uf] = e);
+      let rows = UFS.map(u => {
+        const m = mp[u] || {total:0}, n = np[u] || {total:0};
+        return { uf:u, nome:(ESTADOS[u]||u), mei:m.total, nmei:n.total, total:m.total + n.total };
+      });
+      ordena(rows, sortKey === 'taxa' ? 'total' : sortKey, sortDir);
+
+      tbl.innerHTML =
+        '<thead><tr>' +
+          '<th data-k="uf">Estado</th><th data-k="mei">MEI</th><th data-k="nmei">NMEI</th>' +
+          '<th data-k="total">Total</th><th>Proporção MEI / NMEI</th>' +
+        '</tr></thead><tbody>' +
+        rows.map(r =>
+          '<tr data-uf="' + r.uf + '"' + (uf === r.uf ? ' style="background:#eef2ff"' : '') + '>' +
+            '<td><span class="uf">' + r.uf + '</span><span class="nm">' + r.nome + '</span></td>' +
+            '<td>' + fmt(r.mei) + '</td><td>' + fmt(r.nmei) + '</td><td><b>' + fmt(r.total) + '</b></td>' +
+            '<td><span class="minibar" title="' + pct(r.mei,r.total).toFixed(0) + '% MEI">' +
+              '<i style="width:' + pct(r.mei,r.total) + '%;background:' + C.mei + ';float:left"></i>' +
+              '<i style="width:' + pct(r.nmei,r.total) + '%;background:' + C.nmei + ';float:left"></i>' +
+            '</span></td>' +
+          '</tr>').join('') +
+        '</tbody>';
+      bindTable(tbl);
       return;
     }
 
     document.getElementById('tblTitle').textContent =
-      `Detalhamento por estado — ${NOMES_SEG[seg]}`;
-    let rows = DADOS[seg].estados.slice();
-    rows.sort((a,b)=>{
-      const va = sortKey==='taxa'?pct(a.aprovado,a.total):a[sortKey];
-      const vb = sortKey==='taxa'?pct(b.aprovado,b.total):b[sortKey];
-      return (va-vb)*sortDir;
-    });
-    tbl.innerHTML = `
-      <thead><tr>
-        <th data-k="uf">Estado</th><th data-k="viab_primaria">Viab. Prim.</th>
-        <th data-k="viab_secundaria">Viab. Sec.</th><th data-k="aprovado">Aprovado</th>
-        <th data-k="negado">Negado</th><th data-k="sem_info">Sem info</th>
-        <th data-k="total">Total</th><th data-k="taxa">Aprovação</th></tr></thead>
-      <tbody>${rows.map(r=>{
-        const t = pct(r.aprovado,r.total);
-        const cls = t>=50?'ok':(t>=25?'mid':'low');
-        const hl = (uf===r.uf)?'style="background:#eef2ff"':'';
-        return `<tr ${hl}>
-          <td><span class="uf">${r.uf}</span><span class="nm">${r.nome}</span></td>
-          <td>${fmt(r.viab_primaria)}</td><td>${fmt(r.viab_secundaria)}</td>
-          <td style="color:${C.ok};font-weight:600">${fmt(r.aprovado)}</td>
-          <td style="color:${C.no}">${fmt(r.negado)}</td>
-          <td style="color:#64748b">${fmt(r.sem_info)}</td>
-          <td><b>${fmt(r.total)}</b></td>
-          <td><span class="pill ${cls}">${t.toFixed(1)}%</span></td>
-        </tr>`;}).join('')}</tbody>`;
-    bindSort(tbl);
+      'Detalhamento por estado — ' + NOMES_SEG[seg];
+
+    const rows = ordena(estados(seg).slice(), sortKey, sortDir);
+    tbl.innerHTML =
+      '<thead><tr>' +
+        '<th data-k="uf">Estado</th><th data-k="viab_primaria">Viab. prim.</th>' +
+        '<th data-k="viab_secundaria">Viab. sec.</th><th data-k="viab_nao_informada">Viab. n/i</th>' +
+        '<th data-k="aprovado">Aprovado</th><th data-k="negado">Negado</th>' +
+        '<th data-k="sem_info">Sem info</th><th data-k="total">Total</th>' +
+        '<th data-k="taxa">Aprovação</th>' +
+      '</tr></thead><tbody>' +
+      rows.map(r => {
+        const t = pct(r.aprovado, r.total);
+        const cls = t >= 50 ? 'ok' : (t >= 25 ? 'mid' : 'low');
+        return '<tr data-uf="' + r.uf + '"' + (uf === r.uf ? ' style="background:#eef2ff"' : '') + '>' +
+          '<td><span class="uf">' + r.uf + '</span><span class="nm">' + r.nome + '</span></td>' +
+          '<td>' + fmt(r.viab_primaria) + '</td><td>' + fmt(r.viab_secundaria) + '</td>' +
+          '<td style="color:#94a3b8">' + fmt(r.viab_nao_informada) + '</td>' +
+          '<td style="color:' + C.ok + ';font-weight:600">' + fmt(r.aprovado) + '</td>' +
+          '<td style="color:' + C.no + '">' + fmt(r.negado) + '</td>' +
+          '<td style="color:#64748b">' + fmt(r.sem_info) + '</td>' +
+          '<td><b>' + fmt(r.total) + '</b></td>' +
+          '<td><span class="pill ' + cls + '">' + t.toFixed(1) + '%</span></td>' +
+        '</tr>';
+      }).join('') +
+      '</tbody>';
+    bindTable(tbl);
   }
-  function bindSort(tbl){
-    tbl.querySelectorAll('thead th[data-k]').forEach(th=>{
-      th.onclick=()=>{ const k=th.dataset.k;
-        if(sortKey===k) sortDir*=-1; else {sortKey=k; sortDir=(k==='uf'?1:-1);}
-        renderTable(); };
+
+  function bindTable(tbl){
+    tbl.querySelectorAll('thead th[data-k]').forEach(th => {
+      if(th.dataset.k === sortKey) th.classList.add('sorted');
+      th.onclick = () => {
+        const k = th.dataset.k;
+        if(sortKey === k) sortDir *= -1;
+        else { sortKey = k; sortDir = (k === 'uf' ? 1 : -1); }
+        renderTable();
+      };
     });
+    tbl.querySelectorAll('tbody tr[data-uf]').forEach(tr => {
+      tr.onclick = () => {
+        const code = tr.dataset.uf;
+        uf = (uf === code ? '' : code);
+        document.getElementById('ufFilter').value = uf;
+        renderAll();
+      };
+    });
+  }
+
+  /* ================= tabela bruta ================= */
+  function renderRaw(){
+    const linha = (b, isBR) => {
+      const g = bloco('geral', isBR ? '' : b), m = bloco('mei', isBR ? '' : b), n = bloco('nmei', isBR ? '' : b);
+      return '<tr class="' + (isBR ? 'br' : '') + '">' +
+        '<td>' + (isBR ? 'BR — Brasil' : b + ' — ' + (ESTADOS[b]||b)) + '</td>' +
+        '<td>' + fmt(g.total) + '</td><td>' + fmt(m.total) + '</td><td>' + fmt(n.total) + '</td>' +
+        '<td>' + fmt(g.viab_primaria) + '</td><td>' + fmt(g.viab_secundaria) + '</td><td>' + fmt(g.viab_nao_informada) + '</td>' +
+        '<td>' + fmt(g.aprovado) + '</td><td>' + fmt(g.negado) + '</td><td>' + fmt(g.sem_info) + '</td>' +
+      '</tr>';
+    };
+    document.getElementById('rawTable').innerHTML =
+      '<thead><tr>' +
+        '<th>Escopo</th><th>Empresas</th><th>MEI</th><th>NMEI</th>' +
+        '<th>Viab. prim.</th><th>Viab. sec.</th><th>Viab. n/i</th>' +
+        '<th>Aprovado</th><th>Negado</th><th>Sem info</th>' +
+      '</tr></thead><tbody>' +
+      linha(null, true) + UFS.map(u => linha(u, false)).join('') +
+      '</tbody>';
+    document.getElementById('rawSummary').textContent =
+      'Dados brutos da extração (' + UFS.length + ' UFs + consolidado nacional)';
   }
 
   /* ================= orquestração ================= */
   function renderAll(){
     destroy();
-    root.classList.remove('is-mei','is-nmei','is-comp');
-    root.classList.add(seg==='comp'?'is-comp':(seg==='mei'?'is-mei':'is-nmei'));
-    document.getElementById('viewSingle').classList.toggle('hide', seg==='comp');
-    document.getElementById('viewComp').classList.toggle('hide', seg!=='comp');
+    root.classList.remove('is-geral','is-mei','is-nmei','is-comp');
+    root.classList.add('is-' + (seg === 'comp' ? 'comp' : seg));
+    document.getElementById('viewSingle').classList.toggle('hide', seg === 'comp');
+    document.getElementById('viewComp').classList.toggle('hide', seg !== 'comp');
+    renderScope();
     renderKPIs();
-    if(seg==='comp') renderComp(); else renderSingle();
+    if(seg === 'comp') renderComp(); else renderSingle();
     renderTable();
   }
 
   /* ================= eventos ================= */
-  document.querySelectorAll('#segSwitch button').forEach(b=>{
-    b.onclick=()=>{
-      document.querySelectorAll('#segSwitch button').forEach(x=>x.classList.remove('active'));
-      b.classList.add('active'); seg=b.dataset.seg;
-      sortKey='total'; sortDir=-1; renderAll();
+  document.querySelectorAll('#segSwitch button').forEach(b => {
+    b.onclick = () => {
+      document.querySelectorAll('#segSwitch button').forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+      seg = b.dataset.seg;
+      sortKey = 'total'; sortDir = -1;
+      renderAll();
     };
   });
-  document.getElementById('ufFilter').onchange=function(){ uf=this.value; renderAll(); };
 
-  // filtro tabela bruta
+  document.getElementById('ufFilter').onchange = function(){ uf = this.value; renderAll(); };
+
   document.getElementById('rawFilter').addEventListener('keyup', function(){
-    const q=this.value.toLowerCase();
-    document.querySelectorAll('#rawTable tbody tr').forEach(tr=>{
-      tr.style.display = tr.cells[0].textContent.toLowerCase().includes(q)?'':'none';
+    const q = this.value.toLowerCase();
+    document.querySelectorAll('#rawTable tbody tr').forEach(tr => {
+      tr.style.display = tr.cells[0].textContent.toLowerCase().includes(q) ? '' : 'none';
     });
   });
 
+  renderRaw();
   renderAll();
 })();
 </script>
