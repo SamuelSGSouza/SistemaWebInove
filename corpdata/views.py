@@ -477,21 +477,11 @@ def valida_filtros(filtros: dict):
     # ---------------------------------------------------------
     # Filtro de porte da empresa
     # ---------------------------------------------------------
+    
     eh_mei = filtros_validos["eh_mei"]
-    if eh_mei is not None:
-        if not eh_mei in ["false", "true"]:
-            return JsonResponse({
-                    "erro": "Seleção de Mei / Não Mei inválida.",
-                    "motivo": f"O campo de Mei / Não Mei deve ser um booleano."
-                },
-                status=400
-            ), None
-        
-    # ---------------------------------------------------------
-    # Filtro de viabilidade
-    # ---------------------------------------------------------
-    eh_mei = filtros_validos["eh_mei"]
-    if eh_mei is not None:
+    print(filtros_validos)
+    if eh_mei is not None and len(str(eh_mei))>3:
+
         if not eh_mei in ["false", "true"]:
             return JsonResponse({
                     "erro": "Seleção de Mei / Não Mei inválida.",
@@ -578,8 +568,8 @@ def dados_empresas_em_lote(request):
         "situacao_cadastral": request.GET.get("situacao_cadastral", ""),
         "cnae_fiscal": request.GET.get("cnae_fiscal", ""),
         "eh_mei": request.GET.get("eh_mei", None),
-        "viabilidade": request.GET.get("viabilidade", None),
     }
+
 
     erro, filtros = valida_filtros(filtros)
 
