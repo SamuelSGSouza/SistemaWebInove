@@ -4,5 +4,6 @@ from .views import *
 
 urlpatterns = [
     path('pesquisa_empresa', pesquisa_empresa, name="pesquisa_empresa"),
-    path('pesquisa_empresas_em_lote', pesquisa_empresas_em_lote, name="pesquisa_empresas_em_lote")
+    path('pesquisa_empresas_em_lote', pesquisa_empresas_em_lote, name="pesquisa_empresas_em_lote"),
+    path('dados_empresas_em_lote', dados_empresas_em_lote, name="dados_empresas_em_lote")
 ]
