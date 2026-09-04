@@ -188,27 +188,6 @@ class Dashboard(LoginRequiredMixin, TemplateView):
     template_name = "dashboard.html"
 
     def get_context_data(self, **kwargs):
-        df = pd.read_excel("to_p.xlsx")
-        cnpjs = df["CNPJ"].unique().tolist()
-        todos_dados = []
-        for cnpj in cnpjs:
-            cnpj = str(cnpj).zfill(14)
-            url = "http://127.0.0.1:8000/corpdata/pesquisa_empresa"
-            params = {
-                "cnpj": cnpj
-            }
-
-            inicio = time.time( )
-            response = requests.get(url, params=params, timeout=120)
-            try:
-                dados = transforma_empresa(response.json())
-                todos_dados.append(dados)
-            except Exception as e:
-                print(f"Erro ao processar CNPJ {cnpj}: {e}")
-
-        df = pd.DataFrame(todos_dados)
-        df.to_excel("Empresas Completas.xlsx", index=False)
-
         verifica_atualizacao_receita()
         ctx = super().get_context_data(**kwargs)
         ctx["payload"] = monta_payload_dashboard()
@@ -569,20 +548,19 @@ def filtra_mailing_cpfs_view(request):
 
             # Estados (múltiplos valores via checkbox)
             estados = request.POST.getlist('estado', [])
-            print("ESTADOS: ", estados)
             if estados != []:
-                estados = estados
+                estados = estados + ["EXT", ]
             else:
                 estados = [ 'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 
             'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 
             'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO']
             if estados:
-                filtros['uf'] = estados
-                
+                filtros['uf'] = list(estados)
+                print(estados)
 
             tipo_base = request.POST.get("tipoBase", "")
             if tipo_base and tipo_base != "Ambos":
-                filtros["pasta"] = tipo_base
+                filtros["pasta"] = [tipo_base, ]
 
 
             conjunto_telefones = request.POST.get("conjuntoTelefone", "")
@@ -617,7 +595,7 @@ def filtra_mailing_cpfs_view(request):
             }
             dia = datetime.now().day 
             dia = str(dia) if dia > 9 else "0"+ str(dia)
-            mes_extenso = meses[str(datetime.datetime.now().month)]
+            mes_extenso = meses[str(datetime.now().month)]
             data_atual = f'{dia}-{mes_extenso}'
             nome_padrao_arquivo += data_atual
             # Preparar dados para exibição
@@ -805,7 +783,7 @@ def filtra_mailing_view(request):
             }
             dia = datetime.datetime.now().day 
             dia = str(dia) if dia > 9 else "0"+ str(dia)
-            mes_extenso = meses[str(datetime.datetime.now().month)]
+            mes_extenso = meses[str(datetime.now().month)]
             data_atual = f'{dia}-{mes_extenso}'
             # Preparar dados para exibição
             if not df.empty:
@@ -1012,7 +990,7 @@ def filtro_geral_view(request):
             }
             dia = datetime.datetime.now().day 
             dia = str(dia) if dia > 9 else "0"+ str(dia)
-            data_atual = f'{dia} de {meses[str(datetime.datetime.now().month)]}'
+            data_atual = f'{dia} de {meses[str(datetime.now().month)]}'
             # Preparar dados para exibição
             
             formato_download = request.POST.get('formatoDownload', '')

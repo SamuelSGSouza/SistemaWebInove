@@ -1880,6 +1880,8 @@ def get_dados_mailing_cpf(colunas_filtro:dict, campos_retorno:list=[], tipos_cre
             mask = pd.Series(True, index=chunk.index)
 
             for coluna, valores in colunas_filtro.items():
+                print("Valores: ", valores)
+                print(f"Tipo: {coluna} ->", type(valores))
                 mask &= chunk[coluna].astype(str).isin(valores)
             
             chunk = chunk[mask]
