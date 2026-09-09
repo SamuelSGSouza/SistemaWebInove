@@ -313,7 +313,8 @@ class TratamentosArquivosExternos(LoginRequiredMixin,TemplateView):
 
         dict_tipos = {
             "Limpeza de BlackList": "Envie aqui um arquivo para que sejam removidos os telefones que estão na BlackList e Quarentena",
-            "Enriquecimento de Dados": "Envie aqui um arquivo com coluna 'cnpj' e ele será enriquecido com dados do sistema",
+            "Enriquecimento de Dados": "Envie aqui um arquivo com coluna 'cnpj' e ele será enriquecido com telefones do sistema",
+            "Enriquecimento de CNPJ": "Envie aqui um arquivo com coluna 'cnpj' e ele será enriquecido com dados do sistema",
             "Classificar Telefones": "Envie aqui um arquivo com coluna 'telefone' e ele será mapeado entre 'Atendido', 'Não Atendidos' e 'Novos'",
         }
         context["descricao"] = dict_tipos[context["tipo_tratamento"]]
@@ -366,6 +367,10 @@ class TratamentosArquivosExternos(LoginRequiredMixin,TemplateView):
         if tipo_tratamento == "Enriquecimento de Dados":
             zip_path = os.path.join(pasta_usuario,"arquivos_complementar.zip")
             relatorio, erros_internos = complementa_arquivos(pasta_usuario,pasta_destino)
+
+        if tipo_tratamento == "Enriquecimento de CNPJ":
+            zip_path = os.path.join(pasta_usuario,"arquivos_cnpj.zip")
+            relatorio, erros_internos = complementa_cnpj(pasta_usuario,pasta_destino)
         
         if tipo_tratamento == "Classificar Telefones":
             zip_path = os.path.join(pasta_usuario,"arquivos_telefones_classificados.zip")

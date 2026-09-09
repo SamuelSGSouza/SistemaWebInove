@@ -1197,13 +1197,13 @@ def classifica_telefones(pasta_usuario, pasta_destino):
         return relatorio, erros
     
 
-def complementa_cnpj(raiz) -> str:
+def complementa_cnpj(pasta_usuario, pasta_destino) -> str:
     relatorio = ""
     erros = []
     try:
-        pasta_arquivos_para_complementar = os.path.join(os.getcwd(), "media", "arquivos_cnpj")
-        for arq in os.listdir(pasta_arquivos_para_complementar):
-            file = os.path.join(pasta_arquivos_para_complementar, arq)
+        PASTA_ARQUIVOS_COMPLEMENTAR = pasta_destino
+        for arq in os.listdir(PASTA_ARQUIVOS_COMPLEMENTAR):
+            file = os.path.join(PASTA_ARQUIVOS_COMPLEMENTAR, arq)
             extensao = os.path.splitext(file)[1].lower()
             sep = _detectar_sep_csv(file)
             
@@ -1287,9 +1287,9 @@ def complementa_cnpj(raiz) -> str:
             relatorio += f"Tratamento e unificação do arquivo {arq} bem sucedida!"
             print(f"Tratamento e unificação do arquivo {arq} bem sucedida!")
 
-        zip_folder(os.path.join(os.getcwd(), "media/arquivos_cnpj"), "media/arquivos_cnpj.zip")
-        for arq in os.listdir(pasta_arquivos_para_complementar):
-            file = os.path.join(pasta_arquivos_para_complementar, arq)
+        zip_folder(PASTA_ARQUIVOS_COMPLEMENTAR, os.path.join(pasta_usuario, "arquivos_cnpj.zip"))
+        for arq in os.listdir(PASTA_ARQUIVOS_COMPLEMENTAR):
+            file = os.path.join(PASTA_ARQUIVOS_COMPLEMENTAR, arq)
             os.remove(file)
             print(f"Arquivo {file} removido!")
         print("Retornando o relatório")
