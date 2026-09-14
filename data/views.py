@@ -315,6 +315,7 @@ class TratamentosArquivosExternos(LoginRequiredMixin,TemplateView):
             "Limpeza de BlackList": "Envie aqui um arquivo para que sejam removidos os telefones que estão na BlackList e Quarentena",
             "Enriquecimento de Dados": "Envie aqui um arquivo com coluna 'cnpj' e ele será enriquecido com telefones do sistema",
             "Enriquecimento de CNPJ": "Envie aqui um arquivo com coluna 'cnpj' e ele será enriquecido com dados do sistema",
+            "Classificação de Operadoras": "Envie aqui um arquivo com coluna 'telefone' e ele será classificado entre uma das operadoras conhecidas",
             "Classificar Telefones": "Envie aqui um arquivo com coluna 'telefone' e ele será mapeado entre 'Atendido', 'Não Atendidos' e 'Novos'",
         }
         context["descricao"] = dict_tipos[context["tipo_tratamento"]]
@@ -371,6 +372,10 @@ class TratamentosArquivosExternos(LoginRequiredMixin,TemplateView):
         if tipo_tratamento == "Enriquecimento de CNPJ":
             zip_path = os.path.join(pasta_usuario,"arquivos_cnpj.zip")
             relatorio, erros_internos = complementa_cnpj(pasta_usuario,pasta_destino)
+
+        if tipo_tratamento == "Classificação de Operadoras":
+            zip_path = os.path.join(pasta_usuario,"arquivos_operadoras.zip")
+            relatorio, erros_internos = classifica_operadoras(pasta_usuario,pasta_destino)
         
         if tipo_tratamento == "Classificar Telefones":
             zip_path = os.path.join(pasta_usuario,"arquivos_telefones_classificados.zip")
@@ -993,7 +998,7 @@ def filtro_geral_view(request):
                 "11": "Novembro",
                 "12": "Dezembro"
             }
-            dia = datetime.datetime.now().day 
+            dia = datetime.now().day 
             dia = str(dia) if dia > 9 else "0"+ str(dia)
             data_atual = f'{dia} de {meses[str(datetime.now().month)]}'
             # Preparar dados para exibição
