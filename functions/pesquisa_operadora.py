@@ -301,16 +301,17 @@ def consulta_operadora_arquivo(caminho_entrada, caminho_saida=None):
 
 if __name__ == "__main__":
     # Consulta individual
-    resultado = consulta_operadora("11987069513")
-    print(f"Telefone : {resultado['telefone']}")
-    print(f"Portado  : {resultado['portado']}")
-    print(f"RN1      : {resultado['rn1']}")
-    print(f"Operadora: {resultado['operadora']}")
+    # resultado = consulta_operadora("11987069513")
+    # print(f"Telefone : {resultado['telefone']}")
+    # print(f"Portado  : {resultado['portado']}")
+    # print(f"RN1      : {resultado['rn1']}")
+    # print(f"Operadora: {resultado['operadora']}")
 
-    print("-" * 40)
+    # print("-" * 40)
 
     # Consulta em lote (lista)
-    lote = ["11987069513", "(21) 99876-5432", "abc123"]
+    lote = ["11987069513", "(21) 99876-5432", "abc123"]*100
+
     for r in consulta_operadora_lote(lote):
         if r.get("erro"):
             print(f"{r['telefone']}: ERRO - {r['erro']}")
