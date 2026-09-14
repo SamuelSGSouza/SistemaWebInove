@@ -3,6 +3,7 @@ import time
 from typing import Optional
 from psycopg2.extras import execute_values
 import pymysql
+import pandas as pd
 from pymysql.cursors import DictCursor
 from dotenv import load_dotenv
 import os
@@ -371,17 +372,15 @@ def _busca_prestadoras(conn, rn1s):
             _MAPA_RN1 = {r["rn1"]: r["prestadora"] for r in cursor.fetchall()}
     return _MAPA_RN1
 
-def consulta_operadora_arquivo(caminho_entrada, caminho_saida=None):
+def consulta_operadora_arquivo(telefones_para_verificar, caminho_saida=None):
     """
     Lê um arquivo texto com um telefone por linha, consulta todos em lote e,
     opcionalmente, grava o resultado em um CSV (telefone;portado;rn1;operadora;erro).
 
     Retorna a lista de resultados.
     """
-    with open(caminho_entrada, "r", encoding="utf-8") as f:
-        telefones = [linha.strip() for linha in f if linha.strip()]
 
-    resultados = consulta_operadora_lote_v2(telefones)
+    resultados = consulta_operadora_lote_v2(telefones_para_verificar)
 
     if caminho_saida:
         with open(caminho_saida, "w", encoding="utf-8") as f:
@@ -417,4 +416,6 @@ if __name__ == "__main__":
     #         print(f"{r['telefone']}: {r['operadora']} (portado={r['portado']})")
 
     # Consulta em lote a partir de arquivo, gravando CSV:
-    consulta_operadora_arquivo("telefones.csv", "resultado.csv")
+    with open("telefones.csv", "r", encoding="utf-8") as arq:
+        telefones = [tel for tel in arq.read().split("\n") ]
+    consulta_operadora_arquivo(telefones, "resultado.csv")
