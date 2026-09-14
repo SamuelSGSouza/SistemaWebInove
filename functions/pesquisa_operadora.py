@@ -72,9 +72,7 @@ def _normaliza_telefone(telefone: str) -> str:
         numero = numero[2:]
 
     if len(numero) not in (10, 11):
-        raise ValueError(
-            f"Telefone inválido: '{telefone}'. Esperado DDD + número (10 ou 11 dígitos)."
-        )
+        return ""
     return numero
 
 
