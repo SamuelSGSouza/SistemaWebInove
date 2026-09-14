@@ -120,8 +120,8 @@ def monta_payload_dashboard():
     """
     #pegando o mais recente
     payload = {}
-    dados_gerais = corp_data_model.ResumoDados.objects.order_by("-id").first()
-
+    dados_gerais = corp_data_model.ResumoDados.objects.filter().order_by("-id").first()
+    print("Dados Gerais: ", dados_gerais)
     #se não houver dados gerais, retorna um dicionário vazio
     if not dados_gerais:
         return payload
@@ -189,7 +189,10 @@ class Dashboard(LoginRequiredMixin, TemplateView):
 
 
     def get_context_data(self, **kwargs):
-        verifica_atualizacao_receita()
+
+        t = threading.Thread(target=verifica_atualizacao_receita)
+        t.start()
+
         ctx = super().get_context_data(**kwargs)
         ctx["payload"] = monta_payload_dashboard()
 

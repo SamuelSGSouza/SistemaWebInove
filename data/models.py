@@ -115,13 +115,16 @@ def verifica_atualizacao_receita():
     mes = f"0{mes}" if len(str(mes)) < 2 else str(mes)
     year = datetime.today().year
     mes_ano = f"{year}-{mes}"
-    response = requests.get(f"https://arquivos.receitafederal.gov.br/public.php/dav/files/YggdBLfdninEJX9/{mes_ano}/Cnaes.zip")
-    if response.status_code == 200: #existe dados para esse mês
-        if not ExecucaoSistema.objects.filter(mes_ano=mes_ano).exists():#sistema ainda não foi iniciado
-            ExecucaoSistema.objects.create(mes_ano=mes_ano)
-            #faz requisição pro endpoint de inicialização
-            requests.get("http://177.39.236.250/data/inicia_gerador_view")
 
+    try:
+        response = requests.get(f"https://arquivos.receitafederal.gov.br/public.php/dav/files/YggdBLfdninEJX9/{mes_ano}/Cnaes.zip", timeout=5)
+        if response.status_code == 200: #existe dados para esse mês
+            if not ExecucaoSistema.objects.filter(mes_ano=mes_ano).exists():#sistema ainda não foi iniciado
+                ExecucaoSistema.objects.create(mes_ano=mes_ano)
+                #faz requisição pro endpoint de inicialização
+                requests.get("http://177.39.236.250/data/inicia_gerador_view")
+    except:
+        pass
 
 class TelefonesDiscados(models.Model):
     telefone = models.CharField(max_length=13,unique=True)
