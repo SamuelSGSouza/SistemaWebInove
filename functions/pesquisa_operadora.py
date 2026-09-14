@@ -310,7 +310,7 @@ if __name__ == "__main__":
     # print("-" * 40)
 
     # Consulta em lote (lista)
-    lote = ["11987069513", "(21) 99876-5432", "abc123"]*100
+    lote = ["11987069513", "(21) 99876-5432", "abc123"]*1000
 
     for r in consulta_operadora_lote(lote):
         if r.get("erro"):
