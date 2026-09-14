@@ -1,9 +1,8 @@
 import threading
 import time
 from typing import Optional
-from psycopg2.extras import execute_values
+
 import pymysql
-import pandas as pd
 from pymysql.cursors import DictCursor
 from dotenv import load_dotenv
 import os
@@ -72,7 +71,9 @@ def _normaliza_telefone(telefone: str) -> str:
         numero = numero[2:]
 
     if len(numero) not in (10, 11):
-        return ""
+        raise ValueError(
+            f"Telefone inválido: '{telefone}'. Esperado DDD + número (10 ou 11 dígitos)."
+        )
     return numero
 
 
@@ -271,114 +272,17 @@ def consulta_operadora_lote(telefones, conn=None):
     return resultados
 
 
-def consulta_operadora_lote_v2(telefones, conn=None, chunk=5000):
-    fechar_conn = conn is None
-    if conn is None:
-        conn = get_conn()
-
-    try:
-        normalizados = {t: _normaliza_telefone(t) for t in telefones}
-        unicos = sorted(set(normalizados.values()))
-
-        portados, cadup = {}, {}
-        for i in range(0, len(unicos), chunk):
-            p, c = _resolve_bloco(conn, unicos[i:i + chunk])
-            portados.update(p)
-            cadup.update(c)
-
-        rn1s = list({*portados.values(), *cadup.values()})
-        operadoras = _busca_prestadoras(conn, rn1s)
-
-        saida = {}
-        for numero in unicos:
-            if numero in portados:
-                rn1, portado = portados[numero], True
-            elif numero in cadup:
-                rn1, portado = cadup[numero], False
-            else:
-                rn1, portado = None, None
-
-            saida[numero] = {
-                "telefone": numero,
-                "portado": portado,
-                "rn1": rn1,
-                "operadora": operadoras.get(rn1) if rn1 else None,
-            }
-
-        return [saida[normalizados[t]] for t in telefones]
-    finally:
-        if fechar_conn:
-            conn.close()
-
-
-def _resolve_bloco(conn, numeros):
-    with conn.cursor() as cursor:
-        cursor.execute("DROP TEMPORARY TABLE IF EXISTS tmp_nums")
-        cursor.execute("""
-            CREATE TEMPORARY TABLE tmp_nums (
-                numero  VARCHAR(11) NOT NULL,
-                cn      VARCHAR(2)  NOT NULL,
-                prefixo VARCHAR(5)  NOT NULL,
-                sufixo  CHAR(4)     NOT NULL,
-                PRIMARY KEY (numero),
-                KEY idx_faixa (cn, prefixo)
-            ) CHARACTER SET latin1 COLLATE latin1_swedish_ci
-        """)
-        cursor.executemany(
-            "INSERT INTO tmp_nums (numero, cn, prefixo, sufixo) VALUES (%s,%s,%s,%s)",
-            [(n, n[:2], n[2:-4], n[-4:]) for n in numeros],
-        )
-
-        # 1) portados
-        cursor.execute("""
-            SELECT t.numero, nr.rn1
-              FROM tmp_nums t
-              JOIN number_route_1 nr ON nr.tn = t.numero
-        """)
-        portados = {r["numero"]: r["rn1"] for r in cursor.fetchall()}
-
-        # tira os portados da temp, sobra só o que vai pro CADUP
-        cursor.execute("""
-            DELETE t FROM tmp_nums t
-              JOIN number_route_1 nr ON nr.tn = t.numero
-        """)
-
-        # 2) CADUP
-        cursor.execute("""
-            SELECT t.numero, MIN(c.rn1) AS rn1
-              FROM tmp_nums t
-              JOIN stfc_cadup c
-                ON c.cn = t.cn
-               AND c.prefixo = t.prefixo
-               AND t.sufixo BETWEEN c.faixa_inicial AND c.faixa_final
-             GROUP BY t.numero
-        """)
-        cadup = {r["numero"]: r["rn1"] for r in cursor.fetchall()}
-
-        cursor.execute("DROP TEMPORARY TABLE tmp_nums")
-
-    return portados, cadup
-
-
-_MAPA_RN1 = None
-
-def _busca_prestadoras(conn, rn1s):
-    global _MAPA_RN1
-    if _MAPA_RN1 is None:
-        with conn.cursor() as cursor:
-            cursor.execute("SELECT rn1, prestadora FROM vi_rn1")
-            _MAPA_RN1 = {r["rn1"]: r["prestadora"] for r in cursor.fetchall()}
-    return _MAPA_RN1
-
-def consulta_operadora_arquivo(telefones_para_verificar, caminho_saida=None):
+def consulta_operadora_arquivo(caminho_entrada, caminho_saida=None):
     """
     Lê um arquivo texto com um telefone por linha, consulta todos em lote e,
     opcionalmente, grava o resultado em um CSV (telefone;portado;rn1;operadora;erro).
 
     Retorna a lista de resultados.
     """
+    with open(caminho_entrada, "r", encoding="utf-8") as f:
+        telefones = [linha.strip() for linha in f if linha.strip()]
 
-    resultados = consulta_operadora_lote_v2(telefones_para_verificar)
+    resultados = consulta_operadora_lote(telefones)
 
     if caminho_saida:
         with open(caminho_saida, "w", encoding="utf-8") as f:
@@ -397,23 +301,21 @@ def consulta_operadora_arquivo(telefones_para_verificar, caminho_saida=None):
 
 if __name__ == "__main__":
     # Consulta individual
-    # resultado = consulta_operadora("11987069513")
-    # print(f"Telefone : {resultado['telefone']}")
-    # print(f"Portado  : {resultado['portado']}")
-    # print(f"RN1      : {resultado['rn1']}")
-    # print(f"Operadora: {resultado['operadora']}")
+    resultado = consulta_operadora("11987069513")
+    print(f"Telefone : {resultado['telefone']}")
+    print(f"Portado  : {resultado['portado']}")
+    print(f"RN1      : {resultado['rn1']}")
+    print(f"Operadora: {resultado['operadora']}")
 
-    # print("-" * 40)
+    print("-" * 40)
 
-    # # Consulta em lote (lista)
-    # lote = ["11987069513", "(21) 99876-5432", "abc123"]
-    # for r in consulta_operadora_lote(lote):
-    #     if r.get("erro"):
-    #         print(f"{r['telefone']}: ERRO - {r['erro']}")
-    #     else:
-    #         print(f"{r['telefone']}: {r['operadora']} (portado={r['portado']})")
+    # Consulta em lote (lista)
+    lote = ["11987069513", "(21) 99876-5432", "abc123"]
+    for r in consulta_operadora_lote(lote):
+        if r.get("erro"):
+            print(f"{r['telefone']}: ERRO - {r['erro']}")
+        else:
+            print(f"{r['telefone']}: {r['operadora']} (portado={r['portado']})")
 
     # Consulta em lote a partir de arquivo, gravando CSV:
-    with open("telefones.csv", "r", encoding="utf-8") as arq:
-        telefones = [tel for tel in arq.read().split("\n") ]
-    consulta_operadora_arquivo(telefones, "resultado.csv")
+    # consulta_operadora_arquivo("telefones.txt", "resultado.csv")
