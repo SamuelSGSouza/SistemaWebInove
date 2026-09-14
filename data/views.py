@@ -776,6 +776,7 @@ def filtra_mailing_view(request):
             
             
             pasta_dados = os.path.join(pasta_raiz, "viabilidades_credito_enriquecido")
+            print("Lendo arquivos da pasta: ", pasta_dados)
             df = get_dados_mailing(filtros, tipos_credito=tipos_credito, formato_saida=formato_saida, conjunto_telefones=conjunto_telefones, tipos_telefone= tipos_telefone, tipoMailing=tipoMailing, filtro_telefone_blacklist=filtro_telefone_blacklist, pasta_dados=pasta_dados, coletar_atendidos=coletar_atendidos, coletar_nao_atendidos=coletar_nao_atendidos, coletar_novos=coletar_novos)
             dfs.append(df)
 

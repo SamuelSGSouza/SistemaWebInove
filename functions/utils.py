@@ -1729,6 +1729,7 @@ def get_dados_mailing(colunas_filtro:dict, campos_retorno:list=[], tipos_credito
     colunas_ip_box = ["cnpj", "razao_social", "decisor", "correio_eletronico", "logradouro", "num_fachada", "complemento1", "bairro", "cep", "municipio", "uf", "DDD1", "TEL1", "DDD2", "TEL2", "DDD3", "TEL3", "DDD4", "TEL4", "DDD5", "TEL5", "DDD6", "TEL6", "DDD7", "TEL7", "DDD8", "TEL8", ]
     colunas_vonix = ["TELEFONE1", "TELEFONE2", "TELEFONE3", "TELEFONE4", "TELEFONE5", "TELEFONE6", "TELEFONE7", "TELEFONE8", "CNPJ", "NOME", "DECISOR", "EMAIL", "LOGRADOURO", "NUMERO", "COMPLEMENTO", "CEP", "BAIRRO ALTO", "CIDADE", "UF", "ORIGEM",]
     for f in os.listdir(pasta_dados):
+        print("Lendo arquivo: ", f)
         df_path = os.path.join(pasta_dados, f)
         coletar = False
         for col in colunas_filtro["uf"]:
@@ -1812,7 +1813,8 @@ def get_dados_mailing(colunas_filtro:dict, campos_retorno:list=[], tipos_credito
 
         df.replace("NAO ENCONTRADO", "", inplace=True)
         return df
-    
+
+    print("Iniciando processamento do arquivo")
     ini = time.time()
     with ThreadPoolExecutor(max_workers=4) as executor:
         dfs = list(executor.map(processa_arquivo, arquivos_para_ler))
@@ -1826,7 +1828,7 @@ def get_dados_mailing(colunas_filtro:dict, campos_retorno:list=[], tipos_credito
 
     ini = time.time()
     df = padronizacao_mailing_final(df).reset_index(drop=True)
-
+    print("Padronizando mailing final")
     if filtro_telefone_blacklist == "apenas_filtrados":
         df = filtra_mailing(df)
 
@@ -1852,8 +1854,9 @@ def get_dados_mailing(colunas_filtro:dict, campos_retorno:list=[], tipos_credito
     
     ini = time.time()
     #garantindo que telefones sempre fiquem à esquerda
+    print("Compactando df final")
     df = compacta_colunas(df, ["TEL1", "TEL2", "TEL3"] + [f"Telefone_{i}" for i in range(1,21)])
-    
+
     ini = time.time()
     if formato_saida == "IPBOX":
         colunas_telefone = ["TEL1", "TEL2", "TEL3"] + [f"Telefone_{i}" for i in range(1,6)]
@@ -1893,7 +1896,7 @@ def get_dados_mailing(colunas_filtro:dict, campos_retorno:list=[], tipos_credito
 
         df = df[colunas_vonix]
 
-    
+    print("Retornando o DF")
     return df
 
 
