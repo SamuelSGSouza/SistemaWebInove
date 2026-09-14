@@ -1232,7 +1232,8 @@ def classifica_operadoras(pasta_usuario, pasta_destino):
             df["telefone_clean"] = df["telefone"].apply(clean_phone_number)
 
             try:
-                df["operadora"] = consulta_operadora_lote(df["telefone_clean"].tolist())
+                dados_operadoras = consulta_operadora_lote(df["telefone_clean"].tolist())
+                df["operadora"] = [dado["operadora"] for dado in dados_operadoras]
             except:
                 return relatorio, ["A conexão com o servidor de dados foi bloqueada", ]
                 
