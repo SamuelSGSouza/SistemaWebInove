@@ -20,7 +20,7 @@ from concurrent.futures import ProcessPoolExecutor
 from typing import List, Tuple
 from django.db.models import Count, Q, F, FloatField
 from django.db.models.functions import Cast
-
+from functions.pesquisa_operadora import consulta_operadora_lote
 
 PASTA_ARQUIVOS_BLACKLIST = os.path.join(os.getcwd(), "media/arquivos_blacklist")
 PASTA_ARQUIVOS_TELS_NEXT = os.path.join(os.getcwd(), "media/arquivos_tels_next")
@@ -1228,14 +1228,15 @@ def classifica_operadoras(pasta_usuario, pasta_destino):
             if "telefone" not in df.columns.tolist():
                 relatorio += f"Arquivo {file} ignorado por não ter coluna 'telefone'\n"
                 continue
+            
             df["telefone_clean"] = df["telefone"].apply(clean_phone_number)
 
-            df["classificacao"] = "NOVO"
-
-            df.loc[df["telefone_clean"].isin(atendidos), "classificacao"] = "ATENDIDO"
-
-            df.loc[df["telefone_clean"].isin(nao_atendidos), "classificacao"] = "NAO ATENDIDO"
-
+            try:
+                df["operadora"] = consulta_operadora_lote(df["telefone_clean"].tolist())
+            except:
+                return relatorio, ["A conexão com o servidor de dados foi bloqueada", ]
+                
+                
             df.drop(columns=["telefone_clean"], inplace=True)
             if extensao in [".csv", ".txt"]:
                 df.to_csv(file,sep=sep, index=False)
