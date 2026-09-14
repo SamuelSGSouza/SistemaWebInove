@@ -187,12 +187,12 @@ def monta_payload_dashboard():
 class Dashboard(LoginRequiredMixin, TemplateView):
     template_name = "dashboard.html"
 
-    def get_context_data(self, **kwargs):
-        verifica_atualizacao_receita()
-        ctx = super().get_context_data(**kwargs)
-        ctx["payload"] = monta_payload_dashboard()
+    # def get_context_data(self, **kwargs):
+    #     verifica_atualizacao_receita()
+    #     ctx = super().get_context_data(**kwargs)
+    #     ctx["payload"] = monta_payload_dashboard()
 
-        return ctx
+    #     return ctx
 
 class Status_Execucao(LoginRequiredMixin,TemplateView):
     template_name = "status_execucao.html"
