@@ -797,6 +797,7 @@ def filtra_mailing_view(request):
                 "11": "Novembro",
                 "12": "Dezembro"
             }
+            
             dia = datetime.now().day 
             dia = str(dia) if dia > 9 else "0"+ str(dia)
             mes_extenso = meses[str(datetime.now().month)]
