@@ -1247,7 +1247,7 @@ def classifica_operadoras(pasta_usuario, pasta_destino):
 
             relatorio +=  f"Telefones do arquivo {file} classificados com sucesso"
         
-        zip_folder(PASTA_ARQUIVOS_COMPLEMENTAR, os.path.join(pasta_usuario, "arquivos_telefones_classificados.zip"))
+        zip_folder(PASTA_ARQUIVOS_COMPLEMENTAR, os.path.join(pasta_usuario, "arquivos_operadoras.zip"))
         for arq in os.listdir(PASTA_ARQUIVOS_COMPLEMENTAR):
             file = os.path.join(PASTA_ARQUIVOS_COMPLEMENTAR, arq)
             os.remove(file)
