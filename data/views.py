@@ -34,7 +34,7 @@ from .models import *
 from corpdata import models as corp_data_model
 from functions.utils import *
 from functions.contantes import *
-from functions.gerador import inicia_gerador, inicia_gerador_mailing_2026, inicia_gerador_arquivos_cpf
+from functions.gerador import inicia_gerador, inicia_gerador_mailing_2026, inicia_gerador_arquivos_cpf, monta_resumo
 from functions.finaliza_analise_de_dados import conta_dados
 from functions.importa_dados_telefones import cadastra_telefones_dia, cadastra_telefones_antigos, pesquisa_telefones, imprime_relatorio
 from functions.pesquisa_operadora import (
@@ -124,6 +124,8 @@ def monta_payload_dashboard():
     print("Dados Gerais: ", dados_gerais)
     #se não houver dados gerais, retorna um dicionário vazio
     if not dados_gerais:
+        t1 = threading.Thread(target=monta_resumo)
+        t1.start()
         return payload
 
     #inserindo os dados gerais no payload
