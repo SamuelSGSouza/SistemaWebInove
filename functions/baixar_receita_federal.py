@@ -13,6 +13,9 @@ import pandas
 from corpdata.models import Cnae, Municipio, NaturezaJuridica, Empresa
 from django.db import transaction
 import numpy as np
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
+
 
 COLUNAS_TIPOS_ARQUIVOS = {
     "empresa": ['cnpj_basico','razao_social','natureza_juridica','qualificacao_responsavel','capital_social','porte_empresa','ente_federativo_responsavel',],
@@ -105,6 +108,15 @@ total_dados = 0
 total_dados_receita_Mei = 0
 
 
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+                  "(KHTML, like Gecko) Chrome/128.0 Safari/537.36",
+    "Accept": "*/*",
+    "Accept-Language": "pt-BR,pt;q=0.9",
+}
+
+
+
 ##################################################
 ################# HELPERS ########################
 ##################################################
@@ -114,6 +126,50 @@ def tratar_string(x):
     x = re.sub(r'\s+', ' ', x)
     x = re.sub(r'^[^A-Z0-9]+', '', x)
     return x
+
+def criar_sessao():
+    sessao = requests.Session()
+    sessao.headers.update(HEADERS)
+    # Compatível com o urllib3 antigo do Ubuntu (sem 'allowed_methods')
+    retry = Retry(
+        total=5,
+        backoff_factor=2,  # espera 2s, 4s, 8s...
+        status_forcelist=[429, 500, 502, 503, 504],
+    )
+    sessao.mount("https://", HTTPAdapter(max_retries=retry))
+    return sessao
+
+def baixar_arquivo(sessao, file_url, file_path, tentativas=5):
+    temp_path = file_path + ".part"
+    for tentativa in range(1, tentativas + 1):
+        try:
+            with sessao.get(file_url, stream=True, timeout=(15, 300)) as r:
+                r.raise_for_status()
+                with open(temp_path, "wb") as f:
+                    for chunk in r.iter_content(chunk_size=1024 * 1024):
+                        f.write(chunk)
+            os.replace(temp_path, file_path)  # só vira o arquivo final se completou
+            return
+        except (requests.exceptions.ConnectionError,
+                requests.exceptions.ChunkedEncodingError,
+                requests.exceptions.Timeout):
+            if tentativa == tentativas:
+                raise
+            time.sleep(10 * tentativa)
+
+def descobrir_mes_disponivel(sessao, meses_para_tras=2):
+    hoje = datetime.today()
+    for i in range(meses_para_tras + 1):
+        data_formatada = (hoje - relativedelta(months=i)).strftime("%Y-%m")
+        url = f"https://arquivos.receitafederal.gov.br/public.php/dav/files/YggdBLfdninEJX9/{data_formatada}/Cnaes.zip"
+        # stream=True: lê só os cabeçalhos, não baixa o zip
+        with sessao.get(url, stream=True, timeout=(10, 30)) as resp:
+            if resp.status_code == 200:
+                return data_formatada
+            if resp.status_code != 404:
+                resp.raise_for_status()
+    raise RuntimeError("Nenhum mês disponível encontrado na Receita Federal")
+
 
 
 def salva_log_geral(msg:str, sistema:str="geral"):
@@ -131,15 +187,8 @@ def baixa_arquivos_receita(nova_execucao):
     salva_status(nova_execucao, titulo=f"Finalizou Exclusão de dados anteriores da Receita Federal",status="Em Andamento")
 
     # Calcula a URL com base no mês anterior
-    hoje = datetime.today()
-    mes_passado = hoje - relativedelta(months=0)
-    data_formatada = mes_passado.strftime("%Y-%m")
-    url_base = f"https://arquivos.receitafederal.gov.br/public.php/dav/files/YggdBLfdninEJX9/{data_formatada}/Cnaes.zip"
-    file_url = ""
-    resposta_teste = requests.get(url_base)
-    if str(resposta_teste.status_code) == "404":
-        mes_passado = hoje - relativedelta(months=1)
-        data_formatada = mes_passado.strftime("%Y-%m")
+    sessao = criar_sessao()
+    data_formatada = descobrir_mes_disponivel(sessao)
     
     files_to_download = [
         "Cnaes.zip",
@@ -187,14 +236,12 @@ def baixa_arquivos_receita(nova_execucao):
 
             file_url = f"https://arquivos.receitafederal.gov.br/public.php/dav/files/YggdBLfdninEJX9/{data_formatada}/{file_name}"
 
-            with requests.get(file_url, stream=True, timeout=300) as r:
+            with sessao.get(file_url, stream=True, timeout=(15, 300)) as r:
                 r.raise_for_status()
                 salva_status(nova_execucao, titulo=f"Iniciando Download do Arquivo: {file_name}",status="Em Andamento")
 
                 file_path = os.path.join(pasta_destino, file_name)
-                with open(file_path, 'wb') as f:
-                    for chunk in r.iter_content(chunk_size=8192):
-                        f.write(chunk)
+                baixar_arquivo(sessao, file_url, file_path)
         
 
     except Exception as e:
