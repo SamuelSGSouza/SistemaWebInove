@@ -1279,6 +1279,7 @@ def complementa_cnpj(pasta_usuario, pasta_destino) -> str:
                     file,
                     dtype=str,
                 )
+            df_para_complementar.columns = df_para_complementar.columns.str.lower()
 
             if "cnpj" not in [str(c).lower() for c in df_para_complementar.columns.to_list()]:
                 erros.append(f"Falha ao ler arquivos para enriquecer pois o arquivo {arq} não possui uma coluna 'cnpj'")
