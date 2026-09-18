@@ -422,7 +422,6 @@ class AtualizaBases(LoginRequiredMixin, TemplateView):
             "Telefone": "Base de telefones a serem usados no enriquecimento",
             "Mailing Restrito": "Envie aqui os arquivos de mailing restrito para iniciar a geração de um novo mailing.",
             "Giga Mais": "Envie aqui os arquivos de mailing para iniciar a geração de um novo mailing da Giga +.",
-            "CPF Externo": "Base de dados de cpf's coletados externamente para serem usados no mailing de cpf",
             "CPF CredLink": "Base de dados de cpf's coletados na credlink para serem usados no mailing de cpf. \n AVISO: Garanta que o nome de cada arquivo contenha a uf do respectivo estado, ex: RJ, SP, SC...",
         }
         context["descricao"] = dict_tipos[context["base"]]
@@ -440,14 +439,13 @@ class AtualizaBases(LoginRequiredMixin, TemplateView):
             "Giga Mais": "arquivos_dfv",
             "Credito": "arquivos_credito",
             "Telefone": "arquivos_enriquecimento",
-            "CPF Externo": "arquivos_cpf_externo",
             "CPF CredLink": "arquivos_cpf_credlink",
         }
         if base == "Mailing Restrito":
             pasta_media = "media_janeiro_2026"  
         elif base ==  "Giga Mais":
             pasta_media = "media_giga_mais"  
-        elif base ==  "CPF Externo" or base == "CPF CredLink":
+        elif base == "CPF CredLink":
             pasta_media = "media_mailing_cpf"  
         else: 
             pasta_media = "media"
@@ -457,7 +455,7 @@ class AtualizaBases(LoginRequiredMixin, TemplateView):
         pasta_destino = os.path.join(os.getcwd(), pasta_media, PASTAS_RAIZ[base])
         os.makedirs(pasta_destino, exist_ok=True)
         
-        if base in ["BlackList", "Mailing Restrito", "Giga Mais", "CPF Externo"] or str(excluir_anteriores) == "on":
+        if base in ["BlackList", "Mailing Restrito", "Giga Mais", ] or str(excluir_anteriores) == "on":
             print("Excluindo anteriores")
             for path in os.listdir(pasta_destino):
                 
