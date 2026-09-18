@@ -1279,7 +1279,7 @@ def complementa_cnpj(pasta_usuario, pasta_destino) -> str:
                     file,
                     dtype=str,
                 )
-                
+
             df_para_complementar.columns = df_para_complementar.columns.str.lower()
 
             if "cnpj" not in [str(c).lower() for c in df_para_complementar.columns.to_list()]:
@@ -1303,9 +1303,12 @@ def complementa_cnpj(pasta_usuario, pasta_destino) -> str:
             for pasta in pastas_procurar:
                 arquivos_base = os.listdir(pasta)
                 for arq_base in arquivos_base:
+                    file_base = os.path.join(pasta, arq_base)
+                    if not os.path.isfile(file_base):
+                        continue
                     cnpjs_restantes = df_para_complementar["cnpj"].to_list()
 
-                    file_base = os.path.join(pasta, arq_base)
+                    
                     df = pd.read_csv(file_base, sep=";", dtype={"data_inicio_atividades":"string", "natureza_juridica": "category", "descricaonj":"category", "cnae_fiscal":"string", "cnae_fiscal_secundaria":"string", "descricaocf":"category", "cnpj":"string", "razao_social":"string", "nome_fantasia": "string", "matriz_filial":"category", "decisor":"string", "situacao_cadastral":"category", "correio_eletronico":"string", "logradouro":"string", "num_fachada":"string", "complemento1":"string", "bairro":"string", "cep":"string", "municipio":"category","uf":"category", "CPF":"string", "MEINAOMEI": "category", "TEL1":"string", "TEL2":"string", "TEL3":"string"})
                     df["cnpj"] = df["cnpj"].astype("string")
                     df["cnpj"] = df["cnpj"].apply(lambda x: re.sub(r'\D', '', x))
