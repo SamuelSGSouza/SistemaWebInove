@@ -223,6 +223,7 @@ class Status_Execucao(LoginRequiredMixin,TemplateView):
         if sistema == "mailing_cpfs":
             context["is_mailing_cpfs"] = True
         if sistema == "geral":
+            
             context["is_mailing_geral"] = True
         context['titulo'] = titulos[sistema]
         self.request.session["sistema"] = sistema
