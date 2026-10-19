@@ -1,5 +1,7 @@
 from django.db import models
 from django.db.models import Aggregate, TextField
+from django.utils import timezone
+
 
 #######################################
 # RESUMO DOS DADOS                    #
@@ -267,6 +269,8 @@ class Empresa(models.Model):
         null=True,
         blank=True,
     )
+
+    atualizado_em = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         verbose_name = "Empresa"

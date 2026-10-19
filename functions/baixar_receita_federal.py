@@ -1,5 +1,5 @@
 import requests, os, math, shutil, re,time, zipfile,gc
-
+from django.utils import timezone
 from bs4 import BeautifulSoup
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
@@ -904,6 +904,7 @@ def converte_data(valor):
     return data.date()
 
 def cadastra_atualiza_empresas(nova_execucao):
+    inicio_carga = timezone.now()
     DTYPES_RECEITA_FEDERAL={"data_inicio_atividades":"string", "natureza_juridica": "category", "descricaonj":"category", "cnae_fiscal":"string","cnae_fiscal_secundaria":"string", "descricaocf":"category", "cnpj":"string", "razao_social":"string", "nome_fantasia": "string", "matriz_filial":"category", "decisor":"string", "situacao_cadastral":"category", "correio_eletronico":"string", "logradouro":"string", "num_fachada":"string", "complemento1":"string", "bairro":"string", "cep":"string", "municipio":"category","uf":"category", "CPF":"string", "MEINAOMEI": "category", "TEL1":"string", "TEL2":"string", "TEL3":"string"}
 
     lista_estados = Municipio.objects.filter().values_list("nome", "uf", "codigo")
@@ -916,7 +917,7 @@ def cadastra_atualiza_empresas(nova_execucao):
         "razao_social", "nome_fantasia", "matriz_filial", "decisor",
         "situacao_cadastral", "correio_eletronico", "logradouro", "numero",
         "complemento", "bairro", "cep", "municipio_id", "eh_mei",
-        "telefone_receita_1", "telefone_receita_2", "telefone_receita_3",
+        "telefone_receita_1", "telefone_receita_2", "telefone_receita_3", "atualizado_em"
     ]
     for estado in ESTADOS_BR:
         nome_arquivo_uf = os.path.join(pasta_destino, f"{estado}.csv")
@@ -957,6 +958,7 @@ def cadastra_atualiza_empresas(nova_execucao):
                     "telefone_receita_1": telefones[0] if len(telefones) > 0 else "",
                     "telefone_receita_2": telefones[1] if len(telefones) > 1 else "",
                     "telefone_receita_3": telefones[2] if len(telefones) > 2 else "",
+                    "atualizado_em": inicio_carga, 
                 }
                 
                 para_cadastrar.append(
@@ -976,6 +978,12 @@ def cadastra_atualiza_empresas(nova_execucao):
                     )
         salva_status(nova_execucao, titulo=f"Tempo para salvar os dados do estado {estado} = {time.time() - start_time}",status="Concluido")
 
+    desatualizadas = Empresa.objects.filter(
+        Q(atualizado_em__lt=inicio_carga) | Q(atualizado_em__isnull=True)
+    )
+    removidas, _ = desatualizadas.delete()
+    salva_status(nova_execucao, titulo=f"{removidas} empresas inativas removidas", status="Concluido")
+    
     print(f"Total de empresas cadastradas no banco até o estado {estado}: {Empresa.objects.count()}")
     
 def salvar_infos_base(nova_execucao):
