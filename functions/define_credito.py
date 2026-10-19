@@ -142,7 +142,7 @@ def verificador_fase_3(sistema, nova_execucao:Status_Execucoe_DB):
 
 
 
-def _formatos_cnpj(cnpj: str) -> tuple[str, str]:
+def _formatos_cnpj(cnpj: str) -> tuple:
     """'12345678000190' -> ('12345678000190', '12.345.678/0001-90').
     O campo tem max_length=18, então o banco pode ter qualquer um dos dois formatos."""
     return cnpj, f"{cnpj[:2]}.{cnpj[2:5]}.{cnpj[5:8]}/{cnpj[8:12]}-{cnpj[12:]}"
