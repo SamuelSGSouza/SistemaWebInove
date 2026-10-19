@@ -245,8 +245,10 @@ def baixa_arquivos_receita(nova_execucao):
         
 
     except Exception as e:
-        salva_status(nova_execucao, titulo=f"Erro ao baixar o arquivo com url : {file_url}. Erro: {traceback.format_exc()}",status="Erro")
-
+        msg = f"Erro ao baixar o arquivo com url : {file_url}. Erro: {traceback.format_exc()}"
+        salva_status(nova_execucao, titulo=msg,status="Erro")
+        raise Exception(msg)
+    
 def extrair_zip_e_renomear(pasta_destino=pasta_destino):
     salva_log_geral(f"Iniciou processo de extração dos arquivos zipados da Receita Federal")
     dados = [
@@ -289,10 +291,13 @@ def extrair_zip_e_renomear(pasta_destino=pasta_destino):
             os.remove(zip_path)      
         except FileNotFoundError:
             salva_log_geral(f"Arquivo ZIP não encontrado: {zip_path}")
+            raise Exception(f"Arquivo ZIP não encontrado: {zip_path}")
         except IndexError:
             salva_log_geral(f"ZIP vazio ou inválido: {zip_path}")
+            raise Exception(f"ZIP vazio ou inválido: {zip_path}")
         except Exception as e:
             salva_log_geral(f"Erro ao processar {zip_path}: {str(e)}")
+            raise Exception(f"Erro ao processar {zip_path}: {str(e)}")
 
 def unifica_dados(nova_execucao):
     
