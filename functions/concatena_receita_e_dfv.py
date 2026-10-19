@@ -236,6 +236,7 @@ def fase_2_concatenador_DB(sistema, nova_execucao:Status_Execucoe_DB):
                 df_dfv_estado = pd.read_excel(os.path.join(path_arquivos_dfv, file), dtype=dtype)
                 dfs_dfv.append(df_dfv_estado)
         if not dfs_dfv:
+            Empresa.objects.filter(municipio__uf=estado).update(viabilidade=None)
             salva_status(nova_execucao,f"Não foram encontrados dados de viabilidade para o estado {estado}", status="Em Andamento")
             continue
         
@@ -302,7 +303,7 @@ def fase_2_concatenador_DB(sistema, nova_execucao:Status_Execucoe_DB):
 def fase_2_concatenador(sistema, nova_execucao:Status_Execucoe_DB):
     pasta_receita_federal = os.path.join(os.getcwd(), "media", "arquivos_receita_federal")
     salva_status(nova_execucao, f"Iniciando análise de viabilidades para o sistema {sistema}", status="Em Andamento")
-    # fase_2_concatenador_DB(sistema, nova_execucao)
+    fase_2_concatenador_DB(sistema, nova_execucao)
 
     if sistema == "oi":
         try:

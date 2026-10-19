@@ -121,7 +121,7 @@ def monta_payload_dashboard():
     #pegando o mais recente
     payload = {}
     dados_gerais = corp_data_model.ResumoDados.objects.filter().order_by("-id").first()
-    print("Dados Gerais: ", dados_gerais)
+    
     #se não houver dados gerais, retorna um dicionário vazio
     if not dados_gerais:
         t1 = threading.Thread(target=monta_resumo)

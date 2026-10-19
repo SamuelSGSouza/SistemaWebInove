@@ -6,6 +6,9 @@ from pathlib import Path
 from datetime import datetime
 from .contantes import *
 import traceback
+from corpdata.models import Empresa
+from django.db import transaction
+
 
 def fase_3_define_credito(nova_execucao:Status_Execucoe_DB, sistema):
     salva_status(nova_execucao, f"Iniciando sistema de análise de crédito", status="Em Andamento")
@@ -69,6 +72,9 @@ def fase_3_define_credito(nova_execucao:Status_Execucoe_DB, sistema):
         return True
 
 def verificador_fase_3(sistema, nova_execucao:Status_Execucoe_DB):
+    if not fase_3_define_credito_DB(nova_execucao):
+        return False
+
     if sistema=="giga_mais":
         return True
     #verificar todos os estados foram atualizados na data atual
@@ -132,4 +138,80 @@ def verificador_fase_3(sistema, nova_execucao:Status_Execucoe_DB):
             # for index, row in df_telefones.iterrows():
             #     tels = [row["TEL1"], row["TEL2"], row["TEL3"]]
 
+    return True
+
+
+
+def _formatos_cnpj(cnpj: str) -> tuple[str, str]:
+    """'12345678000190' -> ('12345678000190', '12.345.678/0001-90').
+    O campo tem max_length=18, então o banco pode ter qualquer um dos dois formatos."""
+    return cnpj, f"{cnpj[:2]}.{cnpj[2:5]}.{cnpj[5:8]}/{cnpj[8:12]}-{cnpj[12:]}"
+
+
+def _update_credito_em_lotes(cnpjs, valor, tamanho=2_000) -> int:
+    cnpjs = list(cnpjs)
+    total = 0
+    for i in range(0, len(cnpjs), tamanho):
+        lote = [f for c in cnpjs[i:i + tamanho] for f in _formatos_cnpj(c)]
+        total += Empresa.objects.filter(cnpj__in=lote).update(credito=valor)
+    return total
+
+
+def fase_3_define_credito_DB(nova_execucao: Status_Execucoe_DB) -> bool:
+    salva_status(nova_execucao, "Iniciando atualização de crédito no banco", status="Em Andamento")
+
+    creditos_path = os.path.join(os.getcwd(), "media", "arquivos_credito", "credito.csv")
+    colunas_obrigatorias = {"CNPJ", "LETRAS_STATUS", "APROVADO/NEGADO"}
+
+    # ---- leitura e validação: qualquer problema aqui aborta ANTES do reset ----
+    if not os.path.exists(creditos_path):
+        salva_status(nova_execucao, f"Arquivo de crédito {creditos_path} não existe", status="Erro")
+        return False
+
+    try:
+        df_credito = pd.read_csv(creditos_path, sep=";", dtype=str)
+    except Exception:
+        salva_status(nova_execucao, f"Erro ao ler arquivo de crédito: {traceback.format_exc()}", status="Erro")
+        return False
+
+    faltando = colunas_obrigatorias - set(df_credito.columns)
+    if faltando:
+        salva_status(nova_execucao, f"Arquivo de crédito sem as colunas: {sorted(faltando)}", status="Erro")
+        return False
+
+    if df_credito.empty:
+        salva_status(nova_execucao, "Arquivo de crédito vazio; crédito do banco mantido como está", status="Erro")
+        return False
+
+    # ---- normalização ----
+    df_credito["CNPJ"] = (df_credito["CNPJ"].fillna("")
+                          .str.replace(r"\D", "", regex=True)
+                          .str.zfill(14))
+    df_credito = df_credito[df_credito["CNPJ"].str.len().eq(14)
+                            & df_credito["CNPJ"].ne("0" * 14)]
+
+    tem_k = df_credito["LETRAS_STATUS"].fillna("").str.contains("k", case=False, regex=False)
+    df_credito = df_credito[~tem_k]
+
+    aprovado = df_credito["APROVADO/NEGADO"].fillna("").str.strip().str.upper().eq("S")
+    cnpjs_negados = set(df_credito.loc[~aprovado, "CNPJ"])
+    cnpjs_aprovados = set(df_credito.loc[aprovado, "CNPJ"]) - cnpjs_negados   # negado vence, igual ao fluxo atual
+
+    # ---- gravação ----
+    try:
+        with transaction.atomic():
+            n_reset = Empresa.objects.exclude(credito=None).update(credito=None)
+            n_aprov = _update_credito_em_lotes(cnpjs_aprovados, Empresa.CREDITO_APROVADO)
+            n_neg = _update_credito_em_lotes(cnpjs_negados, Empresa.CREDITO_NEGADO)
+    except Exception:
+        salva_status(nova_execucao, f"Erro ao gravar crédito no banco: {traceback.format_exc()}", status="Erro")
+        return False
+
+    nao_encontrados = len(cnpjs_aprovados) + len(cnpjs_negados) - n_aprov - n_neg
+    salva_status(
+        nova_execucao,
+        f"Crédito: {n_reset} resetadas | {n_aprov} aprovadas | {n_neg} negadas | "
+        f"{nao_encontrados} CNPJs do arquivo não encontrados no banco",
+        status="Em Andamento",
+    )
     return True
