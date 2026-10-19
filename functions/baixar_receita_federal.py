@@ -139,23 +139,90 @@ def criar_sessao():
     sessao.mount("https://", HTTPAdapter(max_retries=retry))
     return sessao
 
-def baixar_arquivo(sessao, file_url, file_path, tentativas=5):
+class DownloadIncompleto(Exception):
+    pass
+
+
+def baixar_arquivo(sessao, file_url, file_path, tentativas=8):
+    """Baixa file_url para file_path garantindo que o arquivo veio inteiro.
+
+    - Compara os bytes gravados com o Content-Length. O urllib3 1.x do Ubuntu
+      NÃO faz isso: se a conexão cai no meio, o iter_content simplesmente
+      termina sem erro e o zip fica truncado.
+    - Se cair, retoma de onde parou com Range (se o servidor aceitar) em vez de
+      recomeçar do zero.
+    - Valida que o resultado é um zip antes de renomear o .part.
+    """
     temp_path = file_path + ".part"
+    if os.path.exists(temp_path):
+        os.remove(temp_path)
+
+    ultimo_erro = None
     for tentativa in range(1, tentativas + 1):
+        ja_baixado = os.path.getsize(temp_path) if os.path.exists(temp_path) else 0
+        # identity: garante que Content-Length = bytes que chegam no disco
+        headers = {"Accept-Encoding": "identity"}
+        if ja_baixado:
+            headers["Range"] = f"bytes={ja_baixado}-"
+
         try:
-            with sessao.get(file_url, stream=True, timeout=(15, 300)) as r:
+            with sessao.get(file_url, stream=True, timeout=(15, 300), headers=headers) as r:
+                if r.status_code == 416:
+                    # Range fora do arquivo: o .part está inconsistente, recomeça
+                    os.remove(temp_path)
+                    raise DownloadIncompleto("HTTP 416 ao retomar; recomeçando do zero")
                 r.raise_for_status()
-                with open(temp_path, "wb") as f:
+
+                if ja_baixado and r.status_code == 206:
+                    modo, esperado_total = "ab", None
+                    content_range = r.headers.get("Content-Range", "")
+                    if "/" in content_range and content_range.rsplit("/", 1)[1].isdigit():
+                        esperado_total = int(content_range.rsplit("/", 1)[1])
+                else:
+                    # 200: servidor ignorou o Range (ou é a 1ª tentativa) -> recomeça
+                    modo, ja_baixado, esperado_total = "wb", 0, None
+
+                tamanho_resposta = r.headers.get("Content-Length")
+                if esperado_total is None and tamanho_resposta and tamanho_resposta.isdigit():
+                    esperado_total = ja_baixado + int(tamanho_resposta)
+
+                recebidos = 0
+                with open(temp_path, modo) as f:
                     for chunk in r.iter_content(chunk_size=1024 * 1024):
-                        f.write(chunk)
-            os.replace(temp_path, file_path)  # só vira o arquivo final se completou
+                        if chunk:
+                            f.write(chunk)
+                            recebidos += len(chunk)
+
+            tamanho_final = ja_baixado + recebidos
+            if esperado_total is not None and tamanho_final != esperado_total:
+                raise DownloadIncompleto(
+                    f"recebidos {tamanho_final:,} de {esperado_total:,} bytes"
+                )
+
+            if not zipfile.is_zipfile(temp_path):
+                with open(temp_path, "rb") as f:
+                    inicio = f.read(200)
+                os.remove(temp_path)  # conteúdo inútil (HTML de erro etc.), não retoma
+                raise DownloadIncompleto(
+                    f"conteúdo não é zip ({tamanho_final:,} bytes). Início: {inicio[:120]!r}"
+                )
+
+            os.replace(temp_path, file_path)  # só vira o arquivo final se está íntegro
             return
+
         except (requests.exceptions.ConnectionError,
                 requests.exceptions.ChunkedEncodingError,
-                requests.exceptions.Timeout):
+                requests.exceptions.Timeout,
+                DownloadIncompleto) as e:
+            ultimo_erro = e
+            salva_log_geral(f"Download de {file_url} falhou (tentativa {tentativa}/{tentativas}): {e}")
             if tentativa == tentativas:
-                raise
-            time.sleep(10 * tentativa)
+                break
+            time.sleep(min(10 * tentativa, 60))
+
+    raise DownloadIncompleto(
+        f"Falha ao baixar {file_url} após {tentativas} tentativas: {ultimo_erro}"
+    )
 
 def descobrir_mes_disponivel(sessao, meses_para_tras=2):
     hoje = datetime.today()
@@ -236,12 +303,9 @@ def baixa_arquivos_receita(nova_execucao):
 
             file_url = f"https://arquivos.receitafederal.gov.br/public.php/dav/files/YggdBLfdninEJX9/{data_formatada}/{file_name}"
 
-            with sessao.get(file_url, stream=True, timeout=(15, 300)) as r:
-                r.raise_for_status()
-                salva_status(nova_execucao, titulo=f"Iniciando Download do Arquivo: {file_name}",status="Em Andamento")
-
-                file_path = os.path.join(pasta_destino, file_name)
-                baixar_arquivo(sessao, file_url, file_path)
+            salva_status(nova_execucao, titulo=f"Iniciando Download do Arquivo: {file_name}",status="Em Andamento")
+            file_path = os.path.join(pasta_destino, file_name)
+            baixar_arquivo(sessao, file_url, file_path)
         
 
     except Exception as e:
@@ -1191,8 +1255,3 @@ def verificador_fase_1(nova_execucao):
 
 if __name__ == "__main__":
     fase_1_gerador()
-
-
- 
-
-
