@@ -651,7 +651,7 @@ def gera_e_atualiza_enriquecimento():
         relatorio += f"Atualmente, a base da CredLink possui {len(df_atual['DOCUMENTO'].unique().tolist())} empresas e {total_telefones_enr} telefones.\n"
         
         arquivos = os.listdir(PASTA)
-        if len(arquivos) < 1:
+        if len(arquivos) < 2:
             relatorio += f"Nenhum arquivo encontrado! Houve falha no upload."
             erros.append(f"Nenhum arquivo encontrado! Houve falha no upload.")
 
