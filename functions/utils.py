@@ -650,8 +650,13 @@ def gera_e_atualiza_enriquecimento():
         total_telefones_enr = len(list(set(telefones_enr)))
         relatorio += f"Atualmente, a base da CredLink possui {len(df_atual['DOCUMENTO'].unique().tolist())} empresas e {total_telefones_enr} telefones.\n"
         
+        arquivos = os.listdir(PASTA)
+        if len(arquivos) < 1:
+            relatorio += f"Nenhum arquivo encontrado! Houve falha no upload."
+            erros.append(f"Nenhum arquivo encontrado! Houve falha no upload.")
+
         # 2) Lê cada arquivo novo ----------------------------------------------
-        for file in sorted(os.listdir(PASTA)):
+        for file in sorted(arquivos):
             filename = os.path.join(PASTA, file)
             if filename == CSV_ATUAL:
                 continue
