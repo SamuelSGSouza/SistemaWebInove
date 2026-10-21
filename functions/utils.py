@@ -21,6 +21,8 @@ from typing import List, Tuple
 from django.db.models import Count, Q, F, FloatField
 from django.db.models.functions import Cast
 from functions.pesquisa_operadora import consulta_operadora_lote
+from corpdata.models import Telefones
+
 
 PASTA_ARQUIVOS_BLACKLIST = os.path.join(os.getcwd(), "media/arquivos_blacklist")
 PASTA_ARQUIVOS_TELS_NEXT = os.path.join(os.getcwd(), "media/arquivos_tels_next")
@@ -627,132 +629,120 @@ def gera_e_atualiza_quarentena(raiz, db):
         return relatorio, erros
 
 def gera_e_atualiza_enriquecimento():
-    relatorio = ""
+    PASTA = os.path.join(os.getcwd(), "media/arquivos_enriquecimento")
+    relatorio = []
     erros = []
-
+ 
     try:
-        PASTA = os.path.join(os.getcwd(), "media/arquivos_enriquecimento")
-        CSV_ATUAL = os.path.join(PASTA, "enriquecimento.csv")
-
-        # 1) DataFrame existente ------------------------------------------------
-        if os.path.exists(CSV_ATUAL):
-            df_atual = pd.read_csv(CSV_ATUAL, sep=_detectar_sep_csv(CSV_ATUAL), dtype=str, encoding="latin-1").fillna("")
-        else:
-            df_atual = pd.DataFrame(columns=colunas_padrao)
-
-        partes_long = [_phones_to_long(df_atual)]       # começamos com o antigo
-
-
-        telefones_enr = []
-        for i in range(1, 21):
-            telefones_enr += df_atual[f"Telefone_{i}"].unique().tolist()
-
-        total_telefones_enr = len(list(set(telefones_enr)))
-        relatorio += f"Atualmente, a base da CredLink possui {len(df_atual['DOCUMENTO'].unique().tolist())} empresas e {total_telefones_enr} telefones.\n"
-        
-        arquivos = os.listdir(PASTA)
-        if len(arquivos) < 2:
-            relatorio += f"Nenhum arquivo encontrado! Houve falha no upload."
-            erros.append(f"Nenhum arquivo encontrado! Houve falha no upload.")
-
-        # 2) Lê cada arquivo novo ----------------------------------------------
-        for file in sorted(arquivos):
-            filename = os.path.join(PASTA, file)
-            if filename == CSV_ATUAL:
+        total_documentos = Telefones.objects.values("documento").distinct().count()
+        total_telefones = Telefones.objects.count()
+        relatorio.append(
+            f"Inicialmente, a base de Telefones possuía {total_documentos} documentos e {total_telefones} telefones. "
+            "(Cada documento pode ter vários telefones)"
+        )
+ 
+        arquivos = sorted(os.listdir(PASTA))
+        if not arquivos:
+            msg = "Nenhum arquivo encontrado! Houve falha no upload."
+            relatorio.append(msg)
+            erros.append(msg)
+ 
+        for arquivo in arquivos:
+            caminho = os.path.join(PASTA, arquivo)
+            ext = os.path.splitext(arquivo)[1].lower()
+ 
+            # 1) Lê o arquivo ------------------------------------------------------
+            if ext not in (".csv", ".txt", ".xls", ".xlsx", ".xlsb"):
+                msg = f"Arquivo {arquivo} não considerado por possuir formato inválido."
+                relatorio.append(msg)
+                erros.append(msg)
                 continue
-
-            ext = os.path.splitext(filename)[1].lower()
+ 
             try:
                 if ext in (".csv", ".txt"):
-                    df = pd.read_csv(filename, sep=_detectar_sep_csv(filename), dtype=str, encoding="latin-1",on_bad_lines="skip")
-                elif ext in (".xls", ".xlsx", ".xlsb"):
-                    df = pd.read_excel(filename, dtype=str)
+                    df = pd.read_csv(caminho, sep=_detectar_sep_csv(caminho), dtype=str, encoding="latin-1", on_bad_lines="skip")
                 else:
-                    os.remove(filename)
-                    relatorio += f"Arquivo {file} não considerado por não possuir formato inválido"
-                    continue
+                    df = pd.read_excel(caminho, dtype=str)
             except Exception as e:
-                os.remove(filename)
-                relatorio += f"Arquivo {file} não considerado por ocorrer um erro desconhecido: {e}"
+                msg = f"Arquivo {arquivo} não considerado por ocorrer um erro na leitura: {e}"
+                relatorio.append(msg)
+                erros.append(msg)
                 continue
-
-            # identifica colunas -----------------------------------------------
-            doc_col = next((c for c in df.columns
-                            if any(tok in c.lower() for tok in ("cpf", "cnpj"))), None)
-            fone_cols = [c for c in df.columns
-                           if any(tok in c.lower() for tok in ("tel", "celular", "fixo"))]
-            
-            relatorio += f"Foram encontradas as seguintes colunas de telefone que serão consideradas: {fone_cols}\n"
-            if not (doc_col and fone_cols):
-                os.remove(filename)
-
-                relatorio += f"Arquivo {file} não considerado por não possuir colunas de telefone ou documento"
+ 
+            # 2) Identifica as colunas de documento e telefone ---------------------
+            df.columns = df.columns.str.lower().str.strip()
+            doc_col = next((c for c in df.columns if any(t in c for t in ("cpf", "cnpj", "documento"))), None)
+            fone_cols = [c for c in df.columns if any(t in c for t in ("tel", "celular", "fixo"))]
+ 
+            if not doc_col:
+                msg = f"Arquivo {arquivo} não considerado por não possuir coluna de documento."
+                relatorio.append(msg)
+                erros.append(msg)
                 continue
-
-            df = df[[doc_col] + fone_cols].rename(columns={doc_col: "DOCUMENTO"}).fillna("")
-            # padroniza para 20 colunas wide antes de melt (não custa nada)
-            for i, col in enumerate(fone_cols, 1):
-                df.rename(columns={col: f"Telefone_{i}"}, inplace=True)
-            for i in range(len(fone_cols) + 1, 21):
-                df[f"Telefone_{i}"] = ""
-
-            telefones_arquivo = []
-            for i in range(1, 21):
-                telefones_arquivo += df[f"Telefone_{i}"].unique().tolist()
-
-            total_telefones_arquivo = len(list(set(telefones_arquivo)))
-            relatorio += f"Foram encontradas {len(df['DOCUMENTO'].unique().tolist())} empresas e {total_telefones_arquivo} telefones no arquivo {file}\n"
-
-            partes_long.append(_phones_to_long(df))
-
-            os.remove(filename)                       # opcional: descarta arquivo
-
-            # 3) Concatena tudo no formato long ------------------------------------
-            long_all = pd.concat(partes_long, ignore_index=True)
-
-            # 3a) Remove duplicatas globais (primeira ocorrência vence)
-            long_all = long_all.drop_duplicates(subset="TELEFONE", keep="first")
-
-            # 3b) Mantém no máximo 20 números por documento
-            long_all["idx"] = long_all.groupby("DOCUMENTO").cumcount()
-            long_all = long_all[long_all["idx"] < 20]
-
-            # 4) Volta para wide ----------------------------------------------------
-            wide = (long_all
-                    .pivot(index="DOCUMENTO", columns="idx", values="TELEFONE")
-                    .rename(columns=lambda i: f"Telefone_{i+1}")
-                    .reset_index())
-
-            # garante todas as 20 colunas
-            for col in telefone_cols:
-                if col not in wide.columns:
-                    wide[col] = ""
-
-            # 5) Ordena, preenche vazios e grava -----------------------------------
-            wide = wide[colunas_padrao].fillna("").astype(str)
-            wide.to_csv(CSV_ATUAL, sep=_detectar_sep_csv(CSV_ATUAL), index=False)
-
-            telefones_arquivo = []
-            for i in range(1, 21):
-                telefones_arquivo += wide[f"Telefone_{i}"].unique().tolist()
-
-            total_telefones_arquivo = len(list(set(telefones_arquivo)))
-            relatorio += f"Após cadastrar o arquivo, Base de Enriquecimento ficou com um total de {len(wide['DOCUMENTO'].unique().tolist())} empresas e {total_telefones_arquivo} telefones cadastrados.\n"
-
-            salva_dado("Total de telefones na base de enriquecimento", total_telefones_arquivo)
-        
-        for file in sorted(os.listdir(PASTA)):
-            filename = os.path.join(PASTA, file)
-            if filename != CSV_ATUAL:
-                os.remove(filename)
-        return relatorio, erros
-    
-        
-
+ 
+            # Formato com DDD separado (ddd1 + tel1, ddd2 + tel2, ...): junta em uma coluna só
+            if "ddd1" in df.columns:
+                prefixo = fone_cols[0].replace("1", "")
+                fone_cols = []
+                for i in range(20):
+                    if f"ddd{i}" in df.columns:
+                        df[f"Telefone_{i}"] = df[f"ddd{i}"] + df[f"{prefixo}{i}"]
+                        fone_cols.append(f"Telefone_{i}")
+ 
+            relatorio.append(f"Foram encontradas as seguintes colunas de telefone que serão consideradas: {fone_cols}")
+ 
+            # 3) Limpa e valida os documentos --------------------------------------
+            df[doc_col] = df[doc_col].astype(str).str.replace(r"\D", "", regex=True)
+ 
+            if doc_col != "documento":
+                invalidos = df[doc_col].str.len() != (14 if doc_col == "cnpj" else 11)
+                if invalidos.any():
+                    msg = (
+                        f"{invalidos.sum()} documentos foram removidos do arquivo {arquivo} por estarem em formato inválido. "
+                        f"Exemplos: {df.loc[invalidos, doc_col].head(3).tolist()}"
+                    )
+                    relatorio.append(msg)
+                    erros.append(msg)
+                    df = df[~invalidos]
+ 
+            # 4) Gera uma linha por (documento, telefone), sem vazios nem repetidos --
+            telefones = (
+                df[[doc_col, *fone_cols]]
+                .melt(id_vars=doc_col, value_name="numero")
+                .dropna(subset=["numero"])
+                .drop_duplicates(subset="numero", keep="last")
+            )
+            relatorio.append(
+                f"Foram encontrados {df[doc_col].nunique()} documentos e {len(telefones)} telefones no arquivo {arquivo}."
+            )
+ 
+            # 5) Cadastra os novos telefones e atualiza o documento dos já existentes
+            Telefones.objects.bulk_create(
+                [Telefones(documento=doc, telefone=fone) for doc, fone in zip(telefones[doc_col], telefones["numero"])],
+                update_conflicts=True,
+                unique_fields=["telefone"],
+                update_fields=["documento"],
+                batch_size=5000,
+            )
+ 
+            total_documentos = Telefones.objects.values("documento").distinct().count()
+            total_telefones = Telefones.objects.count()
+            relatorio.append(
+                f"Após cadastrar o arquivo {arquivo}, a base de Telefones ficou com "
+                f"{total_documentos} documentos e {total_telefones} telefones cadastrados."
+            )
+            salva_dado("Total de telefones na base de enriquecimento", total_telefones)
+ 
     except Exception:
         erros.append(traceback.format_exc())
-        return relatorio, erros     
-    
+ 
+    finally:
+        for arquivo in os.listdir(PASTA):
+            os.remove(os.path.join(PASTA, arquivo))
+ 
+    return "\n".join(reversed(relatorio)), erros
+
+
 def processar_arquivo_individual(caminho_completo: str, campos_obrigatorios: List[str]) -> pd.DataFrame:
     extensao = os.path.splitext(caminho_completo)[1].lower()
     
@@ -1076,70 +1066,53 @@ def filtra_arquivos(raiz, pasta_arquivos_para_filtrar, pasta_usuario) -> str:
         erros.append(traceback.format_exc())
         return relatorio, erros
 
-def complementa_arquivos(pasta_usuario, pasta_destino) -> str:
-    relatorio = ""
+def complementa_arquivos(pasta_usuario, pasta_destino) -> tuple:
+    relatorio = []
     erros = []
+ 
     try:
-        PASTA_ARQUIVOS_COMPLEMENTAR = pasta_destino
-        os.makedirs(PASTA_ARQUIVOS_COMPLEMENTAR, exist_ok=True)
-
-        enriquecimento = os.path.join(os.getcwd(), 'media/arquivos_enriquecimento/enriquecimento.csv')
-        df_enriquecimento = pd.read_csv(enriquecimento, sep=";")
-        df_enriquecimento["DOCUMENTO"] = df_enriquecimento["DOCUMENTO"].astype("string")
-        df_enriquecimento["DOCUMENTO"] = df_enriquecimento["DOCUMENTO"].apply(lambda x: re.sub(r'\D', '', x))
-        df_enriquecimento["DOCUMENTO"] = df_enriquecimento["DOCUMENTO"].astype(str).str.zfill(14)
-
-        for arq in os.listdir(PASTA_ARQUIVOS_COMPLEMENTAR):
-            file = os.path.join(PASTA_ARQUIVOS_COMPLEMENTAR, arq)
-            extensao = os.path.splitext(file)[1].lower()
+        os.makedirs(pasta_destino, exist_ok=True)
+ 
+        # Carrega a base de telefones agrupada por documento: {documento: [telefone, ...]}
+        telefones_por_documento = {}
+        for documento, telefone in Telefones.objects.values_list("documento", "telefone").iterator(chunk_size=100_000):
+            telefones_por_documento.setdefault(documento, []).append(telefone)
+ 
+        cols_telefone = [f"Telefone_{i}" for i in range(1, 21)]
+ 
+        for arq in os.listdir(pasta_destino):
+            file = os.path.join(pasta_destino, arq)
+            extensao = os.path.splitext(arq)[1].lower()
             sep = _detectar_sep_csv(file)
-            
-
-            df = pd.DataFrame([])
-            if extensao in [".csv", ".txt"]:
-                encoding = _detectar_encoding_csv(file)
-                df = pd.read_csv(file, sep=sep, dtype=str, encoding=encoding,on_bad_lines="skip")
-            else:#[".xls", '.xlsx', ".xlsb"]
-                df = pd.read_excel(
-                    file,
-                    dtype=str,
-                )
-
-            df = padronizacao(df, separator=sep)
-            df.rename(columns={
-                "CNPJ": "cnpj",
-            },inplace=True)
-            df["cnpj"] = df["cnpj"].apply(lambda x: re.sub(r'\D', '', x))
-            permitidos = df["cnpj"].unique().tolist()
-            df_enriquecimento = df_enriquecimento[df_enriquecimento["DOCUMENTO"].isin(permitidos)]
-            
-            df_final = pd.merge(df, df_enriquecimento,how="left", left_on="cnpj", right_on="DOCUMENTO").fillna("")
-            
-            df_final.drop(columns=["DOCUMENTO"], axis=1, inplace=True)
-            
-            print(f"Tamanho final do arquivo: {len(df.index)}")
-
-            if extensao in [".csv", ".txt"]:
-                df_final.to_csv(file,sep=sep, index=False)
-            else:#[".xls", '.xlsx', ".xlsb"]         
-                df_final.to_excel(file, index=False)
-
-            del df
-            del df_final
-
-            relatorio +=  f"Arquivo {file} complementado com sucesso"
-
-        del df_enriquecimento
-
-        zip_folder(PASTA_ARQUIVOS_COMPLEMENTAR, os.path.join(pasta_usuario, "arquivos_complementar.zip"))
-        # for arq in os.listdir(PASTA_ARQUIVOS_COMPLEMENTAR):
-        #     file = os.path.join(PASTA_ARQUIVOS_COMPLEMENTAR, arq)
-        #     os.remove(file)
-        return relatorio,erros
-    
-    except Exception as e:
+ 
+            if extensao in (".csv", ".txt"):
+                df = pd.read_csv(file, sep=sep, dtype=str, encoding=_detectar_encoding_csv(file), on_bad_lines="skip")
+            else:  # .xls, .xlsx, .xlsb
+                df = pd.read_excel(file, dtype=str)
+ 
+            df = padronizacao(df, separator=sep).rename(columns={"CNPJ": "cnpj"})
+            df["cnpj"] = df["cnpj"].fillna("").astype(str).str.replace(r"\D", "", regex=True)
+ 
+            # Adiciona até 20 telefones da base para cada CNPJ
+            linhas = []
+            for cnpj in df["cnpj"]:
+                tels = telefones_por_documento.get(cnpj.zfill(14), [])[:20]
+                linhas.append(tels + [""] * (20 - len(tels)))
+            df[cols_telefone] = pd.DataFrame(linhas, index=df.index, columns=cols_telefone)
+ 
+            if extensao in (".csv", ".txt"):
+                df.to_csv(file, sep=sep, index=False)
+            else:
+                df.to_excel(file, index=False)
+ 
+            relatorio.append(f"Arquivo {arq} complementado com sucesso")
+ 
+        zip_folder(pasta_destino, os.path.join(pasta_usuario, "arquivos_complementar.zip"))
+ 
+    except Exception:
         erros.append(traceback.format_exc())
-        return relatorio, erros
+ 
+    return "\n".join(relatorio), erros
 
 def classifica_telefones(pasta_usuario, pasta_destino):
     relatorio = ""
@@ -1456,7 +1429,7 @@ def verifica_base_enriquecimento(request, extensao, arquivo_original, caminho_fi
         os.remove(caminho_final)
         return False,f"Arquivo {arquivo_original.name} Não considerado por ter extensão inválida! Extensões válidas: {extensoes_permitidas}"
     
-    doc_col = next((c for c in df.columns if any(tok in c.lower() for tok in ("cpf", "cnpj"))), None)
+    doc_col = next((c for c in df.columns if any(tok in c.lower() for tok in ("cpf", "cnpj", "documento"))), None)
     if not doc_col:
         os.remove(caminho_final)
         return False, f"Arquivo {arquivo_original.name} Não considerado por não possuir ao menos uma coluna 'cnpj' ou 'cpf'"

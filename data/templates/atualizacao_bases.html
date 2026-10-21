@@ -104,7 +104,7 @@
 <!-- Modal de resultado (sucesso/erro) -->
 {% if show_modal %}
 <div class="modal-overlay" id="resultModal" data-modal-type="{{ modal_type }}" data-download-url="{% if download_url %}{{ download_url }}{% endif %}">
-  <div class="modal-card">
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
     <div class="modal-header">
       <div class="modal-icon">
         {% if modal_type == 'success' %}
@@ -119,24 +119,23 @@
           </svg>
         {% endif %}
       </div>
-      <h2 class="modal-title">
+      <h2 class="modal-title" id="modalTitle">
         {% if modal_type == 'success' %}
           Base atualizada com sucesso.
         {% else %}
           Ocorreu um erro ao atualizar a base
         {% endif %}
       </h2>
-      <button class="modal-close" id="modalClose">&times;</button>
+      <button type="button" class="modal-close" id="modalClose" aria-label="Fechar">&times;</button>
     </div>
     <div class="modal-body">
       {% for m in messages %}
-        <div class="modal-message-item">
-          {{ m }}
-        </div>
+        {# Mantido em uma linha só: com white-space: pre-line, quebras extras no template virariam linhas em branco #}
+        <div class="modal-message-item">{{ m }}</div>
       {% endfor %}
     </div>
     <div class="modal-footer">
-      <button class="modal-button modal-button-secondary" id="modalCloseBtn">Fechar</button>
+      <button type="button" class="modal-button modal-button-secondary" id="modalCloseBtn">Fechar</button>
       {% if modal_type == 'success' and download_url %}
         <a href="{{ download_url }}" class="modal-button modal-button-primary" download>Baixar arquivo</a>
       {% endif %}
@@ -228,33 +227,44 @@
     // ========== Gerenciamento do Modal de Resultado ==========
     const modalOverlay = document.getElementById('resultModal');
     if (modalOverlay) {
-      // Elementos do modal
       const modalCloseBtn = document.getElementById('modalCloseBtn');
       const modalCloseX = document.getElementById('modalClose');
-      
-      function closeModal() {
-        modalOverlay.style.display = 'none';
-        // Opcional: remover overlay do DOM para não atrapalhar interações futuras
-        // Mas pode manter oculto.
+      const previousBodyOverflow = document.body.style.overflow;
+
+      function openModal() {
+        modalOverlay.style.display = 'flex';
+        // Trava a rolagem da página por trás; a rolagem fica só dentro do modal
+        document.body.style.overflow = 'hidden';
+        document.addEventListener('keydown', onKeydown);
       }
 
-      // Eventos de fechar
+      function closeModal() {
+        modalOverlay.style.display = 'none';
+        document.body.style.overflow = previousBodyOverflow;
+        document.removeEventListener('keydown', onKeydown);
+      }
+
+      function onKeydown(e) {
+        if (e.key === 'Escape') closeModal();
+      }
+
       if (modalCloseBtn) modalCloseBtn.addEventListener('click', closeModal);
       if (modalCloseX) modalCloseX.addEventListener('click', closeModal);
 
-      // Clicar fora do modal fecha? (opcional)
+      // Fecha ao clicar fora do card, mas só se o clique começou fora também.
+      // Evita fechar sem querer ao selecionar/copiar um texto longo e soltar o mouse fora do card.
+      let pressStartedOnOverlay = false;
+      modalOverlay.addEventListener('mousedown', function(e) {
+        pressStartedOnOverlay = (e.target === modalOverlay);
+      });
       modalOverlay.addEventListener('click', function(e) {
-        if (e.target === modalOverlay) {
+        if (pressStartedOnOverlay && e.target === modalOverlay) {
           closeModal();
         }
+        pressStartedOnOverlay = false;
       });
 
-      // Exibir o modal (já está visível porque o bloco condicional do Django o renderiza)
-      // Mas podemos garantir que ele esteja visível (display: flex)
-      modalOverlay.style.display = 'flex';
-
-      // Se houver botão de download, podemos querer manipular algo, mas é um link simples
-      // Não precisa de mais nada.
+      openModal();
     }
   })();
 </script>
@@ -365,6 +375,8 @@
     background: #edf2f7;
     border-radius: 30px;
     display: inline-block;
+    max-width: 100%;
+    overflow-wrap: anywhere;
     transition: background 0.2s;
   }
 
@@ -473,58 +485,83 @@
     margin: 0;
   }
 
-  /* Modal de resultado */
+  /* ========== Modal de resultado ========== */
   .modal-overlay {
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+    inset: 0;
     background: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(4px);
-    display: none; /* Inicialmente oculto, será exibido pelo JS se show_modal = true */
+    backdrop-filter: blur(5px);
+    display: flex;
     align-items: center;
     justify-content: center;
+    padding: 1rem;              /* respiro nas bordas da tela */
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
     z-index: 10000;
+    animation: fadeIn 0.2s ease;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
   }
 
   .modal-card {
     background: white;
     border-radius: 32px;
-    max-width: 450px;
-    width: 90%;
-    box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.3);
-    animation: modalFadeIn 0.3s ease;
+    width: 100%;
+    max-width: 560px;
+    /* Nunca passa da altura da tela: cabeçalho e rodapé ficam fixos, o corpo rola */
+    max-height: calc(100vh - 2rem);
+    max-height: calc(100dvh - 2rem);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    animation: slideUp 0.3s ease;
   }
 
-  @keyframes modalFadeIn {
-    from { opacity: 0; transform: scale(0.95); }
-    to { opacity: 1; transform: scale(1); }
+  @keyframes slideUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
   }
 
   .modal-header {
+    flex-shrink: 0;
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    padding: 1.5rem 1.5rem 0.5rem 1.5rem;
+    padding: 1.5rem 1.5rem 0.75rem 1.5rem;
+  }
+
+  .modal-icon {
+    flex-shrink: 0;
+    margin-right: 12px;
+    display: flex;
+    align-items: center;
   }
 
   .modal-title {
+    flex: 1;
+    min-width: 0;
     font-size: 1.5rem;
     font-weight: 600;
-    margin: 0;
+    line-height: 1.3;
     color: #1a1e2b;
+    margin: 0;
+    overflow-wrap: anywhere;
   }
 
   .modal-close {
-    background: none;
+    flex-shrink: 0;
+    align-self: flex-start;
+    background: transparent;
     border: none;
     font-size: 2rem;
     line-height: 1;
     cursor: pointer;
     color: #8a99b4;
+    padding: 0;
+    margin-left: 8px;
     transition: color 0.2s;
-    padding: 0 0.5rem;
   }
 
   .modal-close:hover {
@@ -532,53 +569,94 @@
   }
 
   .modal-body {
-    padding: 1rem 1.5rem;
+    flex: 1 1 auto;
+    min-height: 0;              /* necessário para o flex permitir a rolagem */
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 0.5rem 1.5rem 1.5rem 1.5rem;
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
   }
 
-  .modal-message {
-    font-size: 1rem;
-    line-height: 1.6;
-    color: #2d3748;
-    margin: 0;
-    white-space: pre-wrap;
+  .modal-body::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .modal-body::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 8px;
+  }
+
+  .modal-message-item {
+    background: #f8fafd;
+    border-left: 4px solid;
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 0.75rem;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    color: #1e2b4f;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    white-space: pre-line;      /* respeita quebras de linha (\n) vindas do backend */
+    overflow-wrap: anywhere;    /* quebra caminhos, URLs e textos sem espaço */
+    word-break: break-word;
+  }
+
+  .modal-message-item:last-child {
+    margin-bottom: 0;
+  }
+
+  [data-modal-type="success"] .modal-message-item {
+    border-left-color: #10b981;
+    background: #f0fdf9;
+  }
+
+  [data-modal-type="error"] .modal-message-item {
+    border-left-color: #ef4444;
+    background: #fef6f6;
   }
 
   .modal-footer {
+    flex-shrink: 0;
     display: flex;
-    gap: 0.75rem;
+    gap: 12px;
     justify-content: flex-end;
-    padding: 1.5rem;
+    padding: 1rem 1.5rem 1.5rem 1.5rem;
+    border-top: 1px solid #edf2f7;
   }
 
   .modal-button {
-    padding: 0.6rem 1.5rem;
+    padding: 0.75rem 1.5rem;
     border-radius: 40px;
-    font-size: 1rem;
+    font-size: 0.95rem;
     font-weight: 500;
-    cursor: pointer;
     text-decoration: none;
+    text-align: center;
+    transition: all 0.2s;
     border: none;
-    transition: background 0.2s, transform 0.1s;
+    cursor: pointer;
+    display: inline-block;
   }
 
   .modal-button-primary {
-    background: #3b71fe;
+    background: #1a1e2b;
     color: white;
-    box-shadow: 0 4px 12px rgba(59, 113, 254, 0.3);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.05);
   }
 
   .modal-button-primary:hover {
-    background: #2958d6;
-    transform: scale(1.02);
+    background: #2d3445;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.1);
   }
 
   .modal-button-secondary {
-    background: #edf2f7;
-    color: #2d3748;
+    background: #f1f4f9;
+    color: #1a1e2b;
   }
 
   .modal-button-secondary:hover {
-    background: #e2e8f0;
+    background: #e5e9f0;
   }
 
   /* Responsividade */
@@ -593,178 +671,28 @@
       width: 100%;
       padding: 1rem 1.5rem;
     }
+
+    .modal-overlay {
+      padding: 0.5rem;
+    }
     .modal-card {
-      width: 95%;
+      border-radius: 24px;
+      max-height: calc(100vh - 1rem);
+      max-height: calc(100dvh - 1rem);
+    }
+    .modal-header {
+      padding: 1.25rem 1.25rem 0.5rem 1.25rem;
+    }
+    .modal-title {
+      font-size: 1.25rem;
+    }
+    .modal-body {
+      padding: 0.5rem 1.25rem 1rem 1.25rem;
     }
     .modal-footer {
       flex-direction: column;
-    }
-    .modal-button {
-      text-align: center;
+      padding: 1rem 1.25rem 1.25rem 1.25rem;
     }
   }
-  .modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(5px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 10000;
-  animation: fadeIn 0.2s ease;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-.modal-card {
-  background: white;
-  border-radius: 32px;
-  max-width: 480px;
-  width: 90%;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-  animation: slideUp 0.3s ease;
-}
-
-@keyframes slideUp {
-  from { transform: translateY(20px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
-}
-
-.modal-header {
-  display: flex;
-  align-items: center;
-  padding: 1.5rem 1.5rem 0.5rem 1.5rem;
-  position: relative;
-}
-
-.modal-icon {
-  flex-shrink: 0;
-  margin-right: 12px;
-  display: flex;
-  align-items: center;
-}
-
-.modal-title {
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: #1a1e2b;
-  margin: 0;
-  flex: 1;
-}
-
-.modal-close {
-  background: transparent;
-  border: none;
-  font-size: 2rem;
-  line-height: 1;
-  cursor: pointer;
-  color: #8a99b4;
-  padding: 0;
-  margin-left: 8px;
-  transition: color 0.2s;
-}
-
-.modal-close:hover {
-  color: #1a1e2b;
-}
-
-.modal-body {
-  padding: 1rem 1.5rem 1.5rem 1.5rem;
-}
-
-.modal-message-item {
-  background: #f8fafd;
-  border-left: 4px solid;
-  border-radius: 8px;
-  padding: 1rem 1.25rem;
-  margin-bottom: 0.75rem;
-  font-size: 1rem;
-  line-height: 1.5;
-  color: #1e2b4f;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-}
-
-.modal-message-item:last-child {
-  margin-bottom: 0;
-}
-
-[data-modal-type="success"] .modal-message-item {
-  border-left-color: #10b981;
-  background: #f0fdf9;
-}
-
-[data-modal-type="error"] .modal-message-item {
-  border-left-color: #ef4444;
-  background: #fef6f6;
-}
-
-.modal-footer {
-  display: flex;
-  gap: 12px;
-  justify-content: flex-end;
-  padding: 1rem 1.5rem 1.5rem 1.5rem;
-  border-top: 1px solid #edf2f7;
-}
-
-.modal-button {
-  padding: 0.75rem 1.5rem;
-  border-radius: 40px;
-  font-size: 0.95rem;
-  font-weight: 500;
-  text-decoration: none;
-  text-align: center;
-  transition: all 0.2s;
-  border: none;
-  cursor: pointer;
-  display: inline-block;
-}
-
-.modal-button-primary {
-  background: #1a1e2b;
-  color: white;
-  box-shadow: 0 4px 8px rgba(0,0,0,0.05);
-}
-
-.modal-button-primary:hover {
-  background: #2d3445;
-  transform: translateY(-2px);
-  box-shadow: 0 8px 16px rgba(0,0,0,0.1);
-}
-
-.modal-button-secondary {
-  background: #f1f4f9;
-  color: #1a1e2b;
-}
-
-.modal-button-secondary:hover {
-  background: #e5e9f0;
-}
-
-/* Responsividade */
-@media (max-width: 480px) {
-  .modal-card {
-    width: 95%;
-    border-radius: 24px;
-  }
-  .modal-header {
-    padding: 1.25rem 1.25rem 0.25rem 1.25rem;
-  }
-  .modal-title {
-    font-size: 1.25rem;
-  }
-  .modal-body {
-    padding: 1rem 1.25rem;
-  }
-  .modal-footer {
-    padding: 1rem 1.25rem 1.25rem 1.25rem;
-  }
-}
 </style>
 {% endblock %}

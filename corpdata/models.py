@@ -4,6 +4,15 @@ from django.utils import timezone
 
 
 #######################################
+# TELEFONES                           #
+#######################################
+class Telefones(models.Model):
+    telefone = models.CharField(max_length=11, unique=True)
+    documento = models.CharField(max_length=14)
+    criacao = models.DateTimeField(auto_now_add=True)
+    
+
+#######################################
 # RESUMO DOS DADOS                    #
 #######################################
 class ResumoDados(models.Model):
