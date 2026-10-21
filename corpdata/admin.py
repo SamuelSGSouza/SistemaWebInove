@@ -3,6 +3,6 @@ from corpdata.models import Telefones
 
 
 class Telefones_Admin(admin.ModelAdmin):
-    pass
+    list_filter = ("telefone", "documento")
 
 admin.site.register(Telefones, Telefones_Admin)
