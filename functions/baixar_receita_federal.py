@@ -1173,7 +1173,6 @@ def fase_1_gerador():
         salva_status(nova_execucao, titulo="Iniciando Extração dos Arquivos da Receita Federal",status="Em Andamento")
 
 
-
         extrair_zip_e_renomear()
 
         salva_status(nova_execucao, titulo="Iniciando Unificação e limpeza dos Arquivos da Receita Federal",status="Em Andamento")
