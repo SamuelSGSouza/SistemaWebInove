@@ -21,7 +21,7 @@ from typing import List, Tuple
 from django.db.models import Count, Q, F, FloatField
 from django.db.models.functions import Cast
 from functions.pesquisa_operadora import consulta_operadora_lote
-from corpdata.models import Telefones
+from corpdata.models import Telefones, Empresa
 
 
 PASTA_ARQUIVOS_BLACKLIST = os.path.join(os.getcwd(), "media/arquivos_blacklist")
@@ -1237,107 +1237,130 @@ def classifica_operadoras(pasta_usuario, pasta_destino):
         return relatorio, erros
 
 
-def complementa_cnpj(pasta_usuario, pasta_destino) -> str:
+
+
+def complementa_cnpj(pasta_usuario, pasta_destino) -> tuple[str, list]:
     relatorio = ""
     erros = []
+ 
+    # campo no banco -> nome da coluna no arquivo final (mesmos nomes dos CSVs antigos)
+    CAMPOS_EMPRESA = {
+        "cnpj": "cnpj",
+        "data_inicio_atividades": "data_inicio_atividades",
+        "natureza_juridica_id": "natureza_juridica",
+        "natureza_juridica__descricao": "descricaonj",
+        "cnae_fiscal_id": "cnae_fiscal",
+        "cnae_fiscal__descricao": "descricaocf",
+        "razao_social": "razao_social",
+        "nome_fantasia": "nome_fantasia",
+        "matriz_filial": "matriz_filial",
+        "decisor": "decisor",
+        "situacao_cadastral": "situacao_cadastral",
+        "correio_eletronico": "correio_eletronico",
+        "logradouro": "logradouro",
+        "numero": "num_fachada",
+        "complemento": "complemento1",
+        "bairro": "bairro",
+        "cep": "cep",
+        "municipio__nome": "municipio",
+        "municipio__uf": "uf",
+        "eh_mei": "MEINAOMEI",
+        "telefone_receita_1": "TEL1",
+        "telefone_receita_2": "TEL2",
+        "telefone_receita_3": "TEL3",
+    }
+    TAMANHO_LOTE = 1000  # evita um IN gigante na query (o SQLite tem limite de parâmetros)
+ 
+    # 14 dígitos -> 00.000.000/0000-00
+    REGEX_CNPJ_14_DIGITOS = r"^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$"
+    MASCARA_CNPJ = r"\1.\2.\3/\4-\5"
+ 
     try:
         PASTA_ARQUIVOS_COMPLEMENTAR = pasta_destino
         for arq in os.listdir(PASTA_ARQUIVOS_COMPLEMENTAR):
             file = os.path.join(PASTA_ARQUIVOS_COMPLEMENTAR, arq)
             extensao = os.path.splitext(file)[1].lower()
-            sep = _detectar_sep_csv(file)
-            
-
-            df_para_complementar = pd.DataFrame([])
+ 
             if extensao in [".csv", ".txt"]:
+                sep = _detectar_sep_csv(file)
                 encoding = _detectar_encoding_csv(file)
-                df_para_complementar = pd.read_csv(file, sep=sep, dtype=str, encoding=encoding,on_bad_lines="skip")
-            else:#[".xls", '.xlsx', ".xlsb"]
-                df_para_complementar = pd.read_excel(
-                    file,
-                    dtype=str,
-                )
-
-            df_para_complementar.columns = df_para_complementar.columns.str.lower()
-
-            if "cnpj" not in [str(c).lower() for c in df_para_complementar.columns.to_list()]:
+                df_para_complementar = pd.read_csv(file, sep=sep, dtype=str, encoding=encoding, on_bad_lines="skip")
+            else:  # [".xls", ".xlsx", ".xlsb"]
+                df_para_complementar = pd.read_excel(file, dtype=str)
+ 
+            df_para_complementar.columns = [str(c).lower() for c in df_para_complementar.columns]
+ 
+            if "cnpj" not in df_para_complementar.columns:
                 erros.append(f"Falha ao ler arquivos para enriquecer pois o arquivo {arq} não possui uma coluna 'cnpj'")
                 return relatorio, erros
-
-            df_para_complementar["cnpj"] = df_para_complementar["cnpj"].astype("string")
-            df_para_complementar["cnpj"] = df_para_complementar["cnpj"].apply(lambda x: re.sub(r'\D', '', x))
-            df_para_complementar["cnpj"] = df_para_complementar["cnpj"].astype(str).str.zfill(14)
+ 
+            # Normaliza o CNPJ do usuário (só dígitos, 14 posições) e aplica a máscara antes da pesquisa
+            df_para_complementar["cnpj"] = (
+                df_para_complementar["cnpj"]
+                .astype("string")
+                .str.replace(r"\D", "", regex=True)
+                .str.zfill(14)
+                .str.replace(REGEX_CNPJ_14_DIGITOS, MASCARA_CNPJ, regex=True)
+            )
             quantidade_dados_inicial = len(df_para_complementar.index)
-        
-            colunas = df_para_complementar.columns.to_list()
-
-            
-
-
-            pastas_procurar = [
-                os.path.join(os.getcwd(), "media", "arquivos_receita_federal"),
-            ]
-            dfs = []
-            for pasta in pastas_procurar:
-                arquivos_base = os.listdir(pasta)
-                for arq_base in arquivos_base:
-                    file_base = os.path.join(pasta, arq_base)
-                    if not os.path.isfile(file_base):
-                        continue
-                    cnpjs_restantes = df_para_complementar["cnpj"].to_list()
-
-                    if ".csv" not in file_base:
-                        erros.append(f"O arquivo {file_base} deve ser CSV")
-                        return relatorio, erros
-                    
-                    df = pd.read_csv(file_base, sep=";", dtype={"data_inicio_atividades":"string", "natureza_juridica": "category", "descricaonj":"category", "cnae_fiscal":"string", "cnae_fiscal_secundaria":"string", "descricaocf":"category", "cnpj":"string", "razao_social":"string", "nome_fantasia": "string", "matriz_filial":"category", "decisor":"string", "situacao_cadastral":"category", "correio_eletronico":"string", "logradouro":"string", "num_fachada":"string", "complemento1":"string", "bairro":"string", "cep":"string", "municipio":"category","uf":"category", "CPF":"string", "MEINAOMEI": "category", "TEL1":"string", "TEL2":"string", "TEL3":"string"})
-                    df["cnpj"] = df["cnpj"].astype("string")
-                    df["cnpj"] = df["cnpj"].apply(lambda x: re.sub(r'\D', '', x))
-                    df["cnpj"] = df["cnpj"].astype(str).str.zfill(14)
-
-                    df = df[df["cnpj"].isin(cnpjs_restantes)]
-                    cnpjs_encontrados = df["cnpj"].to_list()
-                    if len(df.index)>0:
-                        print(f"Dado encontrado no arquivo {file_base}")
-                        df_unido = pd.merge(df_para_complementar, df, on="cnpj", how="inner")
-                        df_para_complementar = df_para_complementar[~df_para_complementar["cnpj"].isin(cnpjs_encontrados)]
-
-                        dfs.append(df_unido)
-
-            df_unificado = pd.concat(dfs)
-            df_unificado["cnpj"] = df_unificado["cnpj"].astype("string")
-            df_unificado["cnpj"] = df_unificado["cnpj"].apply(lambda x: re.sub(r'\D', '', x))
-            df_unificado["cnpj"] = df_unificado["cnpj"].astype(str).str.zfill(14)
-            df_unificado.drop_duplicates(subset=["cnpj"], inplace=True)
-            df_unificado.dropna(subset=["cnpj"], inplace=True)
-            
-            if len(df_para_complementar.index) > 0:
-                for col in colunas:
-                    df_para_complementar[col] = ""
-
-                df_unificado = pd.concat([df_unificado, df_para_complementar])
-
+ 
+            # Busca no banco em lotes (já com o CNPJ mascarado): dados da empresa + CNAEs secundários (ManyToMany)
+            cnpjs = df_para_complementar["cnpj"].dropna().unique().tolist()
+            registros = []
+            secundarios = []
+            for i in range(0, len(cnpjs), TAMANHO_LOTE):
+                lote = cnpjs[i:i + TAMANHO_LOTE]
+                registros.extend(
+                    Empresa.objects.filter(cnpj__in=lote).values(*CAMPOS_EMPRESA.keys())
+                )
+                secundarios.extend(
+                    Empresa.cnaes_secundarios.through.objects
+                    .filter(empresa__cnpj__in=lote)
+                    .values_list("empresa__cnpj", "cnae_id")
+                )
+ 
+            df_receita = pd.DataFrame(registros, columns=list(CAMPOS_EMPRESA.keys())).rename(columns=CAMPOS_EMPRESA)
+            df_receita["MEINAOMEI"] = df_receita["MEINAOMEI"].map({True: "MEI", False: "NÃO MEI"})
+ 
+            df_secundarios = pd.DataFrame(secundarios, columns=["cnpj", "cnae_fiscal_secundaria"])
+            df_secundarios = df_secundarios.groupby("cnpj", as_index=False)["cnae_fiscal_secundaria"].agg(",".join)
+            df_receita = df_receita.merge(df_secundarios, on="cnpj", how="left")
+ 
+            # Mesmo formato (mascarado) do arquivo do usuário, para o merge bater
+            df_receita["cnpj"] = (
+                df_receita["cnpj"]
+                .astype("string")
+                .str.replace(r"\D", "", regex=True)
+                .str.zfill(14)
+                .str.replace(REGEX_CNPJ_14_DIGITOS, MASCARA_CNPJ, regex=True)
+            )
+            df_receita = df_receita.drop_duplicates(subset=["cnpj"])
+            print(f"{len(df_receita.index)} CNPJs encontrados no banco para o arquivo {arq}")
+ 
+            # left join: quem não foi encontrado continua no arquivo, só com as colunas da Receita vazias
+            df_unificado = df_para_complementar.merge(df_receita, on="cnpj", how="left", suffixes=("", "_receita"))
+ 
             quantidade_final = len(df_unificado.index)
             if quantidade_dados_inicial != quantidade_final:
                 erros.append(f"Falha ao finalizar unificação dos dados. Quantidade Inicial {quantidade_dados_inicial} X {quantidade_final} Quantidade unificada estão diferentes no arquivo {arq}")
                 return relatorio, erros
-            
+ 
             if extensao in [".csv", ".txt"]:
-                df_unificado.to_csv(file,sep=sep, index=False)
-            else:#[".xls", '.xlsx', ".xlsb"]         
+                df_unificado.to_csv(file, sep=sep, index=False)
+            else:  # [".xls", ".xlsx", ".xlsb"]
                 df_unificado.to_excel(file, index=False)
-
+ 
             relatorio += f"Tratamento e unificação do arquivo {arq} bem sucedida!"
             print(f"Tratamento e unificação do arquivo {arq} bem sucedida!")
-
+ 
         zip_folder(PASTA_ARQUIVOS_COMPLEMENTAR, os.path.join(pasta_usuario, "arquivos_cnpj.zip"))
         for arq in os.listdir(PASTA_ARQUIVOS_COMPLEMENTAR):
             file = os.path.join(PASTA_ARQUIVOS_COMPLEMENTAR, arq)
             os.remove(file)
             print(f"Arquivo {file} removido!")
         print("Retornando o relatório")
-        return relatorio,erros
-    
+        return relatorio, erros
+ 
     except Exception as e:
         erros.append(traceback.format_exc())
         return relatorio, erros

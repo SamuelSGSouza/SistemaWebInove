@@ -125,7 +125,9 @@ def serializa_empresa(empresa) -> dict:
 #####################################################
 # PESQUISA INDIVIDUAL (refatorada)                  #
 #####################################################
- 
+print(Empresa.objects.filter(cnpj="04.523.252/0001-56"))
+
+
 def pesquisa_empresa(request):
     cnpj = apenas_digitos(request.GET.get("cnpj", ""))
  
